@@ -1,0 +1,3429 @@
+--[[
+====================================================================
+                 DARK GAROU // PHANTOM HUNTER
+                     R4FIX CUSTOM BUILD
+====================================================================
+
+CORE CONCEPT
+    Dark Garou is NOT supposed to simply be "Garou but black".
+
+    Animation styles intentionally mix:
+        Garou
+        Suiryu
+        Atomic Samurai
+        Tatsumaki
+        Metal Bat
+
+FEATURES
+    • Abyssal Drag instant-kill presentation
+    • M1 automatic blink behind nearest enemy
+    • Mixed M1 animation system
+    • Dark spawn sequence
+    • Custom idle aura
+    • Custom walking/run presentation
+    • Dash afterimages
+    • Jump/landing VFX
+    • Phantom Sweep has NO Phantom Engine
+    • Shadow Strike has NO Phantom Engine
+    • Heavy dark impact VFX
+    • Void implosion effects
+    • Ground rings
+    • Slash trails
+    • Character/hotbar renaming
+    • Respawn cleanup
+
+IMPORTANT
+    This is a client-side script. Visual effects are local.
+    Character movement/health changes remain subject to the game's
+    server/network authority.
+====================================================================
+]]
+
+--------------------------------------------------------------------
+-- SERVICES
+--------------------------------------------------------------------
+
+local Players            = game:GetService("Players")
+local TweenService       = game:GetService("TweenService")
+local Debris             = game:GetService("Debris")
+local StarterGui         = game:GetService("StarterGui")
+local RunService         = game:GetService("RunService")
+local ReplicatedStorage  = game:GetService("ReplicatedStorage")
+local Lighting           = game:GetService("Lighting")
+
+local lp = Players.LocalPlayer
+
+--------------------------------------------------------------------
+-- GAME CHECK
+--------------------------------------------------------------------
+
+local TSB_PLACE_ID = 10449761463
+
+if game.PlaceId ~= TSB_PLACE_ID then
+	pcall(function()
+		lp:Kick("Wrong Game buddy 😂")
+	end)
+	return
+end
+
+--------------------------------------------------------------------
+-- SESSION
+--------------------------------------------------------------------
+
+getgenv().DarkGarou = getgenv().DarkGarou or {
+	LastDeathCFrame = nil,
+	Connections = {},
+	Effects = {},
+	Initialized = false,
+}
+
+local SESSION = getgenv().DarkGarou
+
+--------------------------------------------------------------------
+-- CHARACTER
+--------------------------------------------------------------------
+
+local CHAR_NAME = "Dark Garou"
+
+local CHAR_DECAL =
+	"rbxthumb://type=Asset&id=109192051567820&w=150&h=150"
+
+--------------------------------------------------------------------
+-- COLORS
+--------------------------------------------------------------------
+
+local VOID_BLACK = Color3.fromRGB(3, 2, 7)
+local VOID_DARK = Color3.fromRGB(10, 0, 20)
+local VOID_PURPLE = Color3.fromRGB(85, 0, 145)
+local VOID_BRIGHT = Color3.fromRGB(180, 50, 255)
+local VOID_WHITE = Color3.fromRGB(225, 200, 255)
+
+--------------------------------------------------------------------
+-- MOVE TRIGGER IDS
+--
+-- These are the trigger animations from the existing script.
+--------------------------------------------------------------------
+
+local SLOT1_ID = "rbxassetid://12273188754"
+local SLOT2_ID = "rbxassetid://12296113986"
+local SLOT3_ID = "rbxassetid://12309835105"
+local SLOT4_ID = "rbxassetid://12351854556"
+
+--------------------------------------------------------------------
+-- DARK GAROU ANIMATION LIBRARY
+--------------------------------------------------------------------
+
+local ANIMS = {
+
+	----------------------------------------------------------------
+	-- SPAWN / GENERAL
+	----------------------------------------------------------------
+
+	Spawn =
+		"rbxassetid://18715986914",
+
+	Idle =
+		"rbxassetid://18716153127",
+
+	----------------------------------------------------------------
+	-- GAROU
+	----------------------------------------------------------------
+
+	GarouM1_1 =
+		"rbxassetid://18715994424",
+
+	GarouM1_2 =
+		"rbxassetid://18715998497",
+
+	GarouM1_3 =
+		"rbxassetid://18715999597",
+
+	GarouM1_4 =
+		"rbxassetid://18716001119",
+
+	GarouCounter =
+		"rbxassetid://18716009111",
+
+	GarouCounterFinisher =
+		"rbxassetid://18716119248",
+
+	GarouLethalWhirlwind =
+		"rbxassetid://18716022049",
+
+	GarouLethalWhirlwindFinish =
+		"rbxassetid://18716149704",
+
+	GarouHunterGrasp =
+		"rbxassetid://18716033506",
+
+	GarouFlowingWater =
+		"rbxassetid://18716113810",
+
+	GarouFlowingWaterFinish =
+		"rbxassetid://18716123984",
+
+	GarouCrushedRock =
+		"rbxassetid://18716169065",
+
+	GarouRockSplitting =
+		"rbxassetid://18716184869",
+
+	----------------------------------------------------------------
+	-- ATOMIC
+	----------------------------------------------------------------
+
+	AtomicM1_1 =
+		"rbxassetid://15259161390",
+
+	AtomicM1_2 =
+		"rbxassetid://15240216931",
+
+	AtomicM1_3 =
+		"rbxassetid://15240176873",
+
+	AtomicM1_4 =
+		"rbxassetid://15162694192",
+
+	AtomicQuickSlice =
+		"rbxassetid://15290930205",
+
+	AtomicPinpoint =
+		"rbxassetid://18716871856",
+
+	AtomicPinpointFinish =
+		"rbxassetid://15436465829",
+
+	AtomicPinpointAirFinish =
+		"rbxassetid://15436668469",
+
+	AtomicAtmos =
+		"rbxassetid://15145462680",
+
+	AtomicAtmosFinish =
+		"rbxassetid://15279910941",
+
+	AtomicSplitCounter =
+		"rbxassetid://15334974550",
+
+	AtomicSplitCounterMiss =
+		"rbxassetid://15311685628",
+
+	AtomicSunset =
+		"rbxassetid://15520132233",
+
+	AtomicSolarCleave =
+		"rbxassetid://15676072469",
+
+	----------------------------------------------------------------
+	-- SUIRYU
+	----------------------------------------------------------------
+
+	SuiryuM1_1 =
+		"rbxassetid://18716133404",
+
+	SuiryuM1_2 =
+		"rbxassetid://18716143973",
+
+	SuiryuM1_3 =
+		"rbxassetid://18169291044",
+
+	SuiryuM1_4 =
+		"rbxassetid://18716149223",
+
+	SuiryuVanishingKick =
+		"rbxassetid://18715691149",
+
+	SuiryuWhirlwindDrop =
+		"rbxassetid://18716588373",
+
+	SuiryuBulletBarrage =
+		"rbxassetid://18716581594",
+
+	SuiryuEarthSplit =
+		"rbxassetid://18897118507",
+
+	----------------------------------------------------------------
+	-- TATSUMAKI
+	----------------------------------------------------------------
+
+	TatsumakiM1_1 =
+		"rbxassetid://16515503507",
+
+	TatsumakiM1_2 =
+		"rbxassetid://16515520431",
+
+	TatsumakiM1_3 =
+		"rbxassetid://16515448089",
+
+	TatsumakiM1_4 =
+		"rbxassetid://16552234590",
+
+	TatsumakiCrashingPull =
+		"rbxassetid://16139108718",
+
+	TatsumakiSkySnatcher =
+		"rbxassetid://17889080495",
+
+	----------------------------------------------------------------
+	-- METAL BAT
+	----------------------------------------------------------------
+
+	MetalBatGrandSlam =
+		"rbxassetid://18716650993",
+
+	MetalBatHomerun =
+		"rbxassetid://18716667710",
+
+	----------------------------------------------------------------
+	-- ULTIMATE
+	----------------------------------------------------------------
+
+	FinalHuntStart =
+		"rbxassetid://12463072679",
+
+	FinalHunt =
+		"rbxassetid://12467789963",
+
+	----------------------------------------------------------------
+	-- EXISTING SPECIAL ANIMATION
+	----------------------------------------------------------------
+
+	WaterStreamRockSmashing =
+		"rbxassetid://12460977270",
+
+}
+
+--------------------------------------------------------------------
+-- MIXED M1 ROTATION
+--
+-- Deliberately NOT all Garou.
+--------------------------------------------------------------------
+
+local M1_POOL = {
+	ANIMS.GarouM1_1,
+	ANIMS.SuiryuM1_2,
+	ANIMS.AtomicM1_3,
+	ANIMS.GarouM1_4,
+
+	ANIMS.SuiryuM1_1,
+	ANIMS.AtomicM1_2,
+	ANIMS.TatsumakiM1_3,
+	ANIMS.SuiryuM1_4,
+}
+
+--------------------------------------------------------------------
+-- MOVE NAMES
+--------------------------------------------------------------------
+
+local baseNames = {
+
+	["1"] = {
+		name = "Abyssal Drag",
+		variant = "|| INSTANT KILL ||",
+	},
+
+	["2"] = {
+		name = "Shadow Strike",
+	},
+
+	["3"] = {
+		name = "Phantom Sweep",
+	},
+
+	["4"] = {
+		name = "Total Eclipse",
+	},
+
+}
+
+local ultNames = {
+
+	["1"] = "Void Execution",
+	["2"] = "Pitch Black",
+	["3"] = "Event Horizon",
+	["4"] = "Silent Death",
+
+}
+
+--------------------------------------------------------------------
+-- CLEANUP
+--------------------------------------------------------------------
+
+local function cleanupConnections()
+
+	for _, connection in pairs(SESSION.Connections) do
+
+		pcall(function()
+			connection:Disconnect()
+		end)
+
+	end
+
+	SESSION.Connections = {}
+
+end
+
+local function track(connection)
+
+	table.insert(
+		SESSION.Connections,
+		connection
+	)
+
+	return connection
+
+end
+
+local function cleanupEffects()
+
+	for _, object in pairs(SESSION.Effects) do
+
+		pcall(function()
+
+			if object and object.Parent then
+				object:Destroy()
+			end
+
+		end)
+
+	end
+
+	SESSION.Effects = {}
+
+end
+
+local function trackEffect(object)
+
+	table.insert(
+		SESSION.Effects,
+		object
+	)
+
+	return object
+
+end
+
+--------------------------------------------------------------------
+-- SAFE CHARACTER ACCESS
+--------------------------------------------------------------------
+
+local function getCharacter()
+
+	return lp.Character
+
+end
+
+local function getRoot()
+
+	local character = getCharacter()
+
+	if not character then
+		return nil
+	end
+
+	return character:FindFirstChild("HumanoidRootPart")
+
+end
+
+local function getHumanoid()
+
+	local character = getCharacter()
+
+	if not character then
+		return nil
+	end
+
+	return character:FindFirstChildOfClass("Humanoid")
+
+end
+
+--------------------------------------------------------------------
+-- PLAY ANIMATION
+--------------------------------------------------------------------
+
+local function playAnimation(humanoid, animationId, speed)
+
+	if not humanoid then
+		return nil
+	end
+
+	if not humanoid.Parent then
+		return nil
+	end
+
+	local animator =
+		humanoid:FindFirstChildOfClass("Animator")
+
+	if not animator then
+		animator = Instance.new("Animator")
+		animator.Parent = humanoid
+	end
+
+	local animation =
+		Instance.new("Animation")
+
+	animation.AnimationId = animationId
+
+	local ok, animationTrack =
+		pcall(function()
+
+			return animator:LoadAnimation(animation)
+
+		end)
+
+	if not ok or not animationTrack then
+
+		animation:Destroy()
+
+		return nil
+
+	end
+
+	animationTrack.Priority =
+		Enum.AnimationPriority.Action
+
+	if speed then
+		animationTrack:AdjustSpeed(speed)
+	end
+
+	animationTrack:Play()
+
+	Debris:AddItem(animation, 10)
+
+	return animationTrack
+
+end
+
+--------------------------------------------------------------------
+-- VFX: VOID BALL
+--------------------------------------------------------------------
+
+local function spawnVoidBall(cframe, size, duration)
+
+	local part =
+		Instance.new("Part")
+
+	part.Name = "DarkGarou_VoidBall"
+	part.Shape = Enum.PartType.Ball
+	part.Material = Enum.Material.Neon
+	part.Anchored = true
+	part.CanCollide = false
+	part.CanQuery = false
+	part.CanTouch = false
+	part.CastShadow = false
+
+	part.Color = VOID_DARK
+
+	part.Size =
+		Vector3.new(
+			1,
+			1,
+			1
+		)
+
+	part.CFrame = cframe
+
+	part.Transparency = 0.05
+
+	part.Parent = workspace
+
+	trackEffect(part)
+
+	local tween =
+		TweenService:Create(
+
+			part,
+
+			TweenInfo.new(
+				duration or 0.35,
+				Enum.EasingStyle.Exponential,
+				Enum.EasingDirection.Out
+			),
+
+			{
+				Size =
+					Vector3.new(
+						size,
+						size,
+						size
+					),
+
+				Transparency = 1,
+			}
+
+		)
+
+	tween:Play()
+
+	Debris:AddItem(
+		part,
+		(duration or 0.35) + 0.2
+	)
+
+	return part
+
+end
+
+--------------------------------------------------------------------
+-- VFX: SHOCKWAVE RING
+--------------------------------------------------------------------
+
+local function spawnVoidRing(position, radius, duration)
+
+	local ring =
+		Instance.new("Part")
+
+	ring.Name = "DarkGarou_VoidRing"
+
+	ring.Anchored = true
+	ring.CanCollide = false
+	ring.CanTouch = false
+	ring.CanQuery = false
+
+	ring.Shape =
+		Enum.PartType.Cylinder
+
+	ring.Material =
+		Enum.Material.Neon
+
+	ring.Color =
+		VOID_PURPLE
+
+	ring.Transparency = 0.1
+
+	ring.Size =
+		Vector3.new(
+			0.08,
+			1,
+			1
+		)
+
+	ring.CFrame =
+		CFrame.new(position)
+		*
+		CFrame.Angles(
+			0,
+			0,
+			math.rad(90)
+		)
+
+	ring.Parent =
+		workspace
+
+	trackEffect(ring)
+
+	TweenService:Create(
+
+		ring,
+
+		TweenInfo.new(
+			duration or 0.5,
+			Enum.EasingStyle.Exponential,
+			Enum.EasingDirection.Out
+		),
+
+		{
+			Size =
+				Vector3.new(
+					0.08,
+					radius,
+					radius
+				),
+
+			Transparency = 1,
+		}
+
+	):Play()
+
+	Debris:AddItem(
+		ring,
+		(duration or 0.5) + 0.1
+	)
+
+end
+
+--------------------------------------------------------------------
+-- VFX: GROUND RUNE
+--------------------------------------------------------------------
+
+local function spawnGroundRune(position, size)
+
+	local rune =
+		Instance.new("Part")
+
+	rune.Name =
+		"DarkGarou_GroundRune"
+
+	rune.Anchored = true
+	rune.CanCollide = false
+	rune.CanTouch = false
+	rune.CanQuery = false
+
+	rune.Shape =
+		Enum.PartType.Cylinder
+
+	rune.Material =
+		Enum.Material.Neon
+
+	rune.Color =
+		VOID_PURPLE
+
+	rune.Transparency =
+		0.2
+
+	rune.Size =
+		Vector3.new(
+			0.05,
+			1,
+			1
+		)
+
+	rune.CFrame =
+		CFrame.new(
+			position - Vector3.new(
+				0,
+				2.9,
+				0
+			)
+		)
+		*
+		CFrame.Angles(
+			0,
+			0,
+			math.rad(90)
+		)
+
+	rune.Parent =
+		workspace
+
+	trackEffect(rune)
+
+	TweenService:Create(
+
+		rune,
+
+		TweenInfo.new(
+			0.65,
+			Enum.EasingStyle.Quint,
+			Enum.EasingDirection.Out
+		),
+
+		{
+			Size =
+				Vector3.new(
+					0.05,
+					size or 12,
+					size or 12
+				),
+
+			Transparency = 1,
+		}
+
+	):Play()
+
+	Debris:AddItem(
+		rune,
+		0.8
+	)
+
+end
+
+--------------------------------------------------------------------
+-- VFX: PARTICLE BURST
+--------------------------------------------------------------------
+
+local function spawnParticleBurst(
+	position,
+	amount,
+	size,
+	speed
+)
+
+	local holder =
+		Instance.new("Part")
+
+	holder.Name =
+		"DarkGarou_ParticleBurst"
+
+	holder.Anchored = true
+	holder.CanCollide = false
+	holder.CanTouch = false
+	holder.CanQuery = false
+	holder.Transparency = 1
+
+	holder.Size =
+		Vector3.new(
+			0.1,
+			0.1,
+			0.1
+		)
+
+	holder.Position =
+		position
+
+	holder.Parent =
+		workspace
+
+	trackEffect(holder)
+
+	local attachment =
+		Instance.new("Attachment")
+
+	attachment.Parent =
+		holder
+
+	local particles =
+		Instance.new("ParticleEmitter")
+
+	particles.Parent =
+		attachment
+
+	particles.Rate = 0
+
+	particles.Lifetime =
+		NumberRange.new(
+			0.25,
+			0.75
+		)
+
+	particles.Speed =
+		NumberRange.new(
+			speed or 8,
+			(speed or 8) * 2
+		)
+
+	particles.SpreadAngle =
+		Vector2.new(
+			360,
+			360
+		)
+
+	particles.Rotation =
+		NumberRange.new(
+			0,
+			360
+		)
+
+	particles.RotSpeed =
+		NumberRange.new(
+			-250,
+			250
+		)
+
+	particles.LightEmission =
+		0.8
+
+	particles.Color =
+		ColorSequence.new({
+
+			ColorSequenceKeypoint.new(
+				0,
+				VOID_BRIGHT
+			),
+
+			ColorSequenceKeypoint.new(
+				0.45,
+				VOID_PURPLE
+			),
+
+			ColorSequenceKeypoint.new(
+				1,
+				VOID_BLACK
+			),
+
+		})
+
+	particles.Size =
+		NumberSequence.new({
+
+			NumberSequenceKeypoint.new(
+				0,
+				size or 1
+			),
+
+			NumberSequenceKeypoint.new(
+				0.5,
+				(size or 1) * 0.65
+			),
+
+			NumberSequenceKeypoint.new(
+				1,
+				0
+			),
+
+		})
+
+	particles.Transparency =
+		NumberSequence.new({
+
+			NumberSequenceKeypoint.new(
+				0,
+				0.1
+			),
+
+			NumberSequenceKeypoint.new(
+				1,
+				1
+			),
+
+		})
+
+	particles.Texture =
+		"rbxassetid://7216854921"
+
+	particles:Emit(
+		amount or 15
+	)
+
+	Debris:AddItem(
+		holder,
+		1.2
+	)
+
+end
+
+--------------------------------------------------------------------
+-- VFX: SLASH
+--------------------------------------------------------------------
+
+local function spawnSlash(root, scale)
+
+	if not root then
+		return
+	end
+
+	local holder =
+		Instance.new("Part")
+
+	holder.Name =
+		"DarkGarou_Slash"
+
+	holder.Anchored = true
+	holder.CanCollide = false
+	holder.CanTouch = false
+	holder.CanQuery = false
+	holder.Transparency = 1
+
+	holder.Size =
+		Vector3.new(
+			0.1,
+			0.1,
+			0.1
+		)
+
+	holder.CFrame =
+		root.CFrame
+
+	holder.Parent =
+		workspace
+
+	trackEffect(holder)
+
+	local attachment =
+		Instance.new("Attachment")
+
+	attachment.Parent =
+		holder
+
+	local slash =
+		Instance.new("ParticleEmitter")
+
+	slash.Parent =
+		attachment
+
+	slash.Rate = 0
+
+	slash.Lifetime =
+		NumberRange.new(
+			0.18,
+			0.35
+		)
+
+	slash.Speed =
+		NumberRange.new(
+			0,
+			1
+		)
+
+	slash.SpreadAngle =
+		Vector2.new(
+			360,
+			360
+		)
+
+	slash.Rotation =
+		NumberRange.new(
+			0,
+			360
+		)
+
+	slash.RotSpeed =
+		NumberRange.new(
+			-100,
+			100
+		)
+
+	slash.LightEmission =
+		1
+
+	slash.Color =
+		ColorSequence.new({
+
+			ColorSequenceKeypoint.new(
+				0,
+				VOID_WHITE
+			),
+
+			ColorSequenceKeypoint.new(
+				0.25,
+				VOID_BRIGHT
+			),
+
+			ColorSequenceKeypoint.new(
+				1,
+				VOID_BLACK
+			),
+
+		})
+
+	slash.Size =
+		NumberSequence.new({
+
+			NumberSequenceKeypoint.new(
+				0,
+				(5 * (scale or 1))
+			),
+
+			NumberSequenceKeypoint.new(
+				0.25,
+				(10 * (scale or 1))
+			),
+
+			NumberSequenceKeypoint.new(
+				1,
+				0
+			),
+
+		})
+
+	slash.Transparency =
+		NumberSequence.new({
+
+			NumberSequenceKeypoint.new(
+				0,
+				0.05
+			),
+
+			NumberSequenceKeypoint.new(
+				0.7,
+				0.35
+			),
+
+			NumberSequenceKeypoint.new(
+				1,
+				1
+			),
+
+		})
+
+	slash.Texture =
+		"rbxassetid://7216854921"
+
+	slash:Emit(
+		12
+	)
+
+	Debris:AddItem(
+		holder,
+		0.7
+	)
+
+end
+
+--------------------------------------------------------------------
+-- VFX: AFTERIMAGE
+--------------------------------------------------------------------
+
+local function createAfterimage(character)
+
+	if not character then
+		return
+	end
+
+	local clone
+
+	local ok =
+		pcall(function()
+
+			clone =
+				character:Clone()
+
+		end)
+
+	if not ok or not clone then
+		return
+	end
+
+	for _, descendant in ipairs(clone:GetDescendants()) do
+
+		if descendant:IsA("Script")
+			or descendant:IsA("LocalScript")
+			or descendant:IsA("ModuleScript") then
+
+			descendant:Destroy()
+
+		elseif descendant:IsA("Humanoid") then
+
+			descendant:Destroy()
+
+		elseif descendant:IsA("BasePart") then
+
+			descendant.Anchored = true
+			descendant.CanCollide = false
+			descendant.CanTouch = false
+			descendant.CanQuery = false
+
+			descendant.Material =
+				Enum.Material.Neon
+
+			descendant.Color =
+				VOID_PURPLE
+
+			descendant.Transparency =
+				0.45
+
+		end
+
+	end
+
+	clone.Name =
+		"DarkGarou_Afterimage"
+
+	clone.Parent =
+		workspace
+
+	trackEffect(clone)
+
+	for _, descendant in ipairs(clone:GetDescendants()) do
+
+		if descendant:IsA("BasePart") then
+
+			TweenService:Create(
+
+				descendant,
+
+				TweenInfo.new(
+					0.35,
+					Enum.EasingStyle.Quad,
+					Enum.EasingDirection.Out
+				),
+
+				{
+					Transparency = 1
+				}
+
+			):Play()
+
+		end
+
+	end
+
+	Debris:AddItem(
+		clone,
+		0.45
+	)
+
+end
+
+--------------------------------------------------------------------
+-- VFX: TELEPORT
+--------------------------------------------------------------------
+
+local function teleportVFX(position)
+
+	spawnVoidBall(
+		CFrame.new(position),
+		12,
+		0.25
+	)
+
+	spawnVoidRing(
+		position,
+		18,
+		0.35
+	)
+
+	spawnParticleBurst(
+		position,
+		28,
+		1.2,
+		12
+	)
+
+end
+
+--------------------------------------------------------------------
+-- VFX: IMPACT
+--------------------------------------------------------------------
+
+local function impactVFX(position, power)
+
+	power = power or 1
+
+	spawnVoidBall(
+		CFrame.new(position),
+		10 * power,
+		0.28
+	)
+
+	spawnVoidRing(
+		position,
+		20 * power,
+		0.45
+	)
+
+	spawnGroundRune(
+		position,
+		12 * power
+	)
+
+	spawnParticleBurst(
+		position,
+		math.floor(20 * power),
+		1.4 * power,
+		10 * power
+	)
+
+end
+
+--------------------------------------------------------------------
+-- VFX: MASSIVE VOID IMPLOSION
+--------------------------------------------------------------------
+
+local function voidImplosion(position, power)
+
+	power = power or 1
+
+	-- Outer ring
+	spawnVoidRing(
+		position,
+		35 * power,
+		0.65
+	)
+
+	-- Second ring
+	task.delay(
+		0.08,
+		function()
+
+			spawnVoidRing(
+				position,
+				25 * power,
+				0.45
+			)
+
+		end
+	)
+
+	-- Core
+	local core =
+		Instance.new("Part")
+
+	core.Name =
+		"DarkGarou_VoidCore"
+
+	core.Shape =
+		Enum.PartType.Ball
+
+	core.Material =
+		Enum.Material.Neon
+
+	core.Anchored = true
+	core.CanCollide = false
+	core.CanTouch = false
+	core.CanQuery = false
+
+	core.Color =
+		VOID_BLACK
+
+	core.Size =
+		Vector3.new(
+			2,
+			2,
+			2
+		)
+
+	core.CFrame =
+		CFrame.new(position)
+
+	core.Parent =
+		workspace
+
+	trackEffect(core)
+
+	TweenService:Create(
+
+		core,
+
+		TweenInfo.new(
+			0.55,
+			Enum.EasingStyle.Exponential,
+			Enum.EasingDirection.Out
+		),
+
+		{
+			Size =
+				Vector3.new(
+					30 * power,
+					30 * power,
+					30 * power
+				),
+
+			Transparency = 1,
+
+		}
+
+	):Play()
+
+	-- Purple secondary sphere
+	task.delay(
+		0.06,
+		function()
+
+			spawnVoidBall(
+				CFrame.new(position),
+				26 * power,
+				0.4
+			)
+
+		end
+	)
+
+	spawnParticleBurst(
+		position,
+		math.floor(50 * power),
+		2 * power,
+		18 * power
+	)
+
+	spawnGroundRune(
+		position,
+		30 * power
+	)
+
+	Debris:AddItem(
+		core,
+		0.8
+	)
+
+end
+
+--------------------------------------------------------------------
+-- FIND CLOSEST ENEMY
+--------------------------------------------------------------------
+
+local function getClosestEnemy(maxDistance)
+
+	local character =
+		getCharacter()
+
+	local root =
+		getRoot()
+
+	if not character or not root then
+		return nil
+	end
+
+	local live =
+		workspace:FindFirstChild("Live")
+
+	if not live then
+		return nil
+	end
+
+	local closest = nil
+	local closestDistance = maxDistance
+
+	for _, model in ipairs(live:GetChildren()) do
+
+		if model ~= character then
+
+			local enemyHumanoid =
+				model:FindFirstChildOfClass("Humanoid")
+
+			local enemyRoot =
+				model:FindFirstChild("HumanoidRootPart")
+
+			if enemyHumanoid
+				and enemyRoot
+				and enemyHumanoid.Health > 0 then
+
+				local distance =
+					(
+						root.Position
+						-
+						enemyRoot.Position
+					).Magnitude
+
+				if distance <= closestDistance then
+
+					closest =
+						model
+
+					closestDistance =
+						distance
+
+				end
+
+			end
+
+		end
+
+	end
+
+	return closest
+
+end
+
+--------------------------------------------------------------------
+-- BLINK BEHIND ENEMY
+--------------------------------------------------------------------
+
+local M1_BLINK_DISTANCE = 45
+local M1_BLINK_COOLDOWN = 0.12
+
+local lastM1Blink = 0
+
+local function blinkBehindEnemy(enemy)
+
+	if not enemy then
+		return false
+	end
+
+	local character =
+		getCharacter()
+
+	local root =
+		getRoot()
+
+	local enemyRoot =
+		enemy:FindFirstChild("HumanoidRootPart")
+
+	local enemyHumanoid =
+		enemy:FindFirstChildOfClass("Humanoid")
+
+	if not character
+		or not root
+		or not enemyRoot
+		or not enemyHumanoid
+		or enemyHumanoid.Health <= 0 then
+
+		return false
+
+	end
+
+	local now =
+		os.clock()
+
+	if now - lastM1Blink <
+		M1_BLINK_COOLDOWN then
+
+		return false
+
+	end
+
+	lastM1Blink =
+		now
+
+	-- Leave an afterimage at the original location.
+	createAfterimage(
+		character
+	)
+
+	teleportVFX(
+		root.Position
+	)
+
+	-- Positive Z is behind a Roblox character relative
+	-- to its LookVector.
+	local destination =
+		enemyRoot.CFrame
+		*
+		CFrame.new(
+			0,
+			0,
+			4.5
+		)
+
+	root.CFrame =
+		CFrame.lookAt(
+			destination.Position,
+			enemyRoot.Position
+		)
+
+	teleportVFX(
+		root.Position
+	)
+
+	return true
+
+end
+
+--------------------------------------------------------------------
+-- SPAWN SEQUENCE
+--------------------------------------------------------------------
+
+local function darkSpawnSequence(character, humanoid, root)
+
+	if not character
+		or not humanoid
+		or not root then
+
+		return
+
+	end
+
+	-- Prevent the normal spawn animation from immediately
+	-- ruining the sequence.
+	local spawnTrack =
+		playAnimation(
+			humanoid,
+			ANIMS.Spawn,
+			0.9
+		)
+
+	-- Small initial darkness
+	spawnVoidBall(
+		root.CFrame,
+		8,
+		0.4
+	)
+
+	spawnGroundRune(
+		root.Position,
+		8
+	)
+
+	task.delay(
+		0.15,
+		function()
+
+			if not root.Parent then
+				return
+			end
+
+			spawnParticleBurst(
+				root.Position,
+				20,
+				1,
+				8
+			)
+
+		end
+	)
+
+	task.delay(
+		0.35,
+		function()
+
+			if not root.Parent then
+				return
+			end
+
+			spawnVoidRing(
+				root.Position,
+				20,
+				0.5
+			)
+
+		end
+	)
+
+	task.delay(
+		0.55,
+		function()
+
+			if not root.Parent then
+				return
+			end
+
+			voidImplosion(
+				root.Position,
+				0.8
+			)
+
+		end
+	)
+
+	task.delay(
+		0.85,
+		function()
+
+			if spawnTrack then
+
+				pcall(function()
+					spawnTrack:Stop(0.15)
+				end)
+
+			end
+
+			-- Idle is intentionally used as a special
+			-- dark aura animation rather than normal Garou.
+			playAnimation(
+				humanoid,
+				ANIMS.Idle,
+				1
+			)
+
+		end
+	)
+
+end
+
+--------------------------------------------------------------------
+-- MOVE VFX HELPERS
+--------------------------------------------------------------------
+
+local function darkDashBurst()
+
+	local root =
+		getRoot()
+
+	if not root then
+		return
+	end
+
+	createAfterimage(
+		getCharacter()
+	)
+
+	spawnVoidRing(
+		root.Position,
+		14,
+		0.3
+	)
+
+	spawnParticleBurst(
+		root.Position,
+		18,
+		0.8,
+		10
+	)
+
+end
+
+--------------------------------------------------------------------
+-- ABYSSAL DRAG
+--
+-- Instant-kill move presentation.
+--------------------------------------------------------------------
+
+local function abyssalDrag()
+
+	local character =
+		getCharacter()
+
+	local humanoid =
+		getHumanoid()
+
+	local root =
+		getRoot()
+
+	if not character
+		or not humanoid
+		or not root then
+
+		return
+
+	end
+
+	----------------------------------------------------------------
+	-- INITIAL VANISH
+	----------------------------------------------------------------
+
+	createAfterimage(
+		character
+	)
+
+	teleportVFX(
+		root.Position
+	)
+
+	----------------------------------------------------------------
+	-- FIND TARGET
+	----------------------------------------------------------------
+
+	local target =
+		getClosestEnemy(90)
+
+	if target then
+
+		local targetRoot =
+			target:FindFirstChild(
+				"HumanoidRootPart"
+			)
+
+		if targetRoot then
+
+			----------------------------------------------------------------
+			-- DARK GAROU APPEARS BEHIND TARGET
+			----------------------------------------------------------------
+
+			task.wait(0.08)
+
+			local destination =
+				targetRoot.CFrame
+				*
+				CFrame.new(
+					0,
+					0,
+					6
+				)
+
+			root.CFrame =
+				CFrame.lookAt(
+					destination.Position,
+					targetRoot.Position
+				)
+
+			teleportVFX(
+				root.Position
+			)
+
+			----------------------------------------------------------------
+			-- EXECUTION PAUSE
+			----------------------------------------------------------------
+
+			task.wait(0.12)
+
+			----------------------------------------------------------------
+			-- CUSTOM EXECUTION ANIMATION
+			----------------------------------------------------------------
+
+			local execution =
+				playAnimation(
+					humanoid,
+					ANIMS.AtomicPinpointFinish,
+					0.8
+				)
+
+			spawnSlash(
+				root,
+				1.8
+			)
+
+			task.wait(0.28)
+
+			----------------------------------------------------------------
+			-- TARGET IMPACT
+			----------------------------------------------------------------
+
+			if targetRoot.Parent then
+
+				impactVFX(
+					targetRoot.Position,
+					1.8
+				)
+
+				spawnSlash(
+					targetRoot,
+					2.2
+				)
+
+			end
+
+			task.wait(0.1)
+
+			----------------------------------------------------------------
+			-- THE VOID "SWALLOWS" THE AREA
+			----------------------------------------------------------------
+
+			if targetRoot.Parent then
+
+				voidImplosion(
+					targetRoot.Position,
+					1.6
+				)
+
+			end
+
+			----------------------------------------------------------------
+			-- ACTUAL GAME-SIDE RESULT
+			--
+			-- We deliberately do NOT fake a server-side kill here.
+			-- If the game exposes its legitimate move event, the
+			-- existing Hunter move system is responsible for the
+			-- actual hit.
+			----------------------------------------------------------------
+
+			if execution then
+
+				pcall(function()
+					execution:AdjustSpeed(0.7)
+				end)
+
+			end
+
+			return
+
+		end
+
+	end
+
+	----------------------------------------------------------------
+	-- NO TARGET
+	----------------------------------------------------------------
+
+	voidImplosion(
+		root.Position,
+		0.8
+	)
+
+end
+
+--------------------------------------------------------------------
+-- SHADOW STRIKE
+--------------------------------------------------------------------
+
+local function shadowStrike()
+
+	local humanoid =
+		getHumanoid()
+
+	local root =
+		getRoot()
+
+	if not humanoid or not root then
+		return
+	end
+
+	----------------------------------------------------------------
+	-- NO PHANTOM ENGINE HERE
+	----------------------------------------------------------------
+
+	createAfterimage(
+		getCharacter()
+	)
+
+	spawnVoidRing(
+		root.Position,
+		12,
+		0.3
+	)
+
+	----------------------------------------------------------------
+	-- MIXED ANIMATION
+	----------------------------------------------------------------
+
+	local animation =
+		playAnimation(
+			humanoid,
+			ANIMS.SuiryuVanishingKick,
+			1.15
+		)
+
+	spawnSlash(
+		root,
+		1.2
+	)
+
+	task.delay(
+		0.15,
+		function()
+
+			if root.Parent then
+
+				spawnParticleBurst(
+					root.Position,
+					25,
+					1,
+					14
+				)
+
+			end
+
+		end
+	)
+
+	task.delay(
+		0.3,
+		function()
+
+			if root.Parent then
+
+				spawnSlash(
+					root,
+					1.7
+				)
+
+			end
+
+		end
+	)
+
+	return animation
+
+end
+
+--------------------------------------------------------------------
+-- PHANTOM SWEEP
+--
+-- IMPORTANT:
+-- NO PHANTOM ENGINE.
+--------------------------------------------------------------------
+
+local function phantomSweep()
+
+	local humanoid =
+		getHumanoid()
+
+	local root =
+		getRoot()
+
+	if not humanoid or not root then
+		return
+	end
+
+	----------------------------------------------------------------
+	-- START WITH ATOMIC COUNTER
+	----------------------------------------------------------------
+
+	local counter =
+		playAnimation(
+			humanoid,
+			ANIMS.AtomicSplitCounter,
+			1
+		)
+
+	----------------------------------------------------------------
+	-- DISAPPEAR
+	----------------------------------------------------------------
+
+	task.delay(
+		0.12,
+		function()
+
+			if not root.Parent then
+				return
+			end
+
+			createAfterimage(
+				getCharacter()
+			)
+
+			spawnVoidBall(
+				root.CFrame,
+				9,
+				0.2
+			)
+
+		end
+	)
+
+	----------------------------------------------------------------
+	-- SLASH
+	----------------------------------------------------------------
+
+	task.delay(
+		0.28,
+		function()
+
+			if not root.Parent then
+				return
+			end
+
+			local target =
+				getClosestEnemy(65)
+
+			if target then
+
+				local targetRoot =
+					target:FindFirstChild(
+						"HumanoidRootPart"
+					)
+
+				if targetRoot then
+
+					createAfterimage(
+						getCharacter()
+					)
+
+					root.CFrame =
+						CFrame.lookAt(
+							(
+								targetRoot.CFrame
+								*
+								CFrame.new(
+									0,
+									0,
+									5
+								)
+							).Position,
+
+							targetRoot.Position
+						)
+
+					teleportVFX(
+						root.Position
+					)
+
+				end
+
+			end
+
+			spawnSlash(
+				root,
+				1.6
+			)
+
+			spawnVoidRing(
+				root.Position,
+				22,
+				0.4
+			)
+
+		end
+	)
+
+	----------------------------------------------------------------
+	-- FINISH
+	----------------------------------------------------------------
+
+	task.delay(
+		0.48,
+		function()
+
+			if not root.Parent then
+				return
+			end
+
+			playAnimation(
+				humanoid,
+				ANIMS.AtomicPinpointFinish,
+				1.05
+			)
+
+			spawnSlash(
+				root,
+				2
+			)
+
+			impactVFX(
+				root.Position,
+				1.5
+			)
+
+		end
+	)
+
+	return counter
+
+end
+
+--------------------------------------------------------------------
+-- TOTAL ECLIPSE
+--------------------------------------------------------------------
+
+local function totalEclipse()
+
+	local humanoid =
+		getHumanoid()
+
+	local root =
+		getRoot()
+
+	if not humanoid or not root then
+		return
+	end
+
+	----------------------------------------------------------------
+	-- START
+	----------------------------------------------------------------
+
+	playAnimation(
+		humanoid,
+		ANIMS.TatsumakiCrashingPull,
+		0.9
+	)
+
+	spawnVoidRing(
+		root.Position,
+		16,
+		0.35
+	)
+
+	----------------------------------------------------------------
+	-- DARK LIFT
+	----------------------------------------------------------------
+
+	task.delay(
+		0.25,
+		function()
+
+			if not root.Parent then
+				return
+			end
+
+			playAnimation(
+				humanoid,
+				ANIMS.MetalBatGrandSlam,
+				1
+			)
+
+			spawnParticleBurst(
+				root.Position,
+				30,
+				1.4,
+				13
+			)
+
+		end
+	)
+
+	----------------------------------------------------------------
+	-- IMPACT
+	----------------------------------------------------------------
+
+	task.delay(
+		0.52,
+		function()
+
+			if not root.Parent then
+				return
+			end
+
+			impactVFX(
+				root.Position,
+				1.8
+			)
+
+			voidImplosion(
+				root.Position,
+				1.15
+			)
+
+		end
+	)
+
+end
+
+--------------------------------------------------------------------
+-- M1 ANIMATION REPLACEMENT
+--------------------------------------------------------------------
+
+local M1_INDEX = 0
+
+local ORIGINAL_M1 = {
+
+	["rbxassetid://10469493270"] = true,
+	["rbxassetid://10469630950"] = true,
+	["rbxassetid://10469639222"] = true,
+	["rbxassetid://10469643643"] = true,
+
+}
+
+--------------------------------------------------------------------
+-- M1 HIT / BLINK
+--------------------------------------------------------------------
+
+local function handleM1(humanoid, animationTrack)
+
+	M1_INDEX += 1
+
+	local targetAnimation =
+		M1_POOL[
+			((M1_INDEX - 1) % #M1_POOL) + 1
+		]
+
+	----------------------------------------------------------------
+	-- Stop original M1
+	----------------------------------------------------------------
+
+	pcall(function()
+		animationTrack:Stop(0)
+	end)
+
+	----------------------------------------------------------------
+	-- Play mixed animation
+	----------------------------------------------------------------
+
+	playAnimation(
+		humanoid,
+		targetAnimation,
+		1.05
+	)
+
+	----------------------------------------------------------------
+	-- TARGET LOCK / BLINK
+	----------------------------------------------------------------
+
+	local target =
+		getClosestEnemy(
+			M1_BLINK_DISTANCE
+		)
+
+	if target then
+
+		blinkBehindEnemy(
+			target
+		)
+
+	end
+
+	----------------------------------------------------------------
+	-- SMALL ATTACK VFX
+	----------------------------------------------------------------
+
+	local root =
+		getRoot()
+
+	if root then
+
+		spawnParticleBurst(
+			root.Position,
+			8,
+			0.6,
+			5
+		)
+
+		spawnSlash(
+			root,
+			0.65
+		)
+
+	end
+
+end
+
+--------------------------------------------------------------------
+-- CHARACTER MOVEMENT VFX
+--------------------------------------------------------------------
+
+local function setupMovementVFX(
+	character,
+	humanoid,
+	root
+)
+
+	----------------------------------------------------------------
+	-- LIMB TRAILS
+	----------------------------------------------------------------
+
+	for _, limbName in ipairs({
+
+		"Left Arm",
+		"Right Arm",
+		"Left Leg",
+		"Right Leg",
+
+	}) do
+
+		local limb =
+			character:FindFirstChild(
+				limbName
+			)
+
+		if limb then
+
+			local a0 =
+				Instance.new("Attachment")
+
+			a0.Position =
+				Vector3.new(
+					0,
+					0.2,
+					0
+				)
+
+			a0.Parent =
+				limb
+
+			local a1 =
+				Instance.new("Attachment")
+
+			a1.Position =
+				Vector3.new(
+					0,
+					-0.9,
+					0
+				)
+
+			a1.Parent =
+				limb
+
+			local trail =
+				Instance.new("Trail")
+
+			trail.Name =
+				"DarkGarouTrail"
+
+			trail.Attachment0 =
+				a0
+
+			trail.Attachment1 =
+				a1
+
+			trail.Lifetime =
+				0.25
+
+			trail.Color =
+				ColorSequence.new({
+
+					ColorSequenceKeypoint.new(
+						0,
+						VOID_BRIGHT
+					),
+
+					ColorSequenceKeypoint.new(
+						0.5,
+						VOID_PURPLE
+					),
+
+					ColorSequenceKeypoint.new(
+						1,
+						VOID_BLACK
+					),
+
+				})
+
+			trail.Transparency =
+				NumberSequence.new({
+
+					NumberSequenceKeypoint.new(
+						0,
+						0.3
+					),
+
+					NumberSequenceKeypoint.new(
+						1,
+						1
+					),
+
+				})
+
+			trail.WidthScale =
+				NumberSequence.new({
+
+					NumberSequenceKeypoint.new(
+						0,
+						0.7
+					),
+
+					NumberSequenceKeypoint.new(
+						1,
+						0
+					),
+
+				})
+
+			trail.LightEmission =
+				0.8
+
+			trail.Parent =
+				limb
+
+			trackEffect(
+				trail
+			)
+
+		end
+
+	end
+
+	----------------------------------------------------------------
+	-- MOVEMENT LOOP
+	----------------------------------------------------------------
+
+	local lastAfterimage =
+		0
+
+	local lastParticle =
+		0
+
+	local wasMoving =
+		false
+
+	local wasAirborne =
+		false
+
+	track(
+
+		RunService.Heartbeat:Connect(
+
+			function()
+
+				if not humanoid.Parent
+					or humanoid.Health <= 0 then
+
+					return
+
+				end
+
+				local moveMagnitude =
+					humanoid.MoveDirection.Magnitude
+
+				local state =
+					humanoid:GetState()
+
+				local airborne =
+					state == Enum.HumanoidStateType.Jumping
+					or state == Enum.HumanoidStateType.Freefall
+
+				----------------------------------------------------------------
+				-- WALK/RUN
+				----------------------------------------------------------------
+
+				if moveMagnitude > 0.1
+					and not airborne then
+
+					if not wasMoving then
+
+						spawnVoidRing(
+							root.Position,
+							7,
+							0.25
+						)
+
+					end
+
+					wasMoving =
+						true
+
+					local now =
+						os.clock()
+
+					----------------------------------------------------------------
+					-- RUNNING AFTERIMAGE
+					----------------------------------------------------------------
+
+					if now - lastAfterimage >
+						0.18 then
+
+						lastAfterimage =
+							now
+
+						createAfterimage(
+							character
+						)
+
+					end
+
+					----------------------------------------------------------------
+					-- FOOTSTEP PARTICLES
+					----------------------------------------------------------------
+
+					if now - lastParticle >
+						0.11 then
+
+						lastParticle =
+							now
+
+						spawnParticleBurst(
+							root.Position
+								-
+								Vector3.new(
+									0,
+									2.6,
+									0
+								),
+
+							2,
+							0.35,
+							2
+
+						)
+
+					end
+
+				else
+
+					wasMoving =
+						false
+
+				end
+
+				----------------------------------------------------------------
+				-- AIRBORNE
+				----------------------------------------------------------------
+
+				if airborne and not wasAirborne then
+
+					spawnVoidRing(
+						root.Position,
+						8,
+						0.25
+					)
+
+					spawnParticleBurst(
+						root.Position,
+						12,
+						0.7,
+						7
+					)
+
+				end
+
+				----------------------------------------------------------------
+				-- LANDING
+				----------------------------------------------------------------
+
+				if not airborne and wasAirborne then
+
+					impactVFX(
+						root.Position,
+						0.65
+					)
+
+				end
+
+				wasAirborne =
+					airborne
+
+			end
+
+		)
+
+	)
+
+end
+
+--------------------------------------------------------------------
+-- IDLE AURA
+--------------------------------------------------------------------
+
+local function setupIdleAura(
+	character,
+	humanoid,
+	root
+)
+
+	local auraAttachment =
+		Instance.new("Attachment")
+
+	auraAttachment.Name =
+		"DarkGarouAura"
+
+	auraAttachment.Parent =
+		root
+
+	trackEffect(
+		auraAttachment
+	)
+
+	local aura =
+		Instance.new("ParticleEmitter")
+
+	aura.Name =
+		"VoidAura"
+
+	aura.Parent =
+		auraAttachment
+
+	aura.Rate =
+		5
+
+	aura.Lifetime =
+		NumberRange.new(
+			0.8,
+			1.5
+		)
+
+	aura.Speed =
+		NumberRange.new(
+			0.3,
+			1.5
+		)
+
+	aura.SpreadAngle =
+		Vector2.new(
+			360,
+			360
+		)
+
+	aura.Rotation =
+		NumberRange.new(
+			0,
+			360
+		)
+
+	aura.RotSpeed =
+		NumberRange.new(
+			-50,
+			50
+		)
+
+	aura.LightEmission =
+		0.5
+
+	aura.Color =
+		ColorSequence.new({
+
+			ColorSequenceKeypoint.new(
+				0,
+				VOID_PURPLE
+			),
+
+			ColorSequenceKeypoint.new(
+				0.6,
+				VOID_BRIGHT
+			),
+
+			ColorSequenceKeypoint.new(
+				1,
+				VOID_BLACK
+			),
+
+		})
+
+	aura.Size =
+		NumberSequence.new({
+
+			NumberSequenceKeypoint.new(
+				0,
+				0.3
+			),
+
+			NumberSequenceKeypoint.new(
+				0.5,
+				0.7
+			),
+
+			NumberSequenceKeypoint.new(
+				1,
+				0
+			),
+
+		})
+
+	aura.Transparency =
+		NumberSequence.new({
+
+			NumberSequenceKeypoint.new(
+				0,
+				0.5
+			),
+
+			NumberSequenceKeypoint.new(
+				1,
+				1
+			),
+
+		})
+
+	aura.Texture =
+		"rbxassetid://11703233149"
+
+end
+
+--------------------------------------------------------------------
+-- GUI
+--------------------------------------------------------------------
+
+local function applyNames(gui, tableData)
+
+	local hotbar =
+		gui:FindFirstChild(
+			"Hotbar"
+		)
+
+	if not hotbar then
+		return
+	end
+
+	local backpack =
+		hotbar:FindFirstChild(
+			"Backpack"
+		)
+
+	if not backpack then
+		return
+	end
+
+	local frame =
+		backpack:FindFirstChild(
+			"Hotbar"
+		)
+
+	if not frame then
+		return
+	end
+
+	for slot, data in pairs(tableData) do
+
+		local slotObject =
+			frame:FindFirstChild(
+				slot
+			)
+
+		local base =
+			slotObject
+			and slotObject:FindFirstChild(
+				"Base"
+			)
+
+		if base then
+
+			local toolName =
+				base:FindFirstChild(
+					"ToolName"
+				)
+
+			if toolName then
+
+				toolName.Text =
+					data.name
+
+			end
+
+			if data.variant then
+
+				local reuse =
+					base:FindFirstChild(
+						"Reuse"
+					)
+
+				if reuse then
+
+					reuse.Visible =
+						true
+
+					reuse.Text =
+						data.variant
+
+					local nested =
+						reuse:FindFirstChild(
+							"Reuse"
+						)
+
+					if nested then
+
+						nested.Text =
+							data.variant
+
+					end
+
+				end
+
+			end
+
+		end
+
+	end
+
+end
+
+--------------------------------------------------------------------
+-- SETUP CHARACTER
+--------------------------------------------------------------------
+
+local function setupCharacter(character)
+
+	cleanupConnections()
+	cleanupEffects()
+
+	local humanoid =
+		character:WaitForChild(
+			"Humanoid"
+		)
+
+	local root =
+		character:WaitForChild(
+			"HumanoidRootPart"
+		)
+
+	local gui =
+		lp:WaitForChild(
+			"PlayerGui"
+		)
+
+	----------------------------------------------------------------
+	-- CHANGE TO HUNTER
+	----------------------------------------------------------------
+
+	if lp:GetAttribute("Character")
+		~= "Hunter" then
+
+		pcall(function()
+
+			local communicate =
+				character:FindFirstChild(
+					"Communicate"
+				)
+
+			if communicate then
+
+				communicate:FireServer({
+
+					Goal =
+						"Change Character",
+
+					Character =
+						"Hunter",
+
+				})
+
+			end
+
+		end)
+
+		task.wait(1)
+
+	end
+
+	----------------------------------------------------------------
+	-- RESTORE DEATH LOCATION
+	----------------------------------------------------------------
+
+	if SESSION.LastDeathCFrame then
+
+		task.wait(
+			0.15
+		)
+
+		pcall(function()
+
+			root.CFrame =
+				SESSION.LastDeathCFrame
+
+		end)
+
+	end
+
+	----------------------------------------------------------------
+	-- DARK CHARACTER DATA
+	----------------------------------------------------------------
+
+	character:SetAttribute(
+		"UltimateName",
+		string.upper(
+			"... FROM THE VOID, NOTHING RETURNS ..."
+		)
+	)
+
+	lp:SetAttribute(
+		"S_UltMusic",
+		false
+	)
+
+	----------------------------------------------------------------
+	-- SPAWN
+	----------------------------------------------------------------
+
+	darkSpawnSequence(
+		character,
+		humanoid,
+		root
+	)
+
+	----------------------------------------------------------------
+	-- IDLE AURA
+	----------------------------------------------------------------
+
+	setupIdleAura(
+		character,
+		humanoid,
+		root
+	)
+
+	----------------------------------------------------------------
+	-- MOVEMENT
+	----------------------------------------------------------------
+
+	setupMovementVFX(
+		character,
+		humanoid,
+		root
+	)
+
+	----------------------------------------------------------------
+	-- GUI
+	----------------------------------------------------------------
+
+	applyNames(
+		gui,
+		baseNames
+	)
+
+	----------------------------------------------------------------
+	-- HOTBAR WATCHER
+	----------------------------------------------------------------
+
+	track(
+
+		task.spawn(
+
+			function()
+
+				while humanoid.Parent
+					and humanoid.Health > 0 do
+
+					task.wait(
+						0.2
+					)
+
+					applyNames(
+						gui,
+						baseNames
+					)
+
+				end
+
+			end
+
+		)
+
+	)
+
+	----------------------------------------------------------------
+	-- ULT NAMES
+	----------------------------------------------------------------
+
+	track(
+
+		lp.Backpack.ChildAdded:Connect(
+
+			function(tool)
+
+				if tool.Name
+					~= "Death Counter" then
+
+					return
+
+				end
+
+				task.wait()
+
+				local hotbar =
+					gui:FindFirstChild(
+						"Hotbar"
+					)
+
+				if not hotbar then
+					return
+				end
+
+				local backpack =
+					hotbar:FindFirstChild(
+						"Backpack"
+					)
+
+				if not backpack then
+					return
+				end
+
+				local frame =
+					backpack:FindFirstChild(
+						"Hotbar"
+					)
+
+				if not frame then
+					return
+				end
+
+				for slot, name in pairs(ultNames) do
+
+					local slotObject =
+						frame:FindFirstChild(
+							slot
+						)
+
+					local base =
+						slotObject
+						and slotObject:FindFirstChild(
+							"Base"
+						)
+
+					if base then
+
+						local label =
+							base:FindFirstChild(
+								"ToolName"
+							)
+
+						if label then
+
+							label.Text =
+								name
+
+						end
+
+					end
+
+				end
+
+			end
+
+		)
+
+	)
+
+	----------------------------------------------------------------
+	-- M1 / ANIMATION REPLACEMENT
+	----------------------------------------------------------------
+
+	track(
+
+		humanoid.AnimationPlayed:Connect(
+
+			function(animationTrack)
+
+				local animation =
+					animationTrack.Animation
+
+				if not animation then
+					return
+				end
+
+				local id =
+					animation.AnimationId
+
+				----------------------------------------------------------------
+				-- M1
+				----------------------------------------------------------------
+
+				if ORIGINAL_M1[id] then
+
+					handleM1(
+						humanoid,
+						animationTrack
+					)
+
+					return
+
+				end
+
+				----------------------------------------------------------------
+				-- SLOT 1
+				----------------------------------------------------------------
+
+				if id == SLOT1_ID then
+
+					pcall(function()
+						animationTrack:Stop(0)
+					end)
+
+					abyssalDrag()
+
+					return
+
+				end
+
+				----------------------------------------------------------------
+				-- SLOT 2
+				----------------------------------------------------------------
+
+				if id == SLOT2_ID then
+
+					pcall(function()
+						animationTrack:Stop(0)
+					end)
+
+					shadowStrike()
+
+					return
+
+				end
+
+				----------------------------------------------------------------
+				-- SLOT 3
+				----------------------------------------------------------------
+
+				if id == SLOT3_ID then
+
+					pcall(function()
+						animationTrack:Stop(0)
+					end)
+
+					phantomSweep()
+
+					return
+
+				end
+
+				----------------------------------------------------------------
+				-- SLOT 4
+				----------------------------------------------------------------
+
+				if id == SLOT4_ID then
+
+					pcall(function()
+						animationTrack:Stop(0)
+					end)
+
+					totalEclipse()
+
+					return
+
+				end
+
+				----------------------------------------------------------------
+				-- EXISTING WATER STREAM TRIGGER
+				----------------------------------------------------------------
+
+				if id ==
+					ANIMS.WaterStreamRockSmashing then
+
+					pcall(function()
+						animationTrack:Stop(0)
+					end)
+
+					playAnimation(
+						humanoid,
+						ANIMS.AtomicQuickSlice,
+						1
+					)
+
+					spawnSlash(
+						root,
+						1.5
+					)
+
+					return
+
+				end
+
+				----------------------------------------------------------------
+				-- FINAL HUNT
+				----------------------------------------------------------------
+
+				if id ==
+					ANIMS.FinalHunt then
+
+					pcall(function()
+						animationTrack:Stop(0)
+					end)
+
+					playAnimation(
+						humanoid,
+						ANIMS.FinalHunt,
+						0.85
+					)
+
+					voidImplosion(
+						root.Position,
+						1.2
+					)
+
+					return
+
+				end
+
+			end
+
+		)
+
+	)
+
+	----------------------------------------------------------------
+	-- HIT VFX
+	----------------------------------------------------------------
+
+	local lastHitTime = {}
+
+	local function spawnHitVFX(target)
+
+		if not target then
+			return
+		end
+
+		local targetRoot =
+			target:FindFirstChild(
+				"HumanoidRootPart"
+			)
+
+		if not targetRoot then
+			return
+		end
+
+		local now =
+			os.clock()
+
+		if now -
+			(lastHitTime[target] or 0)
+			< 0.18 then
+
+			return
+
+		end
+
+		lastHitTime[target] =
+			now
+
+		impactVFX(
+			targetRoot.Position,
+			0.8
+		)
+
+		spawnSlash(
+			targetRoot,
+			0.9
+		)
+
+	end
+
+	----------------------------------------------------------------
+	-- LIVE CHARACTER HIT WATCH
+	----------------------------------------------------------------
+
+	local live =
+		workspace:FindFirstChild(
+			"Live"
+		)
+
+	if live then
+
+		local function watchTarget(model)
+
+			if model == character then
+				return
+			end
+
+			local targetHumanoid =
+				model:FindFirstChildOfClass(
+					"Humanoid"
+				)
+
+			if not targetHumanoid then
+
+				targetHumanoid =
+					model:WaitForChild(
+						"Humanoid",
+						5
+					)
+
+			end
+
+			if not targetHumanoid then
+				return
+			end
+
+			track(
+
+				targetHumanoid.HealthChanged:Connect(
+
+					function()
+
+						if model:GetAttribute(
+							"LastHit"
+						) == lp.Name then
+
+							spawnHitVFX(
+								model
+							)
+
+						end
+
+					end
+
+				)
+
+			)
+
+		end
+
+		for _, model in ipairs(
+			live:GetChildren()
+		) do
+
+			watchTarget(
+				model
+			)
+
+		end
+
+		track(
+
+			live.ChildAdded:Connect(
+
+				function(model)
+
+					task.defer(function()
+
+						watchTarget(
+							model
+						)
+
+					end)
+
+				end
+
+			)
+
+		)
+
+	end
+
+	----------------------------------------------------------------
+	-- DEATH
+	----------------------------------------------------------------
+
+	track(
+
+		humanoid.Died:Once(
+
+			function()
+
+				pcall(function()
+
+					SESSION.LastDeathCFrame =
+						root.CFrame
+
+				end)
+
+				----------------------------------------------------------------
+				-- DEATH EFFECT
+				----------------------------------------------------------------
+
+				voidImplosion(
+					root.Position,
+					1.4
+				)
+
+			end
+
+		)
+
+	)
+
+end
+
+--------------------------------------------------------------------
+-- TOPBAR
+--------------------------------------------------------------------
+
+if not SESSION.TopbarConn then
+
+	SESSION.TopbarConn =
+
+		RunService.Heartbeat:Connect(
+
+			function()
+
+				pcall(function()
+
+					local topbar =
+						lp.PlayerGui:FindFirstChild(
+							"TopbarPlus"
+						)
+
+					if not topbar then
+						return
+					end
+
+					for _, descendant in ipairs(
+						topbar:GetDescendants()
+					) do
+
+						if descendant.Name
+							== "IconButton" then
+
+							local label =
+								descendant:FindFirstChild(
+									"IconLabel"
+								)
+
+							local image =
+								descendant:FindFirstChild(
+									"IconImage"
+								)
+
+							if label
+								and (
+
+									label.Text
+										== "Hero Hunter"
+
+									or
+
+									label.Text
+										== "Garou"
+
+									or
+
+									label.Text
+										== CHAR_NAME
+
+								) then
+
+								label.Text =
+									CHAR_NAME
+
+								if image then
+
+									image.Image =
+										CHAR_DECAL
+
+								end
+
+							end
+
+						end
+
+					end
+
+				end)
+
+			end
+
+		)
+
+end
+
+--------------------------------------------------------------------
+-- INITIALIZE
+--------------------------------------------------------------------
+
+local currentCharacter =
+	lp.Character
+	or lp.CharacterAdded:Wait()
+
+setupCharacter(
+	currentCharacter
+)
+
+track(
+	lp.CharacterAdded:Connect(
+		setupCharacter
+	)
+)
+
+--------------------------------------------------------------------
+-- NOTIFICATION
+--------------------------------------------------------------------
+
+pcall(function()
+
+	StarterGui:SetCore(
+		"SendNotification",
+		{
+
+			Title =
+				"☾ DARK GAROU",
+
+			Text =
+				"PHANTOM HUNTER ONLINE",
+
+			Icon =
+				"rbxassetid://5456914992",
+
+			Duration =
+				5,
+
+		}
+	)
+
+end)
+
+SESSION.Initialized = true
+
+print(
+	"[DARK GAROU] Phantom Hunter loaded."
+)
+
+print(
+	"[DARK GAROU] Mixed M1 blink system active."
+)
+
+print(
+	"[DARK GAROU] Phantom Engine removed from Move 3."
+)
