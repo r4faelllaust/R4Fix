@@ -1,0 +1,1440 @@
+--!strict
+-- ================================================================
+-- 🔵 GOKU // R4FIX OP EDITION
+-- ONE LOCAL SCRIPT
+-- ================================================================
+--
+-- Theme:
+--   SON GOKU 🔵
+--
+-- Decal:
+--   7607741448
+--
+-- Controls:
+--   1 = GODFIST / FINISHER
+--   2 = SKY SUPLEX
+--   3 = INSTANT TRANSMISSION
+--   4 = KAMEHAMEHA
+--   G = ULTRA INSTINCT
+--   F = GOD MODE BURST
+--   Q = FAST TELEPORT
+--
+-- M1:
+--   Blue afterimages + speed effects
+--
+-- IMPORTANT:
+--   This is a LocalScript. It can control your client,
+--   animations, camera, VFX and local movement.
+--   It cannot guarantee server-side damage/death on
+--   another player without the game's own server combat.
+-- ================================================================
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
+local Debris = game:GetService("Debris")
+local UserInputService = game:GetService("UserInputService")
+local StarterGui = game:GetService("StarterGui")
+
+local Player = Players.LocalPlayer
+local PlayerGui = Player:WaitForChild("PlayerGui")
+
+-- ================================================================
+-- CONFIG
+-- ================================================================
+
+local CONFIG = {
+	Name = "Goku",
+	Decal = "rbxassetid://7607741448",
+
+	WalkSpeed = 24,
+	RunSpeed = 42,
+
+	TargetRange = 120,
+	TeleportRange = 180,
+
+	FinisherCooldown = 2.5,
+	SkySuplexCooldown = 2,
+	InstantTransmissionCooldown = 1.25,
+	KamehamehaCooldown = 3,
+	UltraInstinctCooldown = 8,
+
+	AfterimageLifetime = 0.22,
+}
+
+-- ================================================================
+-- COLORS
+-- ================================================================
+
+local BLUE = Color3.fromRGB(40, 150, 255)
+local CYAN = Color3.fromRGB(100, 230, 255)
+local WHITE = Color3.fromRGB(240, 250, 255)
+local DARK_BLUE = Color3.fromRGB(10, 45, 140)
+local ELECTRIC = Color3.fromRGB(80, 190, 255)
+
+-- ================================================================
+-- SESSION
+-- ================================================================
+
+local env = getgenv and getgenv() or _G
+
+if env.R4FIX_GOKU_SESSION then
+	pcall(function()
+		env.R4FIX_GOKU_SESSION.Destroy()
+	end)
+end
+
+local SESSION = {
+	Connections = {},
+	Effects = {},
+	Cooldowns = {},
+	Character = nil,
+	Humanoid = nil,
+	Root = nil,
+
+	Running = true,
+	UltraInstinct = false,
+
+	LastPosition = nil,
+	LastAfterimage = 0,
+}
+
+env.R4FIX_GOKU_SESSION = SESSION
+
+-- ================================================================
+-- CONNECTIONS
+-- ================================================================
+
+local function connect(signal: RBXScriptSignal, callback: (...any) -> ())
+	local connection = signal:Connect(callback)
+	table.insert(SESSION.Connections, connection)
+	return connection
+end
+
+local function disconnectAll()
+	for _, connection in ipairs(SESSION.Connections) do
+		pcall(function()
+			connection:Disconnect()
+		end)
+	end
+
+	table.clear(SESSION.Connections)
+end
+
+local function cleanup()
+	SESSION.Running = false
+
+	disconnectAll()
+
+	for _, object in ipairs(SESSION.Effects) do
+		if object and object.Parent then
+			pcall(function()
+				object:Destroy()
+			end)
+		end
+	end
+
+	table.clear(SESSION.Effects)
+end
+
+function SESSION.Destroy()
+	cleanup()
+end
+
+-- ================================================================
+-- CHARACTER
+-- ================================================================
+
+local function getCharacter(): Model?
+	return Player.Character
+end
+
+local function getHumanoid(): Humanoid?
+	local character = getCharacter()
+
+	if not character then
+		return nil
+	end
+
+	local humanoid = character:FindFirstChildOfClass("Humanoid")
+
+	if humanoid and humanoid.Health > 0 then
+		return humanoid
+	end
+
+	return nil
+end
+
+local function getRoot(): BasePart?
+	local character = getCharacter()
+
+	if not character then
+		return nil
+	end
+
+	local root = character:FindFirstChild("HumanoidRootPart")
+
+	if root and root:IsA("BasePart") then
+		return root
+	end
+
+	return nil
+end
+
+local function refreshCharacter()
+	SESSION.Character = getCharacter()
+	SESSION.Humanoid = getHumanoid()
+	SESSION.Root = getRoot()
+end
+
+refreshCharacter()
+
+-- ================================================================
+-- VFX FOLDER
+-- ================================================================
+
+local function getFolder(): Folder
+	local folder = workspace:FindFirstChild("R4FIX_Goku_VFX")
+
+	if folder and folder:IsA("Folder") then
+		return folder
+	end
+
+	folder = Instance.new("Folder")
+	folder.Name = "R4FIX_Goku_VFX"
+	folder.Parent = workspace
+
+	return folder
+end
+
+-- ================================================================
+-- COOLDOWNS
+-- ================================================================
+
+local function ready(name: string, cooldown: number): boolean
+	local now = os.clock()
+	local previous = SESSION.Cooldowns[name] or 0
+
+	if now - previous < cooldown then
+		return false
+	end
+
+	SESSION.Cooldowns[name] = now
+	return true
+end
+
+-- ================================================================
+-- NOTIFICATION
+-- ================================================================
+
+local function notify(title: string, text: string)
+	pcall(function()
+		StarterGui:SetCore("SendNotification", {
+			Title = title,
+			Text = text,
+			Icon = CONFIG.Decal,
+			Duration = 2.5,
+		})
+	end)
+end
+
+-- ================================================================
+-- ANIMATION
+-- ================================================================
+
+local function getAnimator(humanoid: Humanoid): Animator
+	local animator = humanoid:FindFirstChildOfClass("Animator")
+
+	if not animator then
+		animator = Instance.new("Animator")
+		animator.Parent = humanoid
+	end
+
+	return animator
+end
+
+local function playAnimation(
+	humanoid: Humanoid,
+	animationId: string,
+	priority: Enum.AnimationPriority?,
+	speed: number?
+): AnimationTrack?
+
+	if humanoid.Health <= 0 then
+		return nil
+	end
+
+	local animation = Instance.new("Animation")
+	animation.AnimationId = animationId
+
+	local animator = getAnimator(humanoid)
+
+	local success, track = pcall(function()
+		return animator:LoadAnimation(animation)
+	end)
+
+	animation:Destroy()
+
+	if not success or not track then
+		return nil
+	end
+
+	track.Priority = priority or Enum.AnimationPriority.Action
+	track.Looped = false
+
+	pcall(function()
+		track:Play(0.04, 1, speed or 1)
+	end)
+
+	return track
+end
+
+-- ================================================================
+-- PART HELPERS
+-- ================================================================
+
+local function makePart(
+	name: string,
+	cframe: CFrame,
+	size: Vector3,
+	transparency: number?,
+	material: Enum.Material?
+): Part
+
+	local part = Instance.new("Part")
+
+	part.Name = name
+	part.Anchored = true
+	part.CanCollide = false
+	part.CanTouch = false
+	part.CanQuery = false
+	part.CastShadow = false
+
+	part.Size = size
+	part.CFrame = cframe
+
+	part.Transparency = transparency or 0
+	part.Material = material or Enum.Material.Neon
+
+	part.Parent = getFolder()
+
+	table.insert(SESSION.Effects, part)
+
+	return part
+end
+
+-- ================================================================
+-- ENERGY BALL
+-- ================================================================
+
+local function energyBall(
+	position: Vector3,
+	startSize: number,
+	endSize: number,
+	duration: number
+)
+
+	local part = makePart(
+		"GokuEnergy",
+		CFrame.new(position),
+		Vector3.one * startSize,
+		0.05,
+		Enum.Material.Neon
+	)
+
+	part.Shape = Enum.PartType.Ball
+	part.Color = BLUE
+
+	local light = Instance.new("PointLight")
+	light.Color = CYAN
+	light.Brightness = 8
+	light.Range = 18
+	light.Parent = part
+
+	TweenService:Create(
+		part,
+		TweenInfo.new(
+			duration,
+			Enum.EasingStyle.Quint,
+			Enum.EasingDirection.Out
+		),
+		{
+			Size = Vector3.one * endSize,
+			Transparency = 1,
+		}
+	):Play()
+
+	TweenService:Create(
+		light,
+		TweenInfo.new(duration),
+		{
+			Brightness = 0,
+			Range = 0,
+		}
+	):Play()
+
+	Debris:AddItem(part, duration + 0.1)
+end
+
+-- ================================================================
+-- SHOCKWAVE
+-- ================================================================
+
+local function shockwave(
+	cframe: CFrame,
+	size: number,
+	duration: number,
+	color: Color3?
+)
+
+	local ring = makePart(
+		"GokuShockwave",
+		cframe * CFrame.Angles(math.rad(90), 0, 0),
+		Vector3.new(0.15, 1, 1),
+		0.1,
+		Enum.Material.Neon
+	)
+
+	ring.Shape = Enum.PartType.Cylinder
+	ring.Color = color or BLUE
+
+	TweenService:Create(
+		ring,
+		TweenInfo.new(
+			duration,
+			Enum.EasingStyle.Quint,
+			Enum.EasingDirection.Out
+		),
+		{
+			Size = Vector3.new(0.15, size, size),
+			Transparency = 1,
+		}
+	):Play()
+
+	Debris:AddItem(ring, duration + 0.1)
+end
+
+-- ================================================================
+-- BEAM
+-- ================================================================
+
+local function beam(
+	startPosition: Vector3,
+	direction: Vector3,
+	length: number,
+	width: number,
+	duration: number
+)
+
+	local unit = direction.Unit
+	local midpoint = startPosition + unit * (length / 2)
+
+	local part = makePart(
+		"GokuKamehameha",
+		CFrame.lookAt(midpoint, midpoint + unit),
+		Vector3.new(width, width, length),
+		0.05,
+		Enum.Material.Neon
+	)
+
+	part.Color = CYAN
+
+	local light = Instance.new("PointLight")
+	light.Color = BLUE
+	light.Brightness = 15
+	light.Range = 30
+	light.Parent = part
+
+	TweenService:Create(
+		part,
+		TweenInfo.new(
+			duration,
+			Enum.EasingStyle.Quint,
+			Enum.EasingDirection.Out
+		),
+		{
+			Size = Vector3.new(width * 2.5, width * 2.5, length),
+			Transparency = 1,
+		}
+	):Play()
+
+	TweenService:Create(
+		light,
+		TweenInfo.new(duration),
+		{
+			Brightness = 0,
+			Range = 0,
+		}
+	):Play()
+
+	Debris:AddItem(part, duration + 0.1)
+end
+
+-- ================================================================
+-- AURA
+-- ================================================================
+
+local function createAura(root: BasePart)
+	local attachment = Instance.new("Attachment")
+	attachment.Name = "GokuAura"
+	attachment.Parent = root
+
+	local emitter = Instance.new("ParticleEmitter")
+
+	emitter.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+
+	emitter.Color = ColorSequence.new({
+		ColorSequenceKeypoint.new(0, WHITE),
+		ColorSequenceKeypoint.new(0.3, CYAN),
+		ColorSequenceKeypoint.new(0.7, BLUE),
+		ColorSequenceKeypoint.new(1, DARK_BLUE),
+	})
+
+	emitter.LightEmission = 1
+	emitter.Rate = 30
+	emitter.Lifetime = NumberRange.new(0.25, 0.7)
+	emitter.Speed = NumberRange.new(2, 7)
+	emitter.SpreadAngle = Vector2.new(360, 360)
+
+	emitter.Size = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0.2),
+		NumberSequenceKeypoint.new(0.5, 0.7),
+		NumberSequenceKeypoint.new(1, 0),
+	})
+
+	emitter.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0.1),
+		NumberSequenceKeypoint.new(1, 1),
+	})
+
+	emitter.Parent = attachment
+
+	table.insert(SESSION.Effects, attachment)
+end
+
+-- ================================================================
+-- AFTERIMAGE
+-- ================================================================
+
+local function afterimage()
+	local character = getCharacter()
+
+	if not character then
+		return
+	end
+
+	local now = os.clock()
+
+	if now - SESSION.LastAfterimage < 0.06 then
+		return
+	end
+
+	SESSION.LastAfterimage = now
+
+	local clone
+
+	local success = pcall(function()
+		clone = character:Clone()
+	end)
+
+	if not success or not clone then
+		return
+	end
+
+	for _, object in ipairs(clone:GetDescendants()) do
+
+		if object:IsA("Script")
+			or object:IsA("LocalScript")
+			or object:IsA("ModuleScript")
+		then
+			object:Destroy()
+
+		elseif object:IsA("BasePart") then
+			object.Anchored = true
+			object.CanCollide = false
+			object.CanTouch = false
+			object.CanQuery = false
+			object.CastShadow = false
+			object.Material = Enum.Material.Neon
+			object.Color = BLUE
+			object.Transparency = 0.55
+
+		elseif object:IsA("Decal") then
+			object.Transparency = 0.65
+		end
+	end
+
+	clone.Name = "GokuAfterimage"
+	clone.Parent = getFolder()
+
+	table.insert(SESSION.Effects, clone)
+
+	task.delay(CONFIG.AfterimageLifetime, function()
+		if clone and clone.Parent then
+			for _, object in ipairs(clone:GetDescendants()) do
+				if object:IsA("BasePart") then
+					TweenService:Create(
+						object,
+						TweenInfo.new(0.12),
+						{
+							Transparency = 1,
+						}
+					):Play()
+				end
+			end
+
+			Debris:AddItem(clone, 0.15)
+		end
+	end)
+end
+
+-- ================================================================
+-- TARGET SEARCH
+-- ================================================================
+
+local function getTargetRoot(): BasePart?
+	local root = getRoot()
+
+	if not root then
+		return nil
+	end
+
+	local closest: BasePart? = nil
+	local closestDistance = CONFIG.TargetRange
+
+	for _, player in ipairs(Players:GetPlayers()) do
+
+		if player ~= Player then
+
+			local character = player.Character
+
+			if character then
+
+				local humanoid =
+					character:FindFirstChildOfClass("Humanoid")
+
+				local targetRoot =
+					character:FindFirstChild("HumanoidRootPart")
+
+				if humanoid
+					and humanoid.Health > 0
+					and targetRoot
+					and targetRoot:IsA("BasePart")
+				then
+
+					local distance =
+						(targetRoot.Position - root.Position).Magnitude
+
+					if distance < closestDistance then
+						closestDistance = distance
+						closest = targetRoot
+					end
+				end
+			end
+		end
+	end
+
+	return closest
+end
+
+-- ================================================================
+-- TARGET LOCK
+-- ================================================================
+
+local function faceTarget(target: BasePart)
+	local root = getRoot()
+
+	if not root then
+		return
+	end
+
+	local position = root.Position
+
+	local look = Vector3.new(
+		target.Position.X,
+		position.Y,
+		target.Position.Z
+	)
+
+	if (look - position).Magnitude > 0.01 then
+		root.CFrame = CFrame.lookAt(position, look)
+	end
+end
+
+-- ================================================================
+-- MOVE 1
+-- GODFIST FINISHER
+-- ================================================================
+
+local function godFist()
+	if not ready("GodFist", CONFIG.FinisherCooldown) then
+		return
+	end
+
+	refreshCharacter()
+
+	local humanoid = SESSION.Humanoid
+	local root = SESSION.Root
+
+	if not humanoid or not root then
+		return
+	end
+
+	local target = getTargetRoot()
+
+	if target then
+		faceTarget(target)
+
+		local targetCharacter = target.Parent
+
+		if targetCharacter and targetCharacter:IsA("Model") then
+
+			-- Close-range cinematic teleport.
+			root.CFrame =
+				target.CFrame
+				* CFrame.new(0, 0, 4)
+				* CFrame.Angles(0, math.rad(180), 0)
+
+			shockwave(
+				target.CFrame,
+				25,
+				0.3,
+				BLUE
+			)
+
+			energyBall(
+				target.Position,
+				2,
+				18,
+				0.3
+			)
+
+			for i = 1, 8 do
+				task.delay(i * 0.035, function()
+					if target.Parent then
+						energyBall(
+							target.Position
+								+ Vector3.new(
+									math.random(-5, 5),
+									math.random(-3, 6),
+									math.random(-5, 5)
+								),
+							1,
+							7,
+							0.18
+						)
+					end
+				end)
+			end
+
+			shockwave(
+				target.CFrame,
+				50,
+				0.55,
+				CYAN
+			)
+		end
+	else
+		shockwave(
+			root.CFrame,
+			35,
+			0.45,
+			BLUE
+		)
+	end
+
+	notify(
+		"🔵 GOKU",
+		"GODFIST FINISHER!"
+	)
+end
+
+-- ================================================================
+-- MOVE 2
+-- SKY SUPLEX
+-- ================================================================
+
+local function skySuplex()
+	if not ready("SkySuplex", CONFIG.SkySuplexCooldown) then
+		return
+	end
+
+	refreshCharacter()
+
+	local humanoid = SESSION.Humanoid
+	local root = SESSION.Root
+
+	if not humanoid or not root then
+		return
+	end
+
+	local target = getTargetRoot()
+
+	if not target then
+		notify(
+			"🔵 SKY SUPLEX",
+			"No target found."
+		)
+		return
+	end
+
+	-- TELEPORT DIRECTLY BEHIND TARGET
+	root.CFrame =
+		target.CFrame
+		* CFrame.new(0, 0, 3)
+		* CFrame.Angles(0, math.rad(180), 0)
+
+	faceTarget(target)
+
+	-- FIRST IMPACT
+	shockwave(
+		target.CFrame,
+		20,
+		0.25,
+		BLUE
+	)
+
+	energyBall(
+		target.Position,
+		2,
+		12,
+		0.25
+	)
+
+	-- THE MASSIVE SKY LAUNCH
+	local start = target.Position
+
+	for i = 1, 7 do
+
+		task.delay(
+			i * 0.06,
+			function()
+
+				local currentRoot = getRoot()
+
+				if currentRoot and target.Parent then
+
+					local height = i * 35
+
+					currentRoot.CFrame =
+						CFrame.new(
+							start.X,
+							start.Y + height,
+							start.Z
+						)
+
+					shockwave(
+						currentRoot.CFrame,
+						10 + i * 3,
+						0.2,
+						ELECTRIC
+					)
+
+					energyBall(
+						currentRoot.Position,
+						1.5,
+						8,
+						0.2
+					)
+				end
+			end
+		)
+
+	end
+
+	-- HUGE FINAL SKY EXPLOSION
+	task.delay(
+		0.55,
+		function()
+
+			local currentRoot = getRoot()
+
+			if not currentRoot then
+				return
+			end
+
+			shockwave(
+				currentRoot.CFrame,
+				75,
+				0.65,
+				CYAN
+			)
+
+			energyBall(
+				currentRoot.Position,
+				5,
+				35,
+				0.6
+			)
+
+			for i = 1, 15 do
+
+				task.delay(
+					i * 0.025,
+					function()
+
+						local r = getRoot()
+
+						if r then
+
+							energyBall(
+								r.Position
+									+ Vector3.new(
+										math.random(-15, 15),
+										math.random(-8, 15),
+										math.random(-15, 15)
+									),
+								1,
+								math.random(5, 12),
+								0.25
+							)
+
+						end
+					end
+				)
+
+			end
+		end
+	)
+
+	notify(
+		"🔵 GOKU",
+		"SKY SUPLEX 💀☁️"
+	)
+end
+
+-- ================================================================
+-- MOVE 3
+-- INSTANT TRANSMISSION
+-- ================================================================
+
+local function instantTransmission()
+	if not ready(
+		"InstantTransmission",
+		CONFIG.InstantTransmissionCooldown
+	) then
+		return
+	end
+
+	refreshCharacter()
+
+	local root = SESSION.Root
+
+	if not root then
+		return
+	end
+
+	local target = getTargetRoot()
+
+	if target then
+
+		local destination =
+			target.CFrame
+			* CFrame.new(
+				0,
+				0,
+				-6
+			)
+
+		-- PRE-TELEPORT ENERGY
+		energyBall(
+			root.Position,
+			2,
+			14,
+			0.18
+		)
+
+		shockwave(
+			root.CFrame,
+			20,
+			0.18,
+			CYAN
+		)
+
+		-- VANISH
+		for _ = 1, 3 do
+			afterimage()
+			task.wait(0.025)
+		end
+
+		-- TELEPORT
+		root.CFrame = destination
+
+		faceTarget(target)
+
+		-- ARRIVAL
+		shockwave(
+			root.CFrame,
+			25,
+			0.25,
+			BLUE
+		)
+
+		energyBall(
+			root.Position,
+			2,
+			18,
+			0.25
+		)
+
+	else
+
+		-- Forward teleport when there is no target.
+		local direction = root.CFrame.LookVector
+
+		root.CFrame =
+			root.CFrame
+			+ direction * CONFIG.TeleportRange
+
+		shockwave(
+			root.CFrame,
+			25,
+			0.3,
+			BLUE
+		)
+	end
+
+	notify(
+		"⚡ INSTANT TRANSMISSION",
+		"You're already behind them."
+	)
+end
+
+-- ================================================================
+-- MOVE 4
+-- KAMEHAMEHA
+-- ================================================================
+
+local function kamehameha()
+	if not ready(
+		"Kamehameha",
+		CONFIG.KamehamehaCooldown
+	) then
+		return
+	end
+
+	refreshCharacter()
+
+	local humanoid = SESSION.Humanoid
+	local root = SESSION.Root
+
+	if not humanoid or not root then
+		return
+	end
+
+	-- Charge
+	energyBall(
+		root.Position + root.CFrame.LookVector * 3,
+		2,
+		9,
+		0.45
+	)
+
+	shockwave(
+		root.CFrame,
+		15,
+		0.3,
+		BLUE
+	)
+
+	task.delay(
+		0.25,
+		function()
+
+			local currentRoot = getRoot()
+
+			if not currentRoot then
+				return
+			end
+
+			local direction =
+				currentRoot.CFrame.LookVector
+
+			local origin =
+				currentRoot.Position
+				+ direction * 4
+
+			beam(
+				origin,
+				direction,
+				180,
+				4,
+				0.6
+			)
+
+			energyBall(
+				origin + direction * 15,
+				4,
+				25,
+				0.5
+			)
+
+			shockwave(
+				CFrame.new(origin),
+				50,
+				0.45,
+				CYAN
+			)
+
+			for i = 1, 10 do
+
+				task.delay(
+					i * 0.04,
+					function()
+
+						local r = getRoot()
+
+						if r then
+
+							energyBall(
+								r.Position
+									+ r.CFrame.LookVector
+									* (i * 12),
+								1.5,
+								8,
+								0.2
+							)
+
+						end
+					end
+				)
+
+			end
+		end
+	)
+
+	notify(
+		"🔵 KAMEHAMEHA",
+		"MAXIMUM POWER!"
+	)
+end
+
+-- ================================================================
+-- ULTRA INSTINCT
+-- ================================================================
+
+local function ultraInstinct()
+	if not ready(
+		"UltraInstinct",
+		CONFIG.UltraInstinctCooldown
+	) then
+		return
+	end
+
+	refreshCharacter()
+
+	local humanoid = SESSION.Humanoid
+	local root = SESSION.Root
+
+	if not humanoid or not root then
+		return
+	end
+
+	SESSION.UltraInstinct = not SESSION.UltraInstinct
+
+	if SESSION.UltraInstinct then
+
+		humanoid.WalkSpeed = 65
+
+		createAura(root)
+
+		shockwave(
+			root.CFrame,
+			30,
+			0.4,
+			WHITE
+		)
+
+		energyBall(
+			root.Position,
+			3,
+			25,
+			0.5
+		)
+
+		notify(
+			"⚪ ULTRA INSTINCT",
+			"Movement limit removed."
+		)
+
+	else
+
+		humanoid.WalkSpeed = CONFIG.WalkSpeed
+
+		notify(
+			"🔵 GOKU",
+			"Ultra Instinct OFF."
+		)
+	end
+end
+
+-- ================================================================
+-- GOD MODE BURST
+-- ================================================================
+
+local function godBurst()
+	refreshCharacter()
+
+	local root = SESSION.Root
+
+	if not root then
+		return
+	end
+
+	shockwave(
+		root.CFrame,
+		20,
+		0.2,
+		BLUE
+	)
+
+	for i = 1, 12 do
+
+		local angle =
+			(i / 12) * math.pi * 2
+
+		local offset =
+			Vector3.new(
+				math.cos(angle) * 8,
+				math.random(-3, 8),
+				math.sin(angle) * 8
+			)
+
+		energyBall(
+			root.Position + offset,
+			1,
+			7,
+			0.25
+		)
+	end
+
+	shockwave(
+		root.CFrame,
+		65,
+		0.65,
+		CYAN
+	)
+
+	notify(
+		"🔵 GOKU",
+		"GOD BURST!"
+	)
+end
+
+-- ================================================================
+-- FAST MOVEMENT
+-- ================================================================
+
+local function setupMovement()
+	local humanoid = SESSION.Humanoid
+
+	if not humanoid then
+		return
+	end
+
+	humanoid.WalkSpeed = CONFIG.WalkSpeed
+
+	connect(
+		RunService.RenderStepped,
+		function()
+
+			if not SESSION.Running then
+				return
+			end
+
+			local currentHumanoid = SESSION.Humanoid
+			local root = SESSION.Root
+
+			if not currentHumanoid
+				or not root
+				or currentHumanoid.Health <= 0
+			then
+				return
+			end
+
+			if SESSION.UltraInstinct then
+				currentHumanoid.WalkSpeed = 65
+			elseif currentHumanoid.MoveDirection.Magnitude > 0.1 then
+				currentHumanoid.WalkSpeed = CONFIG.RunSpeed
+			else
+				currentHumanoid.WalkSpeed = CONFIG.WalkSpeed
+			end
+
+			if currentHumanoid.MoveDirection.Magnitude > 0.5 then
+				afterimage()
+			end
+		end
+	)
+end
+
+-- ================================================================
+-- INPUT
+-- ================================================================
+
+connect(
+	UserInputService.InputBegan,
+	function(input, processed)
+
+		if processed then
+			return
+		end
+
+		if UserInputService:GetFocusedTextBox() then
+			return
+		end
+
+		if input.KeyCode == Enum.KeyCode.One then
+			godFist()
+
+		elseif input.KeyCode == Enum.KeyCode.Two then
+			skySuplex()
+
+		elseif input.KeyCode == Enum.KeyCode.Three then
+			instantTransmission()
+
+		elseif input.KeyCode == Enum.KeyCode.Four then
+			kamehameha()
+
+		elseif input.KeyCode == Enum.KeyCode.G then
+			ultraInstinct()
+
+		elseif input.KeyCode == Enum.KeyCode.F then
+			godBurst()
+
+		elseif input.KeyCode == Enum.KeyCode.Q then
+			instantTransmission()
+		end
+	end
+)
+
+-- ================================================================
+-- CHARACTER RESPAWN
+-- ================================================================
+
+connect(
+	Player.CharacterAdded,
+	function(character)
+
+		task.wait(0.5)
+
+		SESSION.UltraInstinct = false
+
+		SESSION.Character = character
+
+		SESSION.Humanoid =
+			character:WaitForChild(
+				"Humanoid",
+				10
+			) :: Humanoid?
+
+		SESSION.Root =
+			character:WaitForChild(
+				"HumanoidRootPart",
+				10
+			) :: BasePart?
+
+		if SESSION.Humanoid then
+			SESSION.Humanoid.WalkSpeed = CONFIG.WalkSpeed
+		end
+
+		if SESSION.Root then
+			createAura(SESSION.Root)
+		end
+
+		setupMovement()
+
+		notify(
+			"🔵 GOKU",
+			"Goku moveset reloaded."
+		)
+	end
+)
+
+-- ================================================================
+-- INITIAL AURA
+-- ================================================================
+
+if SESSION.Root then
+	createAura(SESSION.Root)
+end
+
+setupMovement()
+
+-- ================================================================
+-- UI
+-- ================================================================
+
+local screen = Instance.new("ScreenGui")
+screen.Name = "R4FIX_GokuUI"
+screen.ResetOnSpawn = false
+screen.IgnoreGuiInset = true
+screen.Parent = PlayerGui
+
+local frame = Instance.new("Frame")
+frame.Name = "GokuPanel"
+frame.Size = UDim2.fromOffset(220, 145)
+frame.Position = UDim2.new(0, 15, 0.5, -70)
+frame.BackgroundTransparency = 0.22
+frame.BackgroundColor3 = Color3.fromRGB(5, 15, 35)
+frame.BorderSizePixel = 0
+frame.Parent = screen
+
+local corner = Instance.new("UICorner")
+corner.CornerRadius = UDim.new(0, 14)
+corner.Parent = frame
+
+local stroke = Instance.new("UIStroke")
+stroke.Color = BLUE
+stroke.Thickness = 2
+stroke.Transparency = 0.15
+stroke.Parent = frame
+
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(1, -15, 0, 32)
+title.Position = UDim2.fromOffset(10, 5)
+title.BackgroundTransparency = 1
+title.Text = "🔵 GOKU"
+title.TextColor3 = WHITE
+title.TextSize = 22
+title.Font = Enum.Font.GothamBold
+title.TextXAlignment = Enum.TextXAlignment.Left
+title.Parent = frame
+
+local moves = Instance.new("TextLabel")
+moves.Size = UDim2.new(1, -20, 1, -42)
+moves.Position = UDim2.fromOffset(10, 38)
+moves.BackgroundTransparency = 1
+moves.Text =
+	"1  GODFIST ☠️\n" ..
+	"2  SKY SUPLEX ☁️\n" ..
+	"3  INSTANT TRANSMISSION ⚡\n" ..
+	"4  KAMEHAMEHA 💥\n" ..
+	"G  ULTRA INSTINCT ⚪\n" ..
+	"F  GOD BURST 🔵"
+moves.TextColor3 = CYAN
+moves.TextSize = 13
+moves.Font = Enum.Font.GothamBold
+moves.TextXAlignment = Enum.TextXAlignment.Left
+moves.TextYAlignment = Enum.TextYAlignment.Top
+moves.Parent = frame
+
+-- ================================================================
+-- FINAL
+-- ================================================================
+
+notify(
+	"🔵 GOKU",
+	"OP Goku moveset loaded! 🔥"
+)
+
+print("========================================")
+print("🔵 R4FIX GOKU OP EDITION")
+print("========================================")
+print("1  GODFIST FINISHER")
+print("2  SKY SUPLEX")
+print("3  INSTANT TRANSMISSION")
+print("4  KAMEHAMEHA")
+print("G  ULTRA INSTINCT")
+print("F  GOD BURST")
+print("Q  TELEPORT")
+print("========================================")
