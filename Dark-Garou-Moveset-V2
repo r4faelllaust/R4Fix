@@ -1683,3 +1683,95 @@ task.spawn(function()
 		task.wait(0.5)
 	end
 end)
+local DARK_GAROU_ULT_NAME = "TOTAL ECLIPSE"local DARK_BLUE = Color3.fromRGB(8, 18, 55)local DARK_BLUE_2 = Color3.fromRGB(15, 35, 90)local ULT_WHITE = Color3.fromRGB(210, 225, 255)
+
+local function styleObject(obj)if not obj or not obj("GuiObject") thenreturnend
+
+local name = string.lower(obj.Name)
+
+-- Only target the actual ultimate bar / ultimate container.
+if string.find(name, "ult")
+	or string.find(name, "ultimate")
+then
+	if obj:IsA("Frame") then
+		obj.BackgroundColor3 = DARK_BLUE
+	end
+
+	if obj:IsA("TextLabel") then
+		obj.TextColor3 = ULT_WHITE
+		obj.TextStrokeTransparency = 0.25
+
+		-- Only replace obvious generic ultimate labels.
+		local text = string.lower(obj.Text)
+		if text == "ultimate"
+			or text == "awakening"
+			or text == "ult"
+			or text == "100%"
+		then
+			obj.Text = DARK_GAROU_ULT_NAME
+		end
+	end
+end
+
+-- Dark blue fill for bars.
+if obj:IsA("Frame") then
+	local parentName = obj.Parent and string.lower(obj.Parent.Name) or ""
+
+	if string.find(name, "bar")
+		or string.find(name, "fill")
+		or string.find(name, "progress")
+		or string.find(parentName, "ult")
+		or string.find(parentName, "ultimate")
+	then
+		obj.BackgroundColor3 = DARK_BLUE_2
+	end
+end
+
+end
+
+local function fixUltBar()local gui = Player("PlayerGui")if not gui thenreturnend
+
+for _, obj in ipairs(gui:GetDescendants()) do
+	pcall(function()
+		styleObject(obj)
+	end)
+end
+
+end
+
+local function setupUltWatcher()local gui = Player("PlayerGui")if not gui thenreturnend
+
+if SESSION.UltWatcher then
+	pcall(function()
+		SESSION.UltWatcher:Disconnect()
+	end)
+end
+
+SESSION.UltWatcher = gui.DescendantAdded:Connect(function(obj)
+	task.defer(function()
+		pcall(function()
+			styleObject(obj)
+
+			if obj.Parent then
+				styleObject(obj.Parent)
+			end
+
+			if obj.Parent and obj.Parent.Parent then
+				styleObject(obj.Parent.Parent)
+			end
+		end)
+	end)
+end)
+
+end
+
+-- Re-apply after Roblox/TSB UI refreshes.task.spawn(function()setupUltWatcher()
+
+while Player.Parent do
+	pcall(fixUltBar)
+	task.wait(0.25)
+end
+
+end)
+
+-- Also restore after respawn.table.insert(SESSION.Connections, Player.CharacterAdded(function()task.wait(0.5)setupUltWatcher()fixUltBar()end))
