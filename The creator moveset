@@ -1,38 +1,38 @@
 --!strict
 -- THE CREATOR // GREEN BLACK PHANTOM ENGINE
--- ONE CLIENT / LOCAL SCRIPT
---
--- Features:
--- • The Creator identity
--- • Decal: 666236509
--- • Green / black aesthetic
--- • Move 1: Phantom Engine + Void Execution
--- • Move 2: Phantom Engine + Reality Breaker
--- • Move 3: Creator's Grasp
--- • Move 4: Absolute Override
--- • M1 / hit input automatically snaps behind the closest player
--- • M1 also works when the swing hits nothing
--- • Flying tool with animated green/black VFX
--- • Teleport tool
--- • Run tool
--- • Green / black glitch ultimate bar
--- • Glitched ultimate text
--- • 4 ultimate moves with custom effects
--- • Respawn safe
--- • VFX throttled
+-- R4FIX FINAL CLIENT EDITION
 --
 -- IMPORTANT:
--- This is client-side. Actual server-side damage/instant-kill requires
--- the game's legitimate damage/ability RemoteEvent. No fake local
--- Humanoid.Health assignment is used as if it were server damage.
+-- This is CLIENT-SIDE.
+-- Local teleport/VFX/animation effects work locally.
+-- Real server-side damage, stun, ragdoll or instant-kill requires
+-- the game's legitimate server-side ability/damage RemoteEvent.
+--
+-- UPDATED:
+-- • Removed custom ugly bottom Ultimate UI
+-- • Fixed M1 auto-snap detection
+-- • M1 works even when the game's swing misses
+-- • Better nearest-player targeting
+-- • Better behind-target teleport
+-- • Stronger Phantom Engine
+-- • Better green/black VFX
+-- • Spawn VFX
+-- • Dash/movement VFX
+-- • Better move effects
+-- • Better ultimate effects
+-- • Background music support for the supplied GitHub audio
+-- • Respawn-safe
+-- • Re-execution-safe
+-- • No fake server damage
+-- • No fake APIs
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 local Debris = game:GetService("Debris")
-local Lighting = game:GetService("Lighting")
 local UserInputService = game:GetService("UserInputService")
 local StarterGui = game:GetService("StarterGui")
+local HttpService = game:GetService("HttpService")
 
 local LocalPlayer = Players.LocalPlayer
 
@@ -41,47 +41,115 @@ if not LocalPlayer then
 end
 
 -- ============================================================
--- SESSION
+-- PLACE
 -- ============================================================
 
-local GEN = getgenv and getgenv()
+local PLACE_ID = 10449761463
 
-if not GEN then
+if game.PlaceId ~= PLACE_ID then
 	return
 end
 
-GEN.TheCreatorV1 = GEN.TheCreatorV1 or {
-	Started = false,
+-- ============================================================
+-- EXECUTOR ENVIRONMENT
+-- ============================================================
+
+local GEN: {[string]: any}
+
+do
+	local success, env = pcall(function()
+		if type(getgenv) == "function" then
+			return getgenv()
+		end
+
+		return nil
+	end)
+
+	if not success or type(env) ~= "table" then
+		return
+	end
+
+	GEN = env
+end
+
+-- ============================================================
+-- SESSION
+-- ============================================================
+
+if GEN.TheCreatorV2 then
+	local old = GEN.TheCreatorV2
+
+	if type(old) == "table" then
+		if type(old.Destroy) == "function" then
+			pcall(old.Destroy)
+		end
+	end
+end
+
+GEN.TheCreatorV2 = {
+	Started = true,
+
 	Token = 0,
+
 	Connections = {},
 	CharacterConnections = {},
+
 	Tools = {},
 	AnimationTracks = {},
+
 	Busy = {},
 	LastVFX = {},
+
 	LastM1 = 0,
+	LastInputM1 = 0,
+
+	Ultimate = 0,
+
 	Flying = false,
+	Running = false,
+
+	Music = nil,
+
+	CreatorUI = nil,
+
+	Destroy = nil,
 }
 
-local S = GEN.TheCreatorV1
+local S = GEN.TheCreatorV2
 
--- Clean old character connections if script was re-executed.
-local function disconnectList(list)
-	for _, connection in ipairs(list) do
+-- ============================================================
+-- CLEANUP HELPERS
+-- ============================================================
+
+local function disconnectList(list: {RBXScriptConnection})
+	for i = #list, 1, -1 do
+		local connection = list[i]
+
 		pcall(function()
 			connection:Disconnect()
 		end)
-	end
 
-	table.clear(list)
+		table.remove(list, i)
+	end
 end
 
-local function addCharacterConnection(connection)
+local function addConnection(
+	list: {RBXScriptConnection},
+	connection: RBXScriptConnection?
+)
 	if connection then
-		table.insert(S.CharacterConnections, connection)
+		table.insert(list, connection)
 	end
 
 	return connection
+end
+
+local function safeDestroy(object: Instance?)
+	if object then
+		pcall(function()
+			object:Destroy()
+		end)
+	end
 end
 
 -- ============================================================
@@ -93,13 +161,6 @@ local MOVESET_NAME = "The Creator"
 local DECAL_ID = "rbxassetid://666236509"
 local DECAL_THUMB = "rbxthumb://type=Asset&id=666236509&w=150&h=150"
 
-local PLACE_ID = 10449761463
-
--- Keep this check if the moveset is intended only for the same place.
-if game.PlaceId ~= PLACE_ID then
-	return
-end
-
 -- ============================================================
 -- COLORS
 -- ============================================================
@@ -108,29 +169,30 @@ local BLACK = Color3.fromRGB(0, 0, 0)
 local NEAR_BLACK = Color3.fromRGB(2, 7, 4)
 
 local GREEN_DARK = Color3.fromRGB(0, 55, 22)
+local GREEN_DEEP = Color3.fromRGB(0, 100, 35)
 local GREEN = Color3.fromRGB(0, 185, 70)
 local GREEN_BRIGHT = Color3.fromRGB(30, 255, 105)
 local GREEN_WHITE = Color3.fromRGB(185, 255, 210)
-
-local GREEN_DEEP = Color3.fromRGB(0, 100, 35)
 
 -- ============================================================
 -- CONFIG
 -- ============================================================
 
 local CFG = {
+	-- M1
+	M1_COOLDOWN = 0.075,
+	M1_TARGET_RANGE = 250,
+
+	M1_BEHIND_DISTANCE = 3.2,
+	M1_VERTICAL_OFFSET = 0.1,
+
 	-- Phantom Engine
 	PHANTOM_SPEED = 285,
 	PHANTOM_MOVE2_SPEED = 315,
 
-	-- M1 auto teleport
-	M1_COOLDOWN = 0.075,
-	M1_TARGET_RANGE = 250,
-	M1_BEHIND_DISTANCE = 3.2,
-	M1_VERTICAL_OFFSET = 0.1,
-
 	-- Void
 	VOID_DISTANCE = 850,
+	VOID_HEIGHT = 500,
 	VOID_DURATION = 1.25,
 
 	-- Flight
@@ -141,25 +203,26 @@ local CFG = {
 	RUN_SPEED = 135,
 
 	-- VFX
-	VFX_COOLDOWN = 0.045,
+	VFX_COOLDOWN = 0.035,
 
 	-- Ultimate
 	ULT_MAX = 100,
 	ULT_GAIN_M1 = 5,
 	ULT_GAIN_HIT = 8,
+
+	-- Targeting
+	ULT_TARGET_RANGE = 1000,
 }
 
 -- ============================================================
--- ANIMATION IDS
+-- ANIMATIONS
 -- ============================================================
 
--- Trigger animations from the moveset.
 local MOVE1_TRIGGER = "rbxassetid://12273188754"
 local MOVE2_TRIGGER = "rbxassetid://12296113986"
 local MOVE3_TRIGGER = "rbxassetid://12309835105"
 local MOVE4_TRIGGER = "rbxassetid://12351854556"
 
--- Actual move animations.
 local MOVE1_ANIMATION = "rbxassetid://12273188754"
 local MOVE2_ANIMATION = "rbxassetid://15436465829"
 
@@ -168,12 +231,13 @@ local MOVE3_AIR = "rbxassetid://15436668469"
 
 local MOVE4_ANIMATION = "rbxassetid://129651400898906"
 
--- Special animation.
 local SPECIAL_TRIGGER = "rbxassetid://12460977270"
 local SPECIAL_ANIMATION = "rbxassetid://15290930205"
 
+local RUN_ANIMATION = "rbxassetid://18897115785"
+
 -- ============================================================
--- ULTIMATE ANIMATIONS
+-- ULTIMATES
 -- ============================================================
 
 local ULT_MOVES = {
@@ -207,33 +271,149 @@ local ULT_MOVES = {
 }
 
 -- ============================================================
--- SOUND
+-- BACKGROUND MUSIC
 -- ============================================================
+--
+-- Roblox Sound.SoundId does NOT accept arbitrary GitHub URLs.
+--
+-- The supplied file:
+-- https://github.com/r4faelllaust/R4Fix/raw/refs/heads/main/Soviet_Anthem_Instrumental_1955.ogg.mp3
+--
+-- If the executor exposes a REAL local-asset API, the script:
+-- 1. Downloads the file using the executor HTTP request function.
+-- 2. Writes it locally.
+-- 3. Loads it with getcustomasset / getsynasset.
+--
+-- If those capabilities do not exist, the music is simply skipped.
+-- Nothing fake is inserted into SoundId.
 
-local SOUND_IDS = {
-	"rbxassetid://13064223399",
-	"rbxassetid://13064223291",
-	"rbxassetid://13064223483",
-}
+local MUSIC_URL =
+	"https://github.com/r4faelllaust/R4Fix/raw/refs/heads/main/Soviet_Anthem_Instrumental_1955.ogg.mp3"
 
-local function playSound(parent: Instance?, volume: number?, speed: number?)
-	if not parent or not parent.Parent then
+local MUSIC_FILE =
+	"TheCreator_Soviet_Anthem_Instrumental_1955.mp3"
+
+local MUSIC_VOLUME = 0.24
+
+local function getRequestFunction()
+	if type(request) == "function" then
+		return request
+	end
+
+	if type(http_request) == "function" then
+		return http_request
+	end
+
+	if type(syn) == "table" and type(syn.request) == "function" then
+		return syn.request
+	end
+
+	return nil
+end
+
+local function getAssetFunction()
+	if type(getcustomasset) == "function" then
+		return getcustomasset
+	end
+
+	if type(getsynasset) == "function" then
+		return getsynasset
+	end
+
+	return nil
+end
+
+local function setupCreatorMusic()
+	local requestFunction = getRequestFunction()
+	local assetFunction = getAssetFunction()
+
+	if not requestFunction or not assetFunction then
 		return
 	end
 
-	local sound = Instance.new("Sound")
-	sound.Name = "CreatorSound"
-	sound.SoundId = SOUND_IDS[math.random(1, #SOUND_IDS)]
-	sound.Volume = volume or 1
-	sound.PlaybackSpeed = speed or 1
-	sound.RollOffMaxDistance = 150
-	sound.Parent = parent
+	local localFile = MUSIC_FILE
 
-	pcall(function()
+	local alreadyExists = false
+
+	if type(isfile) == "function" then
+		local ok, result = pcall(function()
+			return isfile(localFile)
+		end)
+
+		if ok and result == true then
+			alreadyExists = true
+		end
+	end
+
+	if not alreadyExists then
+		local ok, response = pcall(function()
+			return requestFunction({
+				Url = MUSIC_URL,
+				Method = "GET",
+			})
+		end)
+
+		if not ok or type(response) ~= "table" then
+			return
+		end
+
+		if tonumber(response.StatusCode) ~= 200 then
+			return
+		end
+
+		if type(response.Body) ~= "string" then
+			return
+		end
+
+		if type(writefile) ~= "function" then
+			return
+		end
+
+		local writeOK = pcall(function()
+			writefile(localFile, response.Body)
+		end)
+
+		if not writeOK then
+			return
+		end
+	end
+
+	local assetOK, asset = pcall(function()
+		return assetFunction(localFile)
+	end)
+
+	if not assetOK or type(asset) ~= "string" or asset == "" then
+		return
+	end
+
+	local soundParent = workspace:FindFirstChild("TheCreator_Audio")
+
+	if soundParent then
+		safeDestroy(soundParent)
+	end
+
+	local folder = Instance.new("Folder")
+	folder.Name = "TheCreator_Audio"
+	folder.Parent = workspace
+
+	local sound = Instance.new("Sound")
+	sound.Name = "TheCreator_BackgroundMusic"
+	sound.SoundId = asset
+	sound.Volume = MUSIC_VOLUME
+	sound.Looped = true
+	sound.PlaybackSpeed = 1
+	sound.RollOffMaxDistance = 100000
+	sound.Parent = folder
+
+	local ok = pcall(function()
 		sound:Play()
 	end)
 
-	Debris:AddItem(sound, 5)
+	if ok then
+		S.Music = sound
+	else
+		safeDestroy(folder)
+	end
 end
 
 -- ============================================================
@@ -268,18 +448,33 @@ local function getAnimator(humanoid: Humanoid)
 	return animator
 end
 
+-- ============================================================
+-- ANIMATION MANAGEMENT
+-- ============================================================
+
+local function removeTrackFromList(track: AnimationTrack)
+	for i = #S.AnimationTracks, 1, -1 do
+		if S.AnimationTracks[i] == track then
+			table.remove(S.AnimationTracks, i)
+			break
+		end
+	end
+end
+
 local function stopAnimations()
-	for _, track in ipairs(S.AnimationTracks) do
+	for i = #S.AnimationTracks, 1, -1 do
+		local track = S.AnimationTracks[i]
+
 		pcall(function()
 			if track.IsPlaying then
-				track:Stop(0.05)
+				track:Stop(0.06)
 			end
 
 			track:Destroy()
 		end)
-	end
 
-	table.clear(S.AnimationTracks)
+		table.remove(S.AnimationTracks, i)
+	end
 end
 
 local function playAnimation(
@@ -302,7 +497,7 @@ local function playAnimation(
 		return animator:LoadAnimation(animation)
 	end)
 
-	animation:Destroy()
+	safeDestroy(animation)
 
 	if not ok or not track then
 		return nil
@@ -313,9 +508,15 @@ local function playAnimation(
 
 	table.insert(S.AnimationTracks, track)
 
-	pcall(function()
-		track:Play(0.04, 1, speed or 1)
+	local played = pcall(function()
+		track:Play(0.035, 1, speed or 1)
 	end)
+
+	if not played then
+		removeTrackFromList(track)
+		safeDestroy(track)
+		return nil
+	end
 
 	if duration then
 		task.delay(duration, function()
@@ -327,12 +528,7 @@ local function playAnimation(
 				track:Destroy()
 			end)
 
-			for i = #S.AnimationTracks, 1, -1 do
-				if S.AnimationTracks[i] == track then
-					table.remove(S.AnimationTracks, i)
-					break
-				end
-			end
+			removeTrackFromList(track)
 		end)
 	end
 
@@ -346,29 +542,38 @@ end
 local function getVFXFolder()
 	local folder = workspace:FindFirstChild("TheCreator_VFX")
 
-	if not folder then
-		folder = Instance.new("Folder")
-		folder.Name = "TheCreator_VFX"
-		folder.Parent = workspace
+	if folder and folder:IsA("Folder") then
+		return folder
 	end
 
-	return folder
+	if folder then
+		safeDestroy(folder)
+	end
+
+	local newFolder = Instance.new("Folder")
+	newFolder.Name = "TheCreator_VFX"
+	newFolder.Parent = workspace
+
+	return newFolder
 end
 
 local function allowed(key: string, cooldown: number?)
 	local now = os.clock()
 	local previous = S.LastVFX[key] or 0
 
-	if now - previous < (cooldown or CFG.VFX_COOLDOWN) then
+	local cd = cooldown or CFG.VFX_COOLDOWN
+
+	if now - previous < cd then
 		return false
 	end
 
 	S.LastVFX[key] = now
+
 	return true
 end
 
 -- ============================================================
--- VFX: BURST
+-- VFX CORE
 -- ============================================================
 
 local function burst(
@@ -383,21 +588,25 @@ local function burst(
 	end
 
 	local part = Instance.new("Part")
+
 	part.Name = "CreatorBurst"
 	part.Anchored = true
 	part.CanCollide = false
 	part.CanTouch = false
 	part.CanQuery = false
 	part.CastShadow = false
+
 	part.Shape = Enum.PartType.Ball
 	part.Material = Enum.Material.Neon
-	part.Color = color or GREEN
-	part.Transparency = 0.1
-	part.Size = Vector3.one
+	part.Color = color or GREEN_BRIGHT
+
+	part.Transparency = 0.08
+	part.Size = Vector3.new(0.25, 0.25, 0.25)
 	part.CFrame = cf
+
 	part.Parent = getVFXFolder()
 
-	TweenService:Create(
+	local tween = TweenService:Create(
 		part,
 		TweenInfo.new(
 			duration or 0.3,
@@ -408,14 +617,15 @@ local function burst(
 			Size = Vector3.new(size, size, size),
 			Transparency = 1,
 		}
-	):Play()
+	)
 
-	Debris:AddItem(part, (duration or 0.3) + 0.15)
+	tween:Play()
+
+	Debris:AddItem(
+		part,
+		(duration or 0.3) + 0.2
+	)
 end
-
--- ============================================================
--- VFX: RING
--- ============================================================
 
 local function ring(
 	cf: CFrame,
@@ -430,18 +640,30 @@ local function ring(
 	end
 
 	local part = Instance.new("Part")
+
 	part.Name = "CreatorRing"
 	part.Anchored = true
 	part.CanCollide = false
 	part.CanTouch = false
 	part.CanQuery = false
 	part.CastShadow = false
+
 	part.Shape = Enum.PartType.Cylinder
 	part.Material = Enum.Material.Neon
-	part.Color = color or GREEN
-	part.Transparency = 0.1
-	part.Size = Vector3.new(0.15, startSize, startSize)
-	part.CFrame = cf * CFrame.Angles(0, 0, math.rad(90))
+	part.Color = color or GREEN_BRIGHT
+
+	part.Transparency = 0.05
+
+	part.Size = Vector3.new(
+		0.12,
+		startSize,
+		startSize
+	)
+
+	part.CFrame =
+		cf
+		* CFrame.Angles(0, 0, math.rad(90))
+
 	part.Parent = getVFXFolder()
 
 	TweenService:Create(
@@ -452,48 +674,70 @@ local function ring(
 			Enum.EasingDirection.Out
 		),
 		{
-			Size = Vector3.new(0.15, endSize, endSize),
+			Size = Vector3.new(
+				0.12,
+				endSize,
+				endSize
+			),
+
 			Transparency = 1,
 		}
 	):Play()
 
-	Debris:AddItem(part, (duration or 0.4) + 0.15)
+	Debris:AddItem(
+		part,
+		(duration or 0.4) + 0.2
+	)
 end
 
--- ============================================================
--- VFX: BEAM / SLASH
--- ============================================================
-
-local function slash(cf: CFrame, length: number, width: number, color: Color3?)
+local function slash(
+	cf: CFrame,
+	length: number,
+	width: number,
+	color: Color3?
+)
 	local part = Instance.new("Part")
+
 	part.Name = "CreatorSlash"
 	part.Anchored = true
 	part.CanCollide = false
 	part.CanTouch = false
 	part.CanQuery = false
 	part.CastShadow = false
+
 	part.Material = Enum.Material.Neon
 	part.Color = color or GREEN_BRIGHT
-	part.Transparency = 0.05
-	part.Size = Vector3.new(width, width, length)
+	part.Transparency = 0.04
+
+	part.Size = Vector3.new(
+		width,
+		width,
+		length
+	)
+
 	part.CFrame = cf
 	part.Parent = getVFXFolder()
 
 	TweenService:Create(
 		part,
-		TweenInfo.new(0.2, Enum.EasingStyle.Quint),
+		TweenInfo.new(
+			0.18,
+			Enum.EasingStyle.Quint,
+			Enum.EasingDirection.Out
+		),
 		{
-			Size = Vector3.new(0.05, 0.05, length * 1.4),
+			Size = Vector3.new(
+				0.025,
+				0.025,
+				length * 1.5
+			),
+
 			Transparency = 1,
 		}
 	):Play()
 
-	Debris:AddItem(part, 0.3)
+	Debris:AddItem(part, 0.35)
 end
-
--- ============================================================
--- VFX: PARTICLES
--- ============================================================
 
 local function particles(
 	parent: BasePart?,
@@ -510,26 +754,78 @@ local function particles(
 	end
 
 	local attachment = Instance.new("Attachment")
+	attachment.Name = "CreatorParticleAttachment"
 	attachment.Parent = parent
 
 	local emitter = Instance.new("ParticleEmitter")
-	emitter.Color = ColorSequence.new(color or GREEN_BRIGHT)
+
+	emitter.Color = ColorSequence.new(
+		color or GREEN_BRIGHT
+	)
+
 	emitter.LightEmission = 1
+
 	emitter.Rate = 0
-	emitter.Lifetime = NumberRange.new(0.18, 0.6)
-	emitter.Speed = NumberRange.new(7, 22)
+
+	emitter.Lifetime = NumberRange.new(
+		0.15,
+		0.55
+	)
+
+	emitter.Speed = NumberRange.new(
+		7,
+		24
+	)
+
 	emitter.Drag = 5
-	emitter.SpreadAngle = Vector2.new(360, 360)
+
+	emitter.SpreadAngle = Vector2.new(
+		360,
+		360
+	)
+
+	emitter.Rotation = NumberRange.new(
+		0,
+		360
+	)
+
+	emitter.RotSpeed = NumberRange.new(
+		-250,
+		250
+	)
 
 	emitter.Size = NumberSequence.new({
-		NumberSequenceKeypoint.new(0, 0.8),
-		NumberSequenceKeypoint.new(0.45, 1.5),
-		NumberSequenceKeypoint.new(1, 0),
+		NumberSequenceKeypoint.new(
+			0,
+			0.75
+		),
+
+		NumberSequenceKeypoint.new(
+			0.35,
+			1.35
+		),
+
+		NumberSequenceKeypoint.new(
+			1,
+			0
+		),
 	})
 
 	emitter.Transparency = NumberSequence.new({
-		NumberSequenceKeypoint.new(0, 0.05),
-		NumberSequenceKeypoint.new(1, 1),
+		NumberSequenceKeypoint.new(
+			0,
+			0.05
+		),
+
+		NumberSequenceKeypoint.new(
+			0.7,
+			0.35
+		),
+
+		NumberSequenceKeypoint.new(
+			1,
+			1
+		),
 	})
 
 	emitter.Parent = attachment
@@ -538,99 +834,213 @@ local function particles(
 		emitter:Emit(amount)
 	end)
 
-	Debris:AddItem(attachment, 1)
+	Debris:AddItem(
+		attachment,
+		1
+	)
 end
 
 -- ============================================================
--- PHANTOM ENGINE
+-- CREATOR AURA
 -- ============================================================
 
-local function phantomEngine(
-	duration: number,
-	speed: number,
-	token: number
-)
-	local character, humanoid, hrp = getCharacter()
+local function setupCreatorAura(character: Model)
+	local hrp = character:FindFirstChild("HumanoidRootPart")
 
-	if not character or not humanoid or not hrp then
-		return false
+	if not hrp or not hrp:IsA("BasePart") then
+		return
 	end
 
-	if token ~= S.Token or humanoid.Health <= 0 then
-		return false
+	local old = hrp:FindFirstChild("CreatorAura")
+
+	if old then
+		safeDestroy(old)
 	end
 
-	local velocity = Instance.new("BodyVelocity")
-	velocity.Name = "Creator_PhantomEngine"
-	velocity.MaxForce = Vector3.new(5000000, 0, 5000000)
-	velocity.P = 75000
-	velocity.Parent = hrp
+	local attachment = Instance.new("Attachment")
+	attachment.Name = "CreatorAura"
+	attachment.Parent = hrp
 
-	local a0 = Instance.new("Attachment")
-	a0.Position = Vector3.new(-1.1, 0, 0)
-	a0.Parent = hrp
+	local emitter = Instance.new("ParticleEmitter")
 
-	local a1 = Instance.new("Attachment")
-	a1.Position = Vector3.new(1.1, 0, 0)
-	a1.Parent = hrp
-
-	local trail = Instance.new("Trail")
-	trail.Name = "CreatorPhantomTrail"
-	trail.Attachment0 = a0
-	trail.Attachment1 = a1
-	trail.Lifetime = 0.3
-	trail.LightEmission = 1
-	trail.Color = ColorSequence.new(
-		GREEN_BRIGHT,
-		GREEN_DARK
+	emitter.Name = "CreatorGreenVoid"
+	emitter.Color = ColorSequence.new(
+		GREEN_DARK,
+		GREEN_BRIGHT
 	)
-	trail.Transparency = NumberSequence.new(0.05, 1)
-	trail.Parent = hrp
 
-	burst(hrp.CFrame, 7, GREEN_DARK, 0.18, "phantom_start")
-	ring(hrp.CFrame, 2, 17, GREEN_BRIGHT, 0.3, "phantom_ring")
+	emitter.LightEmission = 0.8
+	emitter.Rate = 5
 
-	local start = os.clock()
+	emitter.Lifetime = NumberRange.new(
+		0.3,
+		0.8
+	)
 
-	while os.clock() - start < duration do
-		if token ~= S.Token then
-			break
-		end
+	emitter.Speed = NumberRange.new(
+		0.4,
+		2
+	)
 
-		if not hrp.Parent or humanoid.Health <= 0 then
-			break
-		end
+	emitter.Drag = 4
 
-		local direction = hrp.CFrame.LookVector
+	emitter.SpreadAngle = Vector2.new(
+		360,
+		360
+	)
 
-		velocity.Velocity = Vector3.new(
-			direction.X * speed,
+	emitter.Size = NumberSequence.new({
+		NumberSequenceKeypoint.new(
 			0,
-			direction.Z * speed
-		)
+			0.28
+		),
 
-		if allowed("phantom_tick", 0.08) then
-			particles(hrp, 5, GREEN_BRIGHT, nil)
+		NumberSequenceKeypoint.new(
+			0.5,
+			0.5
+		),
+
+		NumberSequenceKeypoint.new(
+			1,
+			0
+		),
+	})
+
+	emitter.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(
+			0,
+			0.3
+		),
+
+		NumberSequenceKeypoint.new(
+			1,
+			1
+		),
+	})
+
+	emitter.Parent = attachment
+end
+
+-- ============================================================
+-- HAND GLOW
+-- ============================================================
+
+local function setupHandGlow(character: Model)
+	local limbNames = {
+		"Left Arm",
+		"Right Arm",
+
+		"LeftHand",
+		"RightHand",
+
+		"LeftLowerArm",
+		"RightLowerArm",
+	}
+
+	for _, limbName in ipairs(limbNames) do
+		local limb = character:FindFirstChild(limbName)
+
+		if limb and limb:IsA("BasePart") then
+			local old = limb:FindFirstChild(
+				"CreatorHandGlow"
+			)
+
+			if old then
+				safeDestroy(old)
+			end
+
+			local attachment = Instance.new("Attachment")
+			attachment.Name = "CreatorHandGlow"
+			attachment.Parent = limb
+
+			local emitter = Instance.new("ParticleEmitter")
+
+			emitter.Color = ColorSequence.new(
+				GREEN_WHITE,
+				GREEN_BRIGHT
+			)
+
+			emitter.LightEmission = 1
+			emitter.Rate = 2
+
+			emitter.Lifetime = NumberRange.new(
+				0.2,
+				0.45
+			)
+
+			emitter.Speed = NumberRange.new(
+				0.2,
+				1
+			)
+
+			emitter.SpreadAngle = Vector2.new(
+				180,
+				180
+			)
+
+			emitter.Size = NumberSequence.new({
+				NumberSequenceKeypoint.new(
+					0,
+					0.35
+				),
+
+				NumberSequenceKeypoint.new(
+					1,
+					0
+				),
+			})
+
+			emitter.Parent = attachment
 		end
+	end
+end
 
-		RunService.Heartbeat:Wait()
+-- ============================================================
+-- SOUND EFFECTS
+-- ============================================================
+
+local SOUND_IDS = {
+	"rbxassetid://13064223399",
+	"rbxassetid://13064223291",
+	"rbxassetid://13064223483",
+}
+
+local function playSound(
+	parent: Instance?,
+	volume: number?,
+	speed: number?
+)
+	if not parent or not parent.Parent then
+		return
 	end
 
-	pcall(function()
-		velocity:Destroy()
-	end)
+	local sound = Instance.new("Sound")
+
+	sound.Name = "CreatorSound"
+
+	sound.SoundId =
+		SOUND_IDS[
+			math.random(
+				1,
+				#SOUND_IDS
+			)
+		]
+
+	sound.Volume = volume or 1
+	sound.PlaybackSpeed = speed or 1
+
+	sound.RollOffMaxDistance = 180
+
+	sound.Parent = parent
 
 	pcall(function()
-		trail:Destroy()
-		a0:Destroy()
-		a1:Destroy()
+		sound:Play()
 	end)
 
-	if hrp.Parent then
-		burst(hrp.CFrame, 9, GREEN_BRIGHT, 0.25, "phantom_end")
-	end
-
-	return true
+	Debris:AddItem(
+		sound,
+		5
+	)
 end
 
 -- ============================================================
@@ -648,35 +1058,55 @@ local function isAlivePlayer(player: Player)
 		return false
 	end
 
-	local humanoid = character:FindFirstChildOfClass("Humanoid")
-	local hrp = character:FindFirstChild("HumanoidRootPart")
+	local humanoid =
+		character:FindFirstChildOfClass(
+			"Humanoid"
+		)
+
+	local hrp =
+		character:FindFirstChild(
+			"HumanoidRootPart"
+		)
 
 	return humanoid ~= nil
 		and hrp ~= nil
 		and humanoid.Health > 0
 end
 
-local function getClosestPlayer(maxDistance: number?)
+local function getClosestPlayer(
+	maxDistance: number?
+)
 	local _, _, myHRP = getCharacter()
 
 	if not myHRP then
 		return nil, math.huge
 	end
 
-	local closestPlayer = nil
-	local closestDistance = maxDistance or math.huge
+	local closestPlayer: Player? = nil
+	local closestDistance =
+		maxDistance or math.huge
 
-	for _, player in ipairs(Players:GetPlayers()) do
+	for _, player in ipairs(
+		Players:GetPlayers()
+	) do
 		if isAlivePlayer(player) then
-			local character = player.Character
+			local character =
+				player.Character
 
 			if character then
-				local targetHRP = character:FindFirstChild("HumanoidRootPart")
+				local targetHRP =
+					character:FindFirstChild(
+						"HumanoidRootPart"
+					)
 
-				if targetHRP and targetHRP:IsA("BasePart") then
-					local distance = (
-						targetHRP.Position - myHRP.Position
-					).Magnitude
+				if targetHRP
+					and targetHRP:IsA("BasePart")
+				then
+					local distance =
+						(
+							targetHRP.Position
+							- myHRP.Position
+						).Magnitude
 
 					if distance < closestDistance then
 						closestDistance = distance
@@ -691,35 +1121,57 @@ local function getClosestPlayer(maxDistance: number?)
 end
 
 -- ============================================================
--- BEHIND TARGET
+-- TELEPORT BEHIND
 -- ============================================================
 
-local function teleportBehindPlayer(target: Player)
-	local _, humanoid, hrp = getCharacter()
+local function teleportBehindPlayer(
+	target: Player
+)
+	local _, humanoid, hrp =
+		getCharacter()
 
-	if not humanoid or not hrp or humanoid.Health <= 0 then
+	if not humanoid
+		or not hrp
+		or humanoid.Health <= 0
+	then
 		return false
 	end
 
-	if not target or not isAlivePlayer(target) then
+	if not target
+		or not isAlivePlayer(target)
+	then
 		return false
 	end
 
-	local targetCharacter = target.Character
+	local targetCharacter =
+		target.Character
 
 	if not targetCharacter then
 		return false
 	end
 
-	local targetHRP = targetCharacter:FindFirstChild("HumanoidRootPart")
+	local targetHumanoid =
+		targetCharacter:FindFirstChildOfClass(
+			"Humanoid"
+		)
 
-	if not targetHRP or not targetHRP:IsA("BasePart") then
+	local targetHRP =
+		targetCharacter:FindFirstChild(
+			"HumanoidRootPart"
+		)
+
+	if not targetHumanoid
+		or not targetHRP
+		or not targetHRP:IsA("BasePart")
+		or targetHumanoid.Health <= 0
+	then
 		return false
 	end
 
 	local targetPosition =
 		targetHRP.Position
-		- targetHRP.CFrame.LookVector * CFG.M1_BEHIND_DISTANCE
+		- targetHRP.CFrame.LookVector
+		* CFG.M1_BEHIND_DISTANCE
 
 	targetPosition += Vector3.new(
 		0,
@@ -727,60 +1179,122 @@ local function teleportBehindPlayer(target: Player)
 		0
 	)
 
-	local destination = CFrame.lookAt(
-		targetPosition,
-		targetHRP.Position
+	local destination =
+		CFrame.lookAt(
+			targetPosition,
+			targetHRP.Position
+		)
+
+	-- Departure
+	burst(
+		hrp.CFrame,
+		5,
+		GREEN_DARK,
+		0.12,
+		"m1_depart"
 	)
 
-	burst(hrp.CFrame, 5, GREEN_DARK, 0.12, "m1_depart")
+	particles(
+		hrp,
+		10,
+		GREEN_DARK,
+		"m1_depart_particles"
+	)
 
+	-- Teleport
 	hrp.CFrame = destination
-	hrp.AssemblyLinearVelocity = Vector3.zero
 
-	burst(hrp.CFrame, 7, GREEN_BRIGHT, 0.16, "m1_arrive")
-	particles(hrp, 14, GREEN_BRIGHT, "m1_particles")
+	hrp.AssemblyLinearVelocity =
+		Vector3.zero
+
+	-- Arrival
+	burst(
+		hrp.CFrame,
+		7,
+		GREEN_BRIGHT,
+		0.16,
+		"m1_arrive"
+	)
+
+	ring(
+		hrp.CFrame,
+		1,
+		9,
+		GREEN_BRIGHT,
+		0.16,
+		"m1_arrive_ring"
+	)
+
+	particles(
+		hrp,
+		18,
+		GREEN_BRIGHT,
+		"m1_arrive_particles"
+	)
 
 	slash(
-		hrp.CFrame * CFrame.Angles(0, math.rad(90), math.rad(25)),
+		hrp.CFrame
+			* CFrame.Angles(
+				0,
+				math.rad(90),
+				math.rad(25)
+			),
+
 		7,
 		0.45,
 		GREEN_BRIGHT
 	)
 
-	playSound(hrp, 0.8, 1.1)
+	playSound(
+		hrp,
+		0.8,
+		1.1
+	)
 
 	return true
 end
 
 -- ============================================================
--- M1 AUTO SNAP
+-- M1
 -- ============================================================
 
 local function creatorM1()
 	local now = os.clock()
 
-	if now - S.LastM1 < CFG.M1_COOLDOWN then
+	if now - S.LastM1
+		< CFG.M1_COOLDOWN
+	then
 		return
 	end
 
 	S.LastM1 = now
 
-	local target = getClosestPlayer(CFG.M1_TARGET_RANGE)
+	local target =
+		getClosestPlayer(
+			CFG.M1_TARGET_RANGE
+		)
 
-	-- This happens even if the original M1 hit absolutely nothing.
+	-- IMPORTANT:
+	-- This happens independently from the actual game's
+	-- M1 hit detection.
+	--
+	-- Therefore, even if the M1 swing misses,
+	-- the Creator still snaps behind the nearest target.
+
 	if target then
 		teleportBehindPlayer(target)
 	end
 
-	-- M1 builds ultimate.
 	S.Ultimate = math.clamp(
-		(S.Ultimate or 0) + CFG.ULT_GAIN_M1,
+		(S.Ultimate or 0)
+			+ CFG.ULT_GAIN_M1,
+
 		0,
 		CFG.ULT_MAX
 	)
 
-	-- M1 flash around the player.
-	local _, _, hrp = getCharacter()
+	local _, _, hrp =
+		getCharacter()
 
 	if hrp then
 		ring(
@@ -791,120 +1305,555 @@ local function creatorM1()
 			0.18,
 			"m1_ring"
 		)
+
+		particles(
+			hrp,
+			8,
+			GREEN_BRIGHT,
+			"m1_flash_particles"
+		)
 	end
 end
 
 -- ============================================================
--- MOUSE M1 DETECTION
+-- M1 INPUT
 -- ============================================================
+
+local function handleM1Input()
+	local now = os.clock()
+
+	-- Deduplicate MouseButton1 + UserInputService firing
+	-- for the same physical click.
+
+	if now - S.LastInputM1 < 0.025 then
+		return
+	end
+
+	S.LastInputM1 = now
+
+	if S.Token <= 0 then
+		return
+	end
+
+	creatorM1()
+end
+
+addConnection(
+	S.Connections,
+
+	UserInputService.InputBegan:Connect(
+		function(input, processed)
+			if input.UserInputType
+				== Enum.UserInputType.MouseButton1
+			then
+				-- We intentionally do NOT reject processed
+				-- mouse input here. The Creator M1 must still
+				-- work if the game's UI consumed the click.
+
+				handleM1Input()
+			end
+
+			if input.KeyCode
+				== Enum.KeyCode.G
+			then
+				S.Ultimate = CFG.ULT_MAX
+			end
+		end
+	)
+)
 
 local mouse = LocalPlayer:GetMouse()
 
 if mouse then
-	table.insert(
+	addConnection(
 		S.Connections,
-		mouse.Button1Down:Connect(function()
-			if S.Token > 0 then
-				creatorM1()
+
+		mouse.Button1Down:Connect(
+			function()
+				handleM1Input()
 			end
-		end)
+		)
 	)
+end
+
+-- ============================================================
+-- PHANTOM ENGINE
+-- ============================================================
+
+local function phantomEngine(
+	duration: number,
+	speed: number,
+	token: number
+)
+	local character, humanoid, hrp =
+		getCharacter()
+
+	if not character
+		or not humanoid
+		or not hrp
+	then
+		return false
+	end
+
+	if token ~= S.Token
+		or humanoid.Health <= 0
+	then
+		return false
+	end
+
+	local velocity =
+		Instance.new("BodyVelocity")
+
+	velocity.Name =
+		"Creator_PhantomEngine"
+
+	velocity.MaxForce =
+		Vector3.new(
+			5000000,
+			0,
+			5000000
+		)
+
+	velocity.P = 75000
+	velocity.Parent = hrp
+
+	local a0 = Instance.new("Attachment")
+	a0.Position =
+		Vector3.new(
+			-1.1,
+			0,
+			0
+		)
+
+	a0.Parent = hrp
+
+	local a1 = Instance.new("Attachment")
+	a1.Position =
+		Vector3.new(
+			1.1,
+			0,
+			0
+		)
+
+	a1.Parent = hrp
+
+	local trail =
+		Instance.new("Trail")
+
+	trail.Name =
+		"CreatorPhantomTrail"
+
+	trail.Attachment0 = a0
+	trail.Attachment1 = a1
+
+	trail.Lifetime = 0.32
+	trail.LightEmission = 1
+
+	trail.Color =
+		ColorSequence.new({
+			ColorSequenceKeypoint.new(
+				0,
+				GREEN_BRIGHT
+			),
+
+			ColorSequenceKeypoint.new(
+				0.55,
+				GREEN
+			),
+
+			ColorSequenceKeypoint.new(
+				1,
+				GREEN_DARK
+			),
+		})
+
+	trail.Transparency =
+		NumberSequence.new(
+			0.02,
+			1
+		)
+
+	trail.Parent = hrp
+
+	-- Start burst
+	burst(
+		hrp.CFrame,
+		7,
+		GREEN_DARK,
+		0.18,
+		"phantom_start"
+	)
+
+	burst(
+		hrp.CFrame,
+		3.5,
+		GREEN_BRIGHT,
+		0.14,
+		"phantom_core"
+	)
+
+	ring(
+		hrp.CFrame,
+		2,
+		17,
+		GREEN_BRIGHT,
+		0.3,
+		"phantom_ring"
+	)
+
+	local start = os.clock()
+
+	while
+		os.clock() - start < duration
+	do
+		if token ~= S.Token then
+			break
+		end
+
+		if not hrp.Parent
+			or humanoid.Health <= 0
+		then
+			break
+		end
+
+		local direction =
+			hrp.CFrame.LookVector
+
+		velocity.Velocity =
+			Vector3.new(
+				direction.X * speed,
+				0,
+				direction.Z * speed
+			)
+
+		if allowed(
+			"phantom_tick",
+			0.055
+		) then
+			particles(
+				hrp,
+				6,
+				GREEN_BRIGHT
+			)
+
+			ring(
+				hrp.CFrame,
+				1,
+				5,
+				GREEN_DARK,
+				0.12
+			)
+		end
+
+		RunService.Heartbeat:Wait()
+	end
+
+	safeDestroy(velocity)
+	safeDestroy(trail)
+	safeDestroy(a0)
+	safeDestroy(a1)
+
+	if hrp.Parent then
+		burst(
+			hrp.CFrame,
+			9,
+			GREEN_BRIGHT,
+			0.25,
+			"phantom_end"
+		)
+
+		ring(
+			hrp.CFrame,
+			2,
+			20,
+			GREEN_BRIGHT,
+			0.28,
+			"phantom_end_ring"
+		)
+	end
+
+	return true
 end
 
 -- ============================================================
 -- MOVE 1
 -- ============================================================
 
-local function creatorMove1(token: number)
+local function creatorMove1(
+	token: number
+)
 	if S.Busy.Move1 then
 		return
 	end
 
-	local character, humanoid, hrp = getCharacter()
+	local character, humanoid, hrp =
+		getCharacter()
 
-	if not character or not humanoid or not hrp then
+	if not character
+		or not humanoid
+		or not hrp
+	then
 		return
 	end
 
 	S.Busy.Move1 = true
 
-	local track = playAnimation(
-		humanoid,
-		MOVE1_ANIMATION,
-		Enum.AnimationPriority.Action4,
-		1,
+	local track =
+		playAnimation(
+			humanoid,
+			MOVE1_ANIMATION,
+			Enum.AnimationPriority.Action4,
+			1,
+			1
+		)
+
+	-- Charge
+	burst(
+		hrp.CFrame,
+		9,
+		GREEN_DARK,
+		0.25,
+		"move1_charge"
+	)
+
+	burst(
+		hrp.CFrame,
+		4,
+		GREEN_BRIGHT,
+		0.18,
+		"move1_core"
+	)
+
+	ring(
+		hrp.CFrame,
+		3,
+		20,
+		GREEN_BRIGHT,
+		0.4,
+		"move1_charge_ring"
+	)
+
+	ring(
+		hrp.CFrame
+			* CFrame.Angles(
+				math.rad(90),
+				0,
+				0
+			),
+
+		2,
+		15,
+		GREEN_DARK,
+		0.35
+	)
+
+	particles(
+		hrp,
+		35,
+		GREEN_BRIGHT,
+		"move1_charge_particles"
+	)
+
+	playSound(
+		hrp,
+		1.1,
 		0.9
 	)
 
-	-- Charge.
-	burst(hrp.CFrame, 9, GREEN_DARK, 0.25, "move1_charge")
-	ring(hrp.CFrame, 3, 20, GREEN_BRIGHT, 0.4, "move1_charge_ring")
-	particles(hrp, 35, GREEN_BRIGHT, "move1_charge_particles")
-
-	-- Phantom Engine.
-	phantomEngine(0.58, CFG.PHANTOM_SPEED, token)
+	-- Phantom Engine
+	phantomEngine(
+		0.58,
+		CFG.PHANTOM_SPEED,
+		token
+	)
 
 	if token ~= S.Token then
 		S.Busy.Move1 = nil
 		return
 	end
 
-	local target = getClosestPlayer(CFG.M1_TARGET_RANGE)
+	-- Re-target after Phantom Engine
+	local target =
+		getClosestPlayer(
+			CFG.M1_TARGET_RANGE
+		)
 
-	if target and teleportBehindPlayer(target) then
+	if target then
+		teleportBehindPlayer(target)
 		task.wait(0.06)
 	end
 
-	-- Void displacement.
+	if token ~= S.Token then
+		S.Busy.Move1 = nil
+		return
+	end
+
 	local oldCF = hrp.CFrame
 
-	local direction = hrp.CFrame.LookVector
+	local direction =
+		hrp.CFrame.LookVector
 
 	local voidPosition =
 		hrp.Position
-		+ direction * CFG.VOID_DISTANCE
-		+ Vector3.new(0, 500, 0)
+		+ direction
+		* CFG.VOID_DISTANCE
+		+ Vector3.new(
+			0,
+			CFG.VOID_HEIGHT,
+			0
+		)
 
-	local voidCF = CFrame.lookAt(
-		voidPosition,
-		voidPosition + direction
+	local voidCF =
+		CFrame.lookAt(
+			voidPosition,
+			voidPosition + direction
+		)
+
+	-- Void departure
+	burst(
+		oldCF,
+		11,
+		GREEN_BRIGHT,
+		0.2,
+		"void_depart"
 	)
 
-	burst(oldCF, 11, GREEN_BRIGHT, 0.2, "void_depart")
-	ring(oldCF, 4, 30, GREEN_BRIGHT, 0.4, "void_depart_ring")
+	burst(
+		oldCF,
+		5,
+		BLACK,
+		0.3,
+		"void_depart_black"
+	)
+
+	ring(
+		oldCF,
+		4,
+		30,
+		GREEN_BRIGHT,
+		0.4,
+		"void_depart_ring"
+	)
 
 	hrp.CFrame = voidCF
-	hrp.AssemblyLinearVelocity = Vector3.zero
+	hrp.AssemblyLinearVelocity =
+		Vector3.zero
 
-	burst(voidCF, 16, BLACK, 0.4, "void_arrive")
-	burst(voidCF, 10, GREEN_BRIGHT, 0.3, "void_core")
-	ring(voidCF, 5, 40, GREEN_BRIGHT, 0.55, "void_ring")
-	particles(hrp, 55, GREEN_BRIGHT, "void_particles")
+	-- Void arrival
+	burst(
+		voidCF,
+		16,
+		BLACK,
+		0.4,
+		"void_arrive"
+	)
 
-	playSound(hrp, 1.7, 0.68)
+	burst(
+		voidCF,
+		10,
+		GREEN_BRIGHT,
+		0.3,
+		"void_core"
+	)
 
-	task.delay(CFG.VOID_DURATION, function()
-		if token ~= S.Token then
+	ring(
+		voidCF,
+		5,
+		40,
+		GREEN_BRIGHT,
+		0.55,
+		"void_ring"
+	)
+
+	ring(
+		voidCF
+			* CFrame.Angles(
+				math.rad(90),
+				0,
+				0
+			),
+
+		4,
+		32,
+		GREEN_DARK,
+		0.5
+	)
+
+	particles(
+		hrp,
+		55,
+		GREEN_BRIGHT,
+		"void_particles"
+	)
+
+	playSound(
+		hrp,
+		1.7,
+		0.68
+	)
+
+	task.delay(
+		CFG.VOID_DURATION,
+		function()
+			if token ~= S.Token then
+				S.Busy.Move1 = nil
+				return
+			end
+
+			if hrp.Parent
+				and humanoid.Health > 0
+			then
+				burst(
+					hrp.CFrame,
+					15,
+					GREEN_BRIGHT,
+					0.3,
+					"void_return"
+				)
+
+				hrp.CFrame = oldCF
+
+				hrp.AssemblyLinearVelocity =
+					Vector3.zero
+
+				burst(
+					oldCF,
+					13,
+					GREEN_BRIGHT,
+					0.3,
+					"void_reappear"
+				)
+
+				ring(
+					oldCF,
+					3,
+					34,
+					GREEN_BRIGHT,
+					0.42
+				)
+
+				particles(
+					hrp,
+					50,
+					GREEN_BRIGHT
+				)
+			end
+
 			S.Busy.Move1 = nil
-			return
 		end
-
-		if hrp.Parent and humanoid.Health > 0 then
-			burst(hrp.CFrame, 15, GREEN_BRIGHT, 0.3, "void_return")
-			hrp.CFrame = oldCF
-			hrp.AssemblyLinearVelocity = Vector3.zero
-			burst(oldCF, 13, GREEN_BRIGHT, 0.3, "void_reappear")
-		end
-
-		S.Busy.Move1 = nil
-	end)
+	)
 
 	if track then
-		task.delay(0.9, function()
-			pcall(function()
-				track:Stop(0.06)
-			end)
-		end)
+		task.delay(
+			1,
+			function()
+				pcall(function()
+					if track.IsPlaying then
+						track:Stop(0.06)
+					end
+				end)
+			end
+		)
 	end
 end
 
@@ -912,32 +1861,72 @@ end
 -- MOVE 2
 -- ============================================================
 
-local function creatorMove2(token: number)
+local function creatorMove2(
+	token: number
+)
 	if S.Busy.Move2 then
 		return
 	end
 
-	local character, humanoid, hrp = getCharacter()
+	local character, humanoid, hrp =
+		getCharacter()
 
-	if not character or not humanoid or not hrp then
+	if not character
+		or not humanoid
+		or not hrp
+	then
 		return
 	end
 
 	S.Busy.Move2 = true
 
-	local track = playAnimation(
-		humanoid,
-		MOVE2_ANIMATION,
-		Enum.AnimationPriority.Action4,
-		1,
-		0.78
+	local track =
+		playAnimation(
+			humanoid,
+			MOVE2_ANIMATION,
+			Enum.AnimationPriority.Action4,
+			1,
+			0.9
+		)
+
+	burst(
+		hrp.CFrame,
+		8,
+		GREEN_DARK,
+		0.2,
+		"move2_start"
 	)
 
-	burst(hrp.CFrame, 8, GREEN_DARK, 0.2, "move2_start")
-	ring(hrp.CFrame, 2, 18, GREEN_BRIGHT, 0.3, "move2_ring")
-	particles(hrp, 30, GREEN_BRIGHT, "move2_particles")
+	burst(
+		hrp.CFrame,
+		3,
+		GREEN_BRIGHT,
+		0.15,
+		"move2_core"
+	)
 
-	-- Phantom Engine.
+	ring(
+		hrp.CFrame,
+		2,
+		18,
+		GREEN_BRIGHT,
+		0.3,
+		"move2_ring"
+	)
+
+	particles(
+		hrp,
+		30,
+		GREEN_BRIGHT,
+		"move2_particles"
+	)
+
+	playSound(
+		hrp,
+		1.25,
+		0.82
+	)
+
 	task.spawn(function()
 		phantomEngine(
 			0.72,
@@ -946,52 +1935,107 @@ local function creatorMove2(token: number)
 		)
 	end)
 
-	task.delay(0.22, function()
-		if token ~= S.Token then
-			return
-		end
+	task.delay(
+		0.2,
+		function()
+			if token ~= S.Token then
+				return
+			end
 
-		local target = getClosestPlayer(CFG.M1_TARGET_RANGE)
+			local target =
+				getClosestPlayer(
+					CFG.M1_TARGET_RANGE
+				)
 
-		if target then
-			teleportBehindPlayer(target)
-		end
+			if target then
+				teleportBehindPlayer(target)
+			end
 
-		local _, _, currentHRP = getCharacter()
+			local _, _, currentHRP =
+				getCharacter()
 
-		if currentHRP then
-			for i = 1, 4 do
+			if not currentHRP then
+				return
+			end
+
+			for i = 1, 8 do
+				local rotation =
+					CFrame.Angles(
+						math.rad(i * 17),
+						math.rad(i * 41),
+						math.rad(i * 27)
+					)
+
 				slash(
 					currentHRP.CFrame
-						* CFrame.Angles(
-							math.rad(i * 17),
-							math.rad(i * 41),
-							math.rad(i * 27)
-						),
+						* rotation,
+
 					9 + i,
-					0.35,
-					i % 2 == 0 and GREEN_BRIGHT or GREEN
+					0.3 + i * 0.025,
+
+					i % 2 == 0
+						and GREEN_BRIGHT
+						or GREEN
 				)
 			end
+
+			burst(
+				currentHRP.CFrame,
+				12,
+				GREEN_BRIGHT,
+				0.22
+			)
+
+			particles(
+				currentHRP,
+				30,
+				GREEN_BRIGHT
+			)
 		end
-	end)
+	)
 
-	task.delay(0.78, function()
-		if track then
-			pcall(function()
-				track:Stop(0.06)
-			end)
+	task.delay(
+		0.8,
+		function()
+			if track then
+				pcall(function()
+					if track.IsPlaying then
+						track:Stop(0.06)
+					end
+				end)
+			end
+
+			local _, _, currentHRP =
+				getCharacter()
+
+			if currentHRP then
+				burst(
+					currentHRP.CFrame,
+					14,
+					GREEN_BRIGHT,
+					0.3,
+					"move2_finish"
+				)
+
+				ring(
+					currentHRP.CFrame,
+					3,
+					34,
+					GREEN_BRIGHT,
+					0.45,
+					"move2_finish_ring"
+				)
+
+				particles(
+					currentHRP,
+					45,
+					GREEN_BRIGHT
+				)
+			end
+
+			S.Busy.Move2 = nil
 		end
-
-		local _, _, currentHRP = getCharacter()
-
-		if currentHRP then
-			burst(currentHRP.CFrame, 14, GREEN_BRIGHT, 0.3, "move2_finish")
-			ring(currentHRP.CFrame, 3, 34, GREEN_BRIGHT, 0.45, "move2_finish_ring")
-		end
-
-		S.Busy.Move2 = nil
-	end)
+	)
 end
 
 -- ============================================================
@@ -1003,22 +2047,31 @@ local function creatorMove3()
 		return
 	end
 
-	local character, humanoid, hrp = getCharacter()
+	local character, humanoid, hrp =
+		getCharacter()
 
-	if not character or not humanoid or not hrp then
+	if not character
+		or not humanoid
+		or not hrp
+	then
 		return
 	end
 
 	S.Busy.Move3 = true
 
-	local state = humanoid:GetState()
+	local state =
+		humanoid:GetState()
 
 	local airborne =
-		state == Enum.HumanoidStateType.Jumping
-		or state == Enum.HumanoidStateType.Freefall
+		state
+			== Enum.HumanoidStateType.Jumping
+		or state
+			== Enum.HumanoidStateType.Freefall
 
 	local animationId =
-		airborne and MOVE3_AIR or MOVE3_GROUND
+		airborne
+			and MOVE3_AIR
+			or MOVE3_GROUND
 
 	playAnimation(
 		humanoid,
@@ -1028,42 +2081,113 @@ local function creatorMove3()
 		1
 	)
 
-	-- No Phantom Engine on Move 3.
-	burst(hrp.CFrame, 12, GREEN_DARK, 0.3, "move3_start")
-	ring(hrp.CFrame, 3, 30, GREEN_BRIGHT, 0.45, "move3_ring")
-	particles(hrp, 45, GREEN_BRIGHT, "move3_particles")
+	-- Creator's Grasp deliberately has NO Phantom Engine.
 
-	local target = getClosestPlayer(CFG.M1_TARGET_RANGE)
+	burst(
+		hrp.CFrame,
+		12,
+		GREEN_DARK,
+		0.3,
+		"move3_start"
+	)
+
+	burst(
+		hrp.CFrame,
+		5,
+		GREEN_BRIGHT,
+		0.22,
+		"move3_core"
+	)
+
+	ring(
+		hrp.CFrame,
+		3,
+		30,
+		GREEN_BRIGHT,
+		0.45,
+		"move3_ring"
+	)
+
+	particles(
+		hrp,
+		45,
+		GREEN_BRIGHT,
+		"move3_particles"
+	)
+
+	playSound(
+		hrp,
+		1.4,
+		0.76
+	)
+
+	local target =
+		getClosestPlayer(
+			CFG.M1_TARGET_RANGE
+		)
 
 	if target then
-		task.delay(0.12, function()
-			teleportBehindPlayer(target)
-		end)
+		task.delay(
+			0.12,
+			function()
+				teleportBehindPlayer(target)
+			end
+		)
 	end
 
-	task.delay(0.5, function()
-		local _, _, currentHRP = getCharacter()
+	task.delay(
+		0.38,
+		function()
+			local _, _, currentHRP =
+				getCharacter()
 
-		if currentHRP then
-			for i = 1, 7 do
+			if not currentHRP then
+				return
+			end
+
+			for i = 1, 10 do
 				slash(
 					currentHRP.CFrame
 						* CFrame.Angles(
-							0,
+							math.rad(i * 9),
 							math.rad(i * 30),
 							math.rad(i * 17)
 						),
+
 					10 + i,
-					0.3,
+					0.32,
 					GREEN_BRIGHT
 				)
 			end
-		end
-	end)
 
-	task.delay(1, function()
-		S.Busy.Move3 = nil
-	end)
+			ring(
+				currentHRP.CFrame,
+				2,
+				25,
+				GREEN_BRIGHT,
+				0.28
+			)
+		end
+	)
+
+	task.delay(
+		0.95,
+		function()
+			local _, _, currentHRP =
+				getCharacter()
+
+			if currentHRP then
+				burst(
+					currentHRP.CFrame,
+					14,
+					GREEN_BRIGHT,
+					0.28
+				)
+			end
+
+			S.Busy.Move3 = nil
+		end
+	)
 end
 
 -- ============================================================
@@ -1075,246 +2199,223 @@ local function creatorMove4()
 		return
 	end
 
-	local character, humanoid, hrp = getCharacter()
+	local character, humanoid, hrp =
+		getCharacter()
 
-	if not character or not humanoid or not hrp then
+	if not character
+		or not humanoid
+		or not hrp
+	then
 		return
 	end
 
 	S.Busy.Move4 = true
 
-	local track = playAnimation(
-		humanoid,
-		MOVE4_ANIMATION,
-		Enum.AnimationPriority.Action4,
-		1,
-		1
+	local track =
+		playAnimation(
+			humanoid,
+			MOVE4_ANIMATION,
+			Enum.AnimationPriority.Action4,
+			1,
+			1.05
+		)
+
+	burst(
+		hrp.CFrame,
+		14,
+		BLACK,
+		0.35,
+		"move4_black"
 	)
 
-	burst(hrp.CFrame, 14, BLACK, 0.35, "move4_black")
-	burst(hrp.CFrame, 8, GREEN_BRIGHT, 0.25, "move4_green")
-	ring(hrp.CFrame, 4, 42, GREEN_BRIGHT, 0.55, "move4_ring")
-	particles(hrp, 60, GREEN_BRIGHT, "move4_particles")
+	burst(
+		hrp.CFrame,
+		8,
+		GREEN_BRIGHT,
+		0.25,
+		"move4_green"
+	)
 
-	local target = getClosestPlayer(CFG.M1_TARGET_RANGE)
+	ring(
+		hrp.CFrame,
+		4,
+		42,
+		GREEN_BRIGHT,
+		0.55,
+		"move4_ring"
+	)
+
+	ring(
+		hrp.CFrame
+			* CFrame.Angles(
+				math.rad(90),
+				0,
+				0
+			),
+
+		3,
+		35,
+		GREEN_DARK,
+		0.5
+	)
+
+	particles(
+		hrp,
+		60,
+		GREEN_BRIGHT,
+		"move4_particles"
+	)
+
+	playSound(
+		hrp,
+		1.8,
+		0.6
+	)
+
+	local target =
+		getClosestPlayer(
+			CFG.M1_TARGET_RANGE
+		)
 
 	if target then
-		task.delay(0.2, function()
-			teleportBehindPlayer(target)
-		end)
+		task.delay(
+			0.18,
+			function()
+				teleportBehindPlayer(target)
+			end
+		)
 	end
 
-	task.delay(1, function()
-		if track then
-			pcall(function()
-				track:Stop(0.06)
-			end)
+	task.delay(
+		0.45,
+		function()
+			local _, _, currentHRP =
+				getCharacter()
+
+			if not currentHRP then
+				return
+			end
+
+			for i = 1, 12 do
+				task.delay(
+					i * 0.025,
+					function()
+						if not currentHRP.Parent then
+							return
+						end
+
+						slash(
+							currentHRP.CFrame
+								* CFrame.Angles(
+									math.rad(i * 23),
+									math.rad(i * 31),
+									math.rad(i * 17)
+								),
+
+							13 + i,
+							0.4,
+
+							i % 2 == 0
+								and GREEN_BRIGHT
+								or GREEN
+						)
+					end
+				)
+			end
 		end
-
-		S.Busy.Move4 = nil
-	end)
-end
-
--- ============================================================
--- ULTIMATE UI
--- ============================================================
-
-local function createCreatorUltimateUI()
-	local playerGui = LocalPlayer:FindFirstChildOfClass("PlayerGui")
-
-	if not playerGui then
-		return nil
-	end
-
-	local existing = playerGui:FindFirstChild("TheCreatorUltimateUI")
-
-	if existing then
-		existing:Destroy()
-	end
-
-	local gui = Instance.new("ScreenGui")
-	gui.Name = "TheCreatorUltimateUI"
-	gui.ResetOnSpawn = false
-	gui.IgnoreGuiInset = true
-	gui.DisplayOrder = 999999
-	gui.Parent = playerGui
-
-	local holder = Instance.new("Frame")
-	holder.Name = "UltimateHolder"
-	holder.AnchorPoint = Vector2.new(0.5, 1)
-	holder.Position = UDim2.fromScale(0.5, 0.965)
-	holder.Size = UDim2.fromOffset(440, 52)
-	holder.BackgroundColor3 = BLACK
-	holder.BackgroundTransparency = 0.18
-	holder.BorderSizePixel = 0
-	holder.Parent = gui
-
-	local corner = Instance.new("UICorner")
-	corner.CornerRadius = UDim.new(0, 8)
-	corner.Parent = holder
-
-	local stroke = Instance.new("UIStroke")
-	stroke.Color = GREEN
-	stroke.Thickness = 2
-	stroke.Transparency = 0.15
-	stroke.Parent = holder
-
-	local barBackground = Instance.new("Frame")
-	barBackground.Name = "Background"
-	barBackground.Position = UDim2.fromOffset(8, 25)
-	barBackground.Size = UDim2.new(1, -16, 0, 17)
-	barBackground.BackgroundColor3 = Color3.fromRGB(5, 20, 10)
-	barBackground.BorderSizePixel = 0
-	barBackground.ClipsDescendants = true
-	barBackground.Parent = holder
-
-	local bgCorner = Instance.new("UICorner")
-	bgCorner.CornerRadius = UDim.new(0, 5)
-	bgCorner.Parent = barBackground
-
-	local fill = Instance.new("Frame")
-	fill.Name = "Fill"
-	fill.Size = UDim2.fromScale(0, 1)
-	fill.BackgroundColor3 = GREEN
-	fill.BorderSizePixel = 0
-	fill.Parent = barBackground
-
-	local fillCorner = Instance.new("UICorner")
-	fillCorner.CornerRadius = UDim.new(0, 5)
-	fillCorner.Parent = fill
-
-	local gradient = Instance.new("UIGradient")
-	gradient.Color = ColorSequence.new({
-		ColorSequenceKeypoint.new(0, GREEN_DARK),
-		ColorSequenceKeypoint.new(0.5, GREEN_BRIGHT),
-		ColorSequenceKeypoint.new(1, GREEN),
-	})
-	gradient.Parent = fill
-
-	local title = Instance.new("TextLabel")
-	title.Name = "GlitchTitle"
-	title.BackgroundTransparency = 1
-	title.Position = UDim2.fromOffset(10, 2)
-	title.Size = UDim2.new(1, -20, 0, 22)
-	title.Font = Enum.Font.GothamBlack
-	title.Text = "T̷H̷E̷  C̷R̷E̷A̷T̷O̷R̷"
-	title.TextColor3 = GREEN_BRIGHT
-	title.TextSize = 17
-	title.TextStrokeTransparency = 0.3
-	title.TextStrokeColor3 = BLACK
-	title.Parent = holder
-
-	local percent = Instance.new("TextLabel")
-	percent.Name = "Percent"
-	percent.BackgroundTransparency = 1
-	percent.AnchorPoint = Vector2.new(1, 0.5)
-	percent.Position = UDim2.new(1, -12, 0.5, 0)
-	percent.Size = UDim2.fromOffset(80, 18)
-	percent.Font = Enum.Font.GothamBold
-	percent.Text = "0%"
-	percent.TextColor3 = GREEN_WHITE
-	percent.TextSize = 12
-	percent.TextXAlignment = Enum.TextXAlignment.Right
-	percent.Parent = holder
-
-	local glitch = Instance.new("TextLabel")
-	glitch.Name = "GlitchText"
-	glitch.BackgroundTransparency = 1
-	glitch.Position = UDim2.fromOffset(10, 43)
-	glitch.Size = UDim2.new(1, -20, 0, 10)
-	glitch.Font = Enum.Font.Code
-	glitch.Text = "[ SYSTEM // WAITING ]"
-	glitch.TextColor3 = GREEN
-	glitch.TextSize = 8
-	glitch.TextXAlignment = Enum.TextXAlignment.Left
-	glitch.Parent = holder
-
-	S.CreatorUI = {
-		Gui = gui,
-		Holder = holder,
-		Fill = fill,
-		Title = title,
-		Percent = percent,
-		Glitch = glitch,
-		Stroke = stroke,
-	}
-
-	return S.CreatorUI
-end
-
-local function updateUltimateUI()
-	local ui = S.CreatorUI
-
-	if not ui or not ui.Gui or not ui.Gui.Parent then
-		ui = createCreatorUltimateUI()
-	end
-
-	if not ui then
-		return
-	end
-
-	local amount = math.clamp(
-		S.Ultimate or 0,
-		0,
-		CFG.ULT_MAX
 	)
 
-	local ratio = amount / CFG.ULT_MAX
+	task.delay(
+		1.05,
+		function()
+			if track then
+				pcall(function()
+					if track.IsPlaying then
+						track:Stop(0.06)
+					end
+				end)
+			end
 
-	TweenService:Create(
-		ui.Fill,
-		TweenInfo.new(0.12, Enum.EasingStyle.Quad),
-		{
-			Size = UDim2.fromScale(ratio, 1),
-		}
-	):Play()
+			local _, _, currentHRP =
+				getCharacter()
 
-	ui.Percent.Text = tostring(math.floor(amount)) .. "%"
+			if currentHRP then
+				burst(
+					currentHRP.CFrame,
+					20,
+					GREEN_BRIGHT,
+					0.35
+				)
 
-	if amount >= CFG.ULT_MAX then
-		ui.Title.Text = "C̷R̷E̷A̷T̷O̷R̷  //  R̷E̷A̷D̷Y̷"
-		ui.Glitch.Text = "[ SYSTEM // A̷B̷S̷O̷L̷U̷T̷E̷ ]"
-		ui.Stroke.Color = GREEN_BRIGHT
-	else
-		ui.Title.Text = "T̷H̷E̷  C̷R̷E̷A̷T̷O̷R̷"
-		ui.Glitch.Text = "[ SYSTEM // CHARGING // " .. math.floor(amount) .. "% ]"
-		ui.Stroke.Color = GREEN
-	end
+				ring(
+					currentHRP.CFrame,
+					4,
+					50,
+					GREEN_BRIGHT,
+					0.5
+				)
+			end
+
+			S.Busy.Move4 = nil
+		end
+	)
 end
 
 -- ============================================================
--- EXISTING GAME ULT BAR
+-- EXISTING GAME ULTIMATE BAR
 -- ============================================================
 
 local function styleExistingUltimateBar()
-	local playerGui = LocalPlayer:FindFirstChildOfClass("PlayerGui")
+	local playerGui =
+		LocalPlayer:FindFirstChildOfClass(
+			"PlayerGui"
+		)
 
 	if not playerGui then
 		return
 	end
 
-	local bar = playerGui:FindFirstChild("Bar", true)
+	local bar =
+		playerGui:FindFirstChild(
+			"Bar",
+			true
+		)
 
 	if not bar then
 		return
 	end
 
-	local magicHealth = bar:FindFirstChild("MagicHealth", true)
+	local magicHealth =
+		bar:FindFirstChild(
+			"MagicHealth",
+			true
+		)
 
 	if not magicHealth then
 		return
 	end
 
-	local function styleObject(object: Instance)
+	local function styleObject(
+		object: Instance
+	)
 		if object:IsA("Frame") then
-			object.BackgroundColor3 = GREEN
-		elseif object:IsA("ImageLabel") or object:IsA("ImageButton") then
-			object.ImageColor3 = GREEN
+			object.BackgroundColor3 =
+				GREEN
+		elseif object:IsA("ImageLabel")
+			or object:IsA("ImageButton")
+		then
+			object.ImageColor3 =
+				GREEN
 		end
 	end
 
-	for _, object in ipairs(magicHealth:GetDescendants()) do
-		local name = string.lower(object.Name)
+	for _, object in ipairs(
+		magicHealth:GetDescendants()
+	) do
+		local name =
+			string.lower(
+				object.Name
+			)
 
 		if name == "bar"
 			or name == "fill"
@@ -1324,24 +2425,45 @@ local function styleExistingUltimateBar()
 		end
 
 		if object:IsA("TextLabel") then
-			local textName = string.lower(object.Name)
+			local textName =
+				string.lower(
+					object.Name
+				)
 
 			if textName == "textlabel"
 				or textName == "title"
 			then
-				object.Text = "T̷H̷E̷  C̷R̷E̷A̷T̷O̷R̷"
-				object.TextColor3 = GREEN_BRIGHT
+				object.Text =
+					"T̷H̷E̷  C̷R̷E̷A̷T̷O̷R̷"
+
+				object.TextColor3 =
+					GREEN_BRIGHT
 			end
 		end
 
-		local gradient = object:FindFirstChildOfClass("UIGradient")
+		local gradient =
+			object:FindFirstChildOfClass(
+				"UIGradient"
+			)
 
 		if gradient then
-			gradient.Color = ColorSequence.new({
-				ColorSequenceKeypoint.new(0, GREEN_DARK),
-				ColorSequenceKeypoint.new(0.5, GREEN_BRIGHT),
-				ColorSequenceKeypoint.new(1, GREEN),
-			})
+			gradient.Color =
+				ColorSequence.new({
+					ColorSequenceKeypoint.new(
+						0,
+						GREEN_DARK
+					),
+
+					ColorSequenceKeypoint.new(
+						0.5,
+						GREEN_BRIGHT
+					),
+
+					ColorSequenceKeypoint.new(
+						1,
+						GREEN
+					),
+				})
 		end
 	end
 end
@@ -1351,13 +2473,18 @@ end
 -- ============================================================
 
 local function fixCharacterTab()
-	local playerGui = LocalPlayer:FindFirstChildOfClass("PlayerGui")
+	local playerGui =
+		LocalPlayer:FindFirstChildOfClass(
+			"PlayerGui"
+		)
 
 	if not playerGui then
 		return
 	end
 
-	for _, object in ipairs(playerGui:GetDescendants()) do
+	for _, object in ipairs(
+		playerGui:GetDescendants()
+	) do
 		if object:IsA("TextLabel") then
 			local text = object.Text
 
@@ -1366,26 +2493,35 @@ local function fixCharacterTab()
 				or text == "Dark Garou"
 				or text == "The Creator"
 			then
-				object.Text = MOVESET_NAME
+				object.Text =
+					MOVESET_NAME
 
-				-- Do NOT change the font.
-				local parent = object.Parent
+				local parent =
+					object.Parent
 
 				if parent then
-					for _, imageObject in ipairs(parent:GetDescendants()) do
+					for _, imageObject in ipairs(
+						parent:GetDescendants()
+					) do
 						if imageObject:IsA("ImageLabel")
 							or imageObject:IsA("ImageButton")
 						then
+							local imageName =
+								string.lower(
+									imageObject.Name
+								)
+
 							if string.find(
-								string.lower(imageObject.Name),
+								imageName,
 								"image"
 							)
 							or string.find(
-								string.lower(imageObject.Name),
+								imageName,
 								"icon"
 							)
 							then
-								imageObject.Image = DECAL_THUMB
+								imageObject.Image =
+									DECAL_THUMB
 							end
 						end
 					end
@@ -1404,131 +2540,271 @@ local function setHotbarSlot(
 	name: string,
 	reuseText: string
 )
-	local playerGui = LocalPlayer:FindFirstChildOfClass("PlayerGui")
+	local playerGui =
+		LocalPlayer:FindFirstChildOfClass(
+			"PlayerGui"
+		)
 
 	if not playerGui then
 		return
 	end
 
-	local hotbar = playerGui:FindFirstChild("Hotbar", true)
+	local hotbar =
+		playerGui:FindFirstChild(
+			"Hotbar",
+			true
+		)
 
 	if not hotbar then
 		return
 	end
 
-	local container = hotbar:FindFirstChild("Hotbar", true)
+	local container =
+		hotbar:FindFirstChild(
+			"Hotbar",
+			true
+		)
 
 	if not container then
 		return
 	end
 
-	local slot = container:FindFirstChild(tostring(slotNumber), true)
+	local slot =
+		container:FindFirstChild(
+			tostring(slotNumber),
+			true
+		)
 
 	if not slot then
 		return
 	end
 
-	local toolName = slot:FindFirstChild("ToolName", true)
+	local toolName =
+		slot:FindFirstChild(
+			"ToolName",
+			true
+		)
 
-	if toolName and toolName:IsA("TextLabel") then
+	if toolName
+		and toolName:IsA("TextLabel")
+	then
 		toolName.Text = name
 	end
 
-	local reuse = slot:FindFirstChild("Reuse", true)
+	local reuse =
+		slot:FindFirstChild(
+			"Reuse",
+			true
+		)
 
-	if reuse and reuse:IsA("TextLabel") then
+	if reuse
+		and reuse:IsA("TextLabel")
+	then
 		reuse.Text = reuseText
 		reuse.Visible = true
 	end
 end
 
 local function refreshMoveBar()
-	setHotbarSlot(1, "Creator's Decree", "VOID EXECUTION")
-	setHotbarSlot(2, "Reality Breaker", "PHANTOM ENGINE")
-	setHotbarSlot(3, "Creator's Grasp", "NULL GRASP")
-	setHotbarSlot(4, "Absolute Override", "THE CREATOR")
+	setHotbarSlot(
+		1,
+		"Creator's Decree",
+		"VOID EXECUTION"
+	)
+
+	setHotbarSlot(
+		2,
+		"Reality Breaker",
+		"PHANTOM ENGINE"
+	)
+
+	setHotbarSlot(
+		3,
+		"Creator's Grasp",
+		"NULL GRASP"
+	)
+
+	setHotbarSlot(
+		4,
+		"Absolute Override",
+		"THE CREATOR"
+	)
 end
 
 -- ============================================================
--- FLY TOOL
+-- DASH / MOVEMENT VFX
 -- ============================================================
 
-local function destroyTool(name: string)
-	local backpack = LocalPlayer:FindFirstChild("Backpack")
+local function createDashEffect(
+	hrp: BasePart
+)
+	if not allowed(
+		"movement_dash",
+		0.08
+	) then
+		return
+	end
+
+	local look =
+		hrp.CFrame.LookVector
+
+	local cf =
+		CFrame.lookAt(
+			hrp.Position,
+			hrp.Position + look
+		)
+
+	ring(
+		cf,
+		1,
+		8,
+		GREEN_DARK,
+		0.18
+	)
+
+	particles(
+		hrp,
+		5,
+		GREEN_BRIGHT
+	)
+
+	slash(
+		cf
+			* CFrame.new(
+				0,
+				0,
+				2
+			),
+
+		7,
+		0.22,
+		GREEN_BRIGHT
+	)
+end
+
+-- ============================================================
+-- FLIGHT TOOL
+-- ============================================================
+
+local function destroyTool(
+	name: string
+)
+	local backpack =
+		LocalPlayer:FindFirstChild(
+			"Backpack"
+		)
 
 	if backpack then
-		for _, object in ipairs(backpack:GetChildren()) do
-			if object:IsA("Tool") and object.Name == name then
-				object:Destroy()
+		for _, object in ipairs(
+			backpack:GetChildren()
+		) do
+			if object:IsA("Tool")
+				and object.Name == name
+			then
+				safeDestroy(object)
 			end
 		end
 	end
 
-	local character = LocalPlayer.Character
+	local character =
+		LocalPlayer.Character
 
 	if character then
-		for _, object in ipairs(character:GetChildren()) do
-			if object:IsA("Tool") and object.Name == name then
-				object:Destroy()
+		for _, object in ipairs(
+			character:GetChildren()
+		) do
+			if object:IsA("Tool")
+				and object.Name == name
+			then
+				safeDestroy(object)
 			end
 		end
 	end
 end
 
 local function createFlyTool()
-	destroyTool("Creator Flight")
+	destroyTool(
+		"Creator Flight"
+	)
 
-	local backpack = LocalPlayer:FindFirstChild("Backpack")
+	local backpack =
+		LocalPlayer:FindFirstChild(
+			"Backpack"
+		)
 
 	if not backpack then
 		return
 	end
 
-	local tool = Instance.new("Tool")
-	tool.Name = "Creator Flight"
+	local tool =
+		Instance.new("Tool")
+
+	tool.Name =
+		"Creator Flight"
+
 	tool.RequiresHandle = false
 	tool.CanBeDropped = false
-	tool.ToolTip = "THE CREATOR // FLIGHT"
+	tool.ToolTip =
+		"THE CREATOR // FLIGHT"
+
 	tool.Parent = backpack
 
 	S.Tools.Flight = tool
 
 	local flying = false
-	local bodyVelocity: BodyVelocity? = nil
-	local bodyGyro: BodyGyro? = nil
+
+	local bodyVelocity:
+		BodyVelocity? = nil
+
+	local bodyGyro:
+		BodyGyro? = nil
 
 	local function stopFlight()
+		if not flying
+			and not S.Flying
+		then
+			return
+		end
+
 		flying = false
 		S.Flying = false
 
-		if bodyVelocity then
-			pcall(function()
-				bodyVelocity:Destroy()
-			end)
-			bodyVelocity = nil
-		end
+		safeDestroy(bodyVelocity)
+		safeDestroy(bodyGyro)
 
-		if bodyGyro then
-			pcall(function()
-				bodyGyro:Destroy()
-			end)
-			bodyGyro = nil
-		end
+		bodyVelocity = nil
+		bodyGyro = nil
 
-		local _, humanoid, hrp = getCharacter()
+		local _, humanoid, hrp =
+			getCharacter()
 
 		if humanoid then
 			humanoid.AutoRotate = true
 		end
 
 		if hrp then
-			burst(hrp.CFrame, 9, GREEN_DARK, 0.2, "flight_end")
-			ring(hrp.CFrame, 2, 18, GREEN_BRIGHT, 0.3, "flight_end_ring")
+			burst(
+				hrp.CFrame,
+				9,
+				GREEN_DARK,
+				0.2,
+				"flight_end"
+			)
+
+			ring(
+				hrp.CFrame,
+				2,
+				18,
+				GREEN_BRIGHT,
+				0.3,
+				"flight_end_ring"
+			)
 		end
 	end
 
 	local function startFlight()
-		local _, humanoid, hrp = getCharacter()
+		local _, humanoid, hrp =
+			getCharacter()
 
 		if not humanoid or not hrp then
 			return
@@ -1544,35 +2820,80 @@ local function createFlyTool()
 
 		humanoid.AutoRotate = false
 
-		bodyVelocity = Instance.new("BodyVelocity")
-		bodyVelocity.Name = "CreatorFlightVelocity"
-		bodyVelocity.MaxForce = Vector3.new(
-			1000000,
-			1000000,
-			1000000
-		)
+		bodyVelocity =
+			Instance.new(
+				"BodyVelocity"
+			)
+
+		bodyVelocity.Name =
+			"CreatorFlightVelocity"
+
+		bodyVelocity.MaxForce =
+			Vector3.new(
+				1000000,
+				1000000,
+				1000000
+			)
+
 		bodyVelocity.P = 50000
-		bodyVelocity.Velocity = Vector3.zero
+		bodyVelocity.Velocity =
+			Vector3.zero
+
 		bodyVelocity.Parent = hrp
 
-		bodyGyro = Instance.new("BodyGyro")
-		bodyGyro.Name = "CreatorFlightGyro"
-		bodyGyro.MaxTorque = Vector3.new(
-			1000000,
-			1000000,
-			1000000
-		)
+		bodyGyro =
+			Instance.new(
+				"BodyGyro"
+			)
+
+		bodyGyro.Name =
+			"CreatorFlightGyro"
+
+		bodyGyro.MaxTorque =
+			Vector3.new(
+				1000000,
+				1000000,
+				1000000
+			)
+
 		bodyGyro.P = 50000
-		bodyGyro.CFrame = hrp.CFrame
+		bodyGyro.CFrame =
+			hrp.CFrame
+
 		bodyGyro.Parent = hrp
 
-		burst(hrp.CFrame, 10, GREEN_DARK, 0.3, "flight_start")
-		ring(hrp.CFrame, 3, 25, GREEN_BRIGHT, 0.4, "flight_start_ring")
-		particles(hrp, 40, GREEN_BRIGHT, "flight_particles")
+		burst(
+			hrp.CFrame,
+			10,
+			GREEN_DARK,
+			0.3,
+			"flight_start"
+		)
+
+		ring(
+			hrp.CFrame,
+			3,
+			25,
+			GREEN_BRIGHT,
+			0.4,
+			"flight_start_ring"
+		)
+
+		particles(
+			hrp,
+			40,
+			GREEN_BRIGHT,
+			"flight_particles"
+		)
 
 		task.spawn(function()
-			while flying and tool.Parent do
-				local characterNow, humanoidNow, hrpNow = getCharacter()
+			while flying
+				and tool.Parent
+			do
+				local characterNow,
+					humanoidNow,
+					hrpNow =
+					getCharacter()
 
 				if not characterNow
 					or not humanoidNow
@@ -1582,7 +2903,14 @@ local function createFlyTool()
 					break
 				end
 
-				local camera = workspace.CurrentCamera
+				if not bodyVelocity
+					or not bodyGyro
+				then
+					break
+				end
+
+				local camera =
+					workspace.CurrentCamera
 
 				if not camera then
 					break
@@ -1591,9 +2919,12 @@ local function createFlyTool()
 				local moveDirection =
 					humanoidNow.MoveDirection
 
-				local velocity = Vector3.zero
+				local velocity =
+					Vector3.zero
 
-				if moveDirection.Magnitude > 0.01 then
+				if moveDirection.Magnitude
+					> 0.01
+				then
 					velocity =
 						moveDirection.Unit
 						* CFG.FLY_SPEED
@@ -1604,16 +2935,20 @@ local function createFlyTool()
 				if UserInputService:IsKeyDown(
 					Enum.KeyCode.Space
 				) then
-					vertical += CFG.FLY_VERTICAL_SPEED
+					vertical +=
+						CFG.FLY_VERTICAL_SPEED
 				end
 
 				if UserInputService:IsKeyDown(
 					Enum.KeyCode.LeftControl
 				) then
-					vertical -= CFG.FLY_VERTICAL_SPEED
+					vertical -=
+						CFG.FLY_VERTICAL_SPEED
 				end
 
-				if moveDirection.Magnitude <= 0.01 then
+				if moveDirection.Magnitude
+					<= 0.01
+				then
 					velocity =
 						camera.CFrame.LookVector
 						* 2
@@ -1633,10 +2968,13 @@ local function createFlyTool()
 							+ camera.CFrame.LookVector
 					)
 
-				if allowed("flight_tick", 0.09) then
+				if allowed(
+					"flight_tick",
+					0.07
+				) then
 					particles(
 						hrpNow,
-						3,
+						4,
 						GREEN_BRIGHT
 					)
 				end
@@ -1648,17 +2986,33 @@ local function createFlyTool()
 		end)
 	end
 
-	tool.Activated:Connect(startFlight)
+	addConnection(
+		S.Connections,
 
-	tool.Unequipped:Connect(function()
-		stopFlight()
-	end)
+		tool.Activated:Connect(
+			startFlight
+		)
+	)
 
-	tool.AncestryChanged:Connect(function(_, parent)
-		if not parent then
-			stopFlight()
-		end
-	end)
+	addConnection(
+		S.Connections,
+
+		tool.Unequipped:Connect(
+			stopFlight
+		)
+	)
+
+	addConnection(
+		S.Connections,
+
+		tool.AncestryChanged:Connect(
+			function(_, parent)
+				if not parent then
+					stopFlight()
+				end
+			end
+		)
+	)
 end
 
 -- ============================================================
@@ -1666,79 +3020,131 @@ end
 -- ============================================================
 
 local function createRunTool()
-	destroyTool("Creator Run")
+	destroyTool(
+		"Creator Run"
+	)
 
-	local backpack = LocalPlayer:FindFirstChild("Backpack")
+	local backpack =
+		LocalPlayer:FindFirstChild(
+			"Backpack"
+		)
 
 	if not backpack then
 		return
 	end
 
-	local tool = Instance.new("Tool")
-	tool.Name = "Creator Run"
+	local tool =
+		Instance.new("Tool")
+
+	tool.Name =
+		"Creator Run"
+
 	tool.RequiresHandle = false
 	tool.CanBeDropped = false
-	tool.ToolTip = "CREATOR // PHANTOM RUN"
+	tool.ToolTip =
+		"CREATOR // PHANTOM RUN"
+
 	tool.Parent = backpack
 
 	S.Tools.Run = tool
 
 	local running = false
-	local track
-
-	tool.Equipped:Connect(function()
-		local _, humanoid, hrp = getCharacter()
-
-		if not humanoid or not hrp then
-			return
-		end
-
-		running = true
-
-		track = playAnimation(
-			humanoid,
-			"rbxassetid://18897115785",
-			Enum.AnimationPriority.Action,
-			1
-		)
-
-		while running and tool.Parent and humanoid.Health > 0 do
-			local direction = hrp.CFrame.LookVector
-
-			hrp.AssemblyLinearVelocity =
-				Vector3.new(
-					direction.X * CFG.RUN_SPEED,
-					hrp.AssemblyLinearVelocity.Y,
-					direction.Z * CFG.RUN_SPEED
-				)
-
-			if allowed("run_particles", 0.1) then
-				particles(hrp, 3, GREEN_BRIGHT)
-			end
-
-			RunService.Heartbeat:Wait()
-		end
-	end)
+	local track: AnimationTrack? = nil
 
 	local function stop()
 		running = false
+		S.Running = false
 
 		if track then
 			pcall(function()
-				track:Stop(0.1)
+				if track.IsPlaying then
+					track:Stop(0.1)
+				end
 			end)
+
+			removeTrackFromList(track)
+			safeDestroy(track)
 
 			track = nil
 		end
 	end
 
-	tool.Unequipped:Connect(stop)
+	addConnection(
+		S.Connections,
 
-	tool.AncestryChanged:Connect(function(_, parent)
-		if not parent then
-			stop()
-		end
-	end)
+		tool.Equipped:Connect(
+			function()
+				local _, humanoid, hrp =
+					getCharacter()
+
+				if not humanoid
+					or not hrp
+				then
+					return
+				end
+
+				if running then
+					return
+				end
+
+				running = true
+				S.Running = true
+
+				track =
+					playAnimation(
+						humanoid,
+						RUN_ANIMATION,
+						Enum.AnimationPriority.Action,
+						1
+					)
+
+				task.spawn(function()
+					while running
+						and tool.Parent
+						and humanoid.Health > 0
+					do
+						local direction =
+							hrp.CFrame.LookVector
+
+						hrp.AssemblyLinearVelocity =
+							Vector3.new(
+								direction.X
+									* CFG.RUN_SPEED,
+
+								hrp.AssemblyLinearVelocity.Y,
+
+								direction.Z
+									* CFG.RUN_SPEED
+							)
+
+						createDashEffect(hrp)
+
+						RunService.Heartbeat:Wait()
+					end
+				end)
+			end
+		)
+	)
+
+	addConnection(
+		S.Connections,
+
+		tool.Unequipped:Connect(
+			stop
+		)
+	)
+
+	addConnection(
+		S.Connections,
+
+		tool.AncestryChanged:Connect(
+			function(_, parent)
+				if not parent then
+					stop()
+				end
+			end
+		)
+	)
 end
 
 -- ============================================================
@@ -1746,71 +3152,148 @@ end
 -- ============================================================
 
 local function createTeleportTool()
-	destroyTool("Creator Teleport")
+	destroyTool(
+		"Creator Teleport"
+	)
 
-	local backpack = LocalPlayer:FindFirstChild("Backpack")
+	local backpack =
+		LocalPlayer:FindFirstChild(
+			"Backpack"
+		)
 
 	if not backpack then
 		return
 	end
 
-	local tool = Instance.new("Tool")
-	tool.Name = "Creator Teleport"
+	local tool =
+		Instance.new("Tool")
+
+	tool.Name =
+		"Creator Teleport"
+
 	tool.RequiresHandle = false
 	tool.CanBeDropped = false
-	tool.ToolTip = "CREATOR // NULL STEP"
+	tool.ToolTip =
+		"CREATOR // NULL STEP"
+
 	tool.Parent = backpack
 
 	S.Tools.Teleport = tool
 
-	tool.Activated:Connect(function()
-		local _, humanoid, hrp = getCharacter()
+	addConnection(
+		S.Connections,
 
-		if not humanoid or not hrp then
-			return
-		end
+		tool.Activated:Connect(
+			function()
+				local _, humanoid, hrp =
+					getCharacter()
 
-		if not mouse or not mouse.Hit then
-			return
-		end
+				if not humanoid
+					or not hrp
+					or humanoid.Health <= 0
+				then
+					return
+				end
 
-		local destination = mouse.Hit.Position
-		local oldCF = hrp.CFrame
+				if not mouse
+					or not mouse.Hit
+				then
+					return
+				end
 
-		burst(oldCF, 7, GREEN_DARK, 0.16, "tp_depart")
-		particles(hrp, 18, GREEN_BRIGHT, "tp_depart_particles")
+				local destination =
+					mouse.Hit.Position
 
-		task.wait(0.035)
+				local oldCF =
+					hrp.CFrame
 
-		local _, currentHumanoid, currentHRP = getCharacter()
+				burst(
+					oldCF,
+					7,
+					GREEN_DARK,
+					0.16,
+					"tp_depart"
+				)
 
-		if not currentHumanoid
-			or not currentHRP
-			or currentHumanoid.Health <= 0
-		then
-			return
-		end
+				particles(
+					hrp,
+					18,
+					GREEN_BRIGHT,
+					"tp_depart_particles"
+				)
 
-		local _, y, _ = oldCF:ToOrientation()
+				task.wait(0.035)
 
-		currentHRP.CFrame =
-			CFrame.new(destination)
-			* CFrame.Angles(0, y, 0)
+				local _, currentHumanoid,
+					currentHRP =
+					getCharacter()
 
-		currentHRP.AssemblyLinearVelocity = Vector3.zero
+				if not currentHumanoid
+					or not currentHRP
+					or currentHumanoid.Health <= 0
+				then
+					return
+				end
 
-		burst(currentHRP.CFrame, 9, GREEN_BRIGHT, 0.25, "tp_arrive")
-		ring(currentHRP.CFrame, 2, 20, GREEN_BRIGHT, 0.35, "tp_arrive_ring")
-		particles(currentHRP, 25, GREEN_BRIGHT, "tp_arrive_particles")
-	end)
+				local _, y, _ =
+					oldCF:ToOrientation()
+
+				currentHRP.CFrame =
+					CFrame.new(
+						destination
+					)
+					* CFrame.Angles(
+						0,
+						y,
+						0
+					)
+
+				currentHRP.AssemblyLinearVelocity =
+					Vector3.zero
+
+				burst(
+					currentHRP.CFrame,
+					9,
+					GREEN_BRIGHT,
+					0.25,
+					"tp_arrive"
+				)
+
+				ring(
+					currentHRP.CFrame,
+					2,
+					20,
+					GREEN_BRIGHT,
+					0.35,
+					"tp_arrive_ring"
+				)
+
+				particles(
+					currentHRP,
+					25,
+					GREEN_BRIGHT,
+					"tp_arrive_particles"
+				)
+
+				playSound(
+					currentHRP,
+					0.8,
+					1.2
+				)
+			end
+		)
+	)
 end
 
 -- ============================================================
--- ULTIMATE MOVES
+-- ULTIMATE
 -- ============================================================
 
-local function creatorUltimate(index: number)
-	local data = ULT_MOVES[index]
+local function creatorUltimate(
+	index: number
+)
+	local data =
+		ULT_MOVES[index]
 
 	if not data then
 		return
@@ -1820,55 +3303,131 @@ local function creatorUltimate(index: number)
 		return
 	end
 
-	if (S.Ultimate or 0) < CFG.ULT_MAX then
+	if (S.Ultimate or 0)
+		< CFG.ULT_MAX
+	then
 		return
 	end
 
-	local character, humanoid, hrp = getCharacter()
+	local character, humanoid, hrp =
+		getCharacter()
 
-	if not character or not humanoid or not hrp then
+	if not character
+		or not humanoid
+		or not hrp
+	then
 		return
 	end
 
 	S.Busy.Ult = true
 	S.Ultimate = 0
-	updateUltimateUI()
 
-	-- Stop normal animation clutter.
 	stopAnimations()
 
-	local track = playAnimation(
-		humanoid,
-		data.Animation,
-		Enum.AnimationPriority.Action4,
-		1,
-		1.25
-	)
+	local track =
+		playAnimation(
+			humanoid,
+			data.Animation,
+			Enum.AnimationPriority.Action4,
+			1,
+			1.4
+		)
 
 	-- ========================================================
 	-- ULT 1
-	-- CREATOR'S DECREE
 	-- ========================================================
 
 	if index == 1 then
-		burst(hrp.CFrame, 20, BLACK, 0.5, "ult1_black")
-		burst(hrp.CFrame, 11, GREEN_BRIGHT, 0.4, "ult1_green")
-		ring(hrp.CFrame, 5, 50, GREEN_BRIGHT, 0.65, "ult1_ring")
-		particles(hrp, 90, GREEN_BRIGHT, "ult1_particles")
+		burst(
+			hrp.CFrame,
+			20,
+			BLACK,
+			0.5,
+			"ult1_black"
+		)
 
-		local target = getClosestPlayer(500)
+		burst(
+			hrp.CFrame,
+			11,
+			GREEN_BRIGHT,
+			0.4,
+			"ult1_green"
+		)
+
+		ring(
+			hrp.CFrame,
+			5,
+			50,
+			GREEN_BRIGHT,
+			0.65,
+			"ult1_ring"
+		)
+
+		ring(
+			hrp.CFrame
+				* CFrame.Angles(
+					math.rad(90),
+					0,
+					0
+				),
+
+			4,
+			45,
+			GREEN_DARK,
+			0.65
+		)
+
+		particles(
+			hrp,
+			90,
+			GREEN_BRIGHT,
+			"ult1_particles"
+		)
+
+		playSound(
+			hrp,
+			2,
+			0.58
+		)
+
+		local target =
+			getClosestPlayer(
+				CFG.ULT_TARGET_RANGE
+			)
 
 		if target then
-			task.delay(0.25, function()
-				teleportBehindPlayer(target)
+			task.delay(
+				0.25,
+				function()
+					if S.Busy.Ult ~= true then
+						return
+					end
 
-				local _, _, currentHRP = getCharacter()
+					teleportBehindPlayer(target)
 
-				if currentHRP then
-					burst(currentHRP.CFrame, 22, GREEN_BRIGHT, 0.4)
-					ring(currentHRP.CFrame, 6, 55, GREEN_BRIGHT, 0.6)
+					local _, _, currentHRP =
+						getCharacter()
 
-					for i = 1, 12 do
+					if not currentHRP then
+						return
+					end
+
+					burst(
+						currentHRP.CFrame,
+						22,
+						GREEN_BRIGHT,
+						0.4
+					)
+
+					ring(
+						currentHRP.CFrame,
+						6,
+						55,
+						GREEN_BRIGHT,
+						0.6
+					)
+
+					for i = 1, 14 do
 						slash(
 							currentHRP.CFrame
 								* CFrame.Angles(
@@ -1876,39 +3435,99 @@ local function creatorUltimate(index: number)
 									math.rad(i * 31),
 									math.rad(i * 19)
 								),
+
 							16 + i,
-							0.5,
-							GREEN_BRIGHT
+							0.45,
+
+							i % 2 == 0
+								and GREEN_BRIGHT
+								or GREEN
 						)
 					end
-				end
-			end)
-		end
 
-		playSound(hrp, 2, 0.58)
+					particles(
+						currentHRP,
+						100,
+						GREEN_BRIGHT
+					)
+				end
+			)
+		end
 	end
 
 	-- ========================================================
 	-- ULT 2
-	-- NULL WORLD
 	-- ========================================================
 
 	if index == 2 then
-		local oldCF = hrp.CFrame
+		local oldCF =
+			hrp.CFrame
 
-		burst(oldCF, 22, BLACK, 0.45, "ult2_black")
-		ring(oldCF, 5, 65, GREEN_DARK, 0.75, "ult2_ring")
+		burst(
+			oldCF,
+			22,
+			BLACK,
+			0.45,
+			"ult2_black"
+		)
 
-		local target = getClosestPlayer(600)
+		burst(
+			oldCF,
+			9,
+			GREEN_BRIGHT,
+			0.3
+		)
 
-		if target and target.Character then
+		ring(
+			oldCF,
+			5,
+			65,
+			GREEN_DARK,
+			0.75,
+			"ult2_ring"
+		)
+
+		ring(
+			oldCF
+				* CFrame.Angles(
+					math.rad(90),
+					0,
+					0
+				),
+
+			5,
+			50,
+			GREEN_BRIGHT,
+			0.65
+		)
+
+		particles(
+			hrp,
+			110,
+			GREEN_BRIGHT,
+			"ult2_particles"
+		)
+
+		local target =
+			getClosestPlayer(
+				600
+			)
+
+		if target
+			and target.Character
+		then
 			local targetHRP =
-				target.Character:FindFirstChild("HumanoidRootPart")
+				target.Character:FindFirstChild(
+					"HumanoidRootPart"
+				)
 
-			if targetHRP and targetHRP:IsA("BasePart") then
+			if targetHRP
+				and targetHRP:IsA("BasePart")
+			then
 				local targetPosition =
 					targetHRP.Position
-					- targetHRP.CFrame.LookVector * 4
+					- targetHRP.CFrame.LookVector
+					* 4
 
 				hrp.CFrame =
 					CFrame.lookAt(
@@ -1916,142 +3535,319 @@ local function creatorUltimate(index: number)
 						targetHRP.Position
 					)
 
-				burst(hrp.CFrame, 15, GREEN_BRIGHT, 0.35)
-				particles(hrp, 75, GREEN_BRIGHT)
+				burst(
+					hrp.CFrame,
+					15,
+					GREEN_BRIGHT,
+					0.35
+				)
+
+				ring(
+					hrp.CFrame,
+					4,
+					45,
+					GREEN_BRIGHT,
+					0.5
+				)
+
+				particles(
+					hrp,
+					75,
+					GREEN_BRIGHT
+				)
 			end
 		end
 
-		playSound(hrp, 2, 0.5)
+		playSound(
+			hrp,
+			2,
+			0.5
+		)
 	end
 
 	-- ========================================================
 	-- ULT 3
-	-- ABSOLUTE OVERRIDE
 	-- ========================================================
 
 	if index == 3 then
-		burst(hrp.CFrame, 28, BLACK, 0.6, "ult3_black")
-		burst(hrp.CFrame, 14, GREEN_BRIGHT, 0.45, "ult3_green")
-		ring(hrp.CFrame, 7, 75, GREEN_BRIGHT, 0.8, "ult3_ring")
-		particles(hrp, 120, GREEN_BRIGHT, "ult3_particles")
+		burst(
+			hrp.CFrame,
+			28,
+			BLACK,
+			0.6,
+			"ult3_black"
+		)
 
-		for i = 1, 18 do
-			task.delay(i * 0.035, function()
-				local _, _, currentHRP = getCharacter()
+		burst(
+			hrp.CFrame,
+			14,
+			GREEN_BRIGHT,
+			0.45,
+			"ult3_green"
+		)
 
-				if currentHRP then
-					slash(
-						currentHRP.CFrame
-							* CFrame.Angles(
-								math.rad(i * 20),
-								math.rad(i * 37),
-								math.rad(i * 13)
-							),
-						20 + i,
-						0.6,
-						GREEN_BRIGHT
-					)
+		ring(
+			hrp.CFrame,
+			7,
+			75,
+			GREEN_BRIGHT,
+			0.8,
+			"ult3_ring"
+		)
+
+		ring(
+			hrp.CFrame
+				* CFrame.Angles(
+					math.rad(90),
+					0,
+					0
+				),
+
+			6,
+			68,
+			GREEN_DARK,
+			0.75
+		)
+
+		particles(
+			hrp,
+			120,
+			GREEN_BRIGHT,
+			"ult3_particles"
+		)
+
+		for i = 1, 22 do
+			task.delay(
+				i * 0.035,
+				function()
+					local _, _, currentHRP =
+						getCharacter()
+
+					if currentHRP then
+						slash(
+							currentHRP.CFrame
+								* CFrame.Angles(
+									math.rad(i * 20),
+									math.rad(i * 37),
+									math.rad(i * 13)
+								),
+
+							20 + i,
+							0.5 + i * 0.01,
+							GREEN_BRIGHT
+						)
+					end
 				end
-			end)
+			)
 		end
 
-		playSound(hrp, 2.3, 0.46)
+		playSound(
+			hrp,
+			2.3,
+			0.46
+		)
 	end
 
 	-- ========================================================
 	-- ULT 4
-	-- THE END OF EVERYTHING
 	-- ========================================================
 
 	if index == 4 then
-		local oldCF = hrp.CFrame
+		local oldCF =
+			hrp.CFrame
 
-		-- Huge black-green collapse.
-		burst(oldCF, 35, BLACK, 0.8, "ult4_black")
-		burst(oldCF, 18, GREEN_BRIGHT, 0.65, "ult4_green")
-		ring(oldCF, 8, 100, GREEN_BRIGHT, 1, "ult4_ring")
-		ring(oldCF, 12, 140, GREEN_DARK, 1.15, "ult4_ring2")
-		particles(hrp, 180, GREEN_BRIGHT, "ult4_particles")
+		burst(
+			oldCF,
+			35,
+			BLACK,
+			0.8,
+			"ult4_black"
+		)
 
-		local target = getClosestPlayer(1000)
+		burst(
+			oldCF,
+			18,
+			GREEN_BRIGHT,
+			0.65,
+			"ult4_green"
+		)
+
+		ring(
+			oldCF,
+			8,
+			100,
+			GREEN_BRIGHT,
+			1,
+			"ult4_ring"
+		)
+
+		ring(
+			oldCF,
+			12,
+			140,
+			GREEN_DARK,
+			1.15,
+			"ult4_ring2"
+		)
+
+		ring(
+			oldCF
+				* CFrame.Angles(
+					math.rad(90),
+					0,
+					0
+				),
+
+			8,
+			115,
+			GREEN_BRIGHT,
+			1
+		)
+
+		particles(
+			hrp,
+			180,
+			GREEN_BRIGHT,
+			"ult4_particles"
+		)
+
+		playSound(
+			hrp,
+			3,
+			0.4
+		)
+
+		local target =
+			getClosestPlayer(
+				1000
+			)
 
 		if target then
-			task.delay(0.3, function()
-				teleportBehindPlayer(target)
+			task.delay(
+				0.3,
+				function()
+					if not S.Busy.Ult then
+						return
+					end
 
-				local _, _, currentHRP = getCharacter()
+					teleportBehindPlayer(target)
 
-				if currentHRP then
-					local targetPosition = currentHRP.Position
+					local _, _, currentHRP =
+						getCharacter()
 
-					for i = 1, 24 do
-						task.delay(i * 0.025, function()
-							if not currentHRP.Parent then
-								return
+					if not currentHRP then
+						return
+					end
+
+					local targetPosition =
+						currentHRP.Position
+
+					for i = 1, 30 do
+						task.delay(
+							i * 0.025,
+							function()
+								if not currentHRP.Parent then
+									return
+								end
+
+								local angle =
+									math.rad(
+										i * 15
+									)
+
+								local radius =
+									5
+									+ i * 0.42
+
+								local offset =
+									Vector3.new(
+										math.cos(angle)
+											* radius,
+
+										math.sin(angle)
+											* 3,
+
+										math.sin(angle)
+											* radius
+									)
+
+								local effectCF =
+									CFrame.lookAt(
+										targetPosition
+											+ offset,
+
+										targetPosition
+									)
+
+								slash(
+									effectCF,
+									12 + i,
+									0.5,
+									GREEN_BRIGHT
+								)
 							end
-
-							local angle =
-								math.rad(i * 15)
-
-							local offset =
-								Vector3.new(
-									math.cos(angle) * (5 + i * 0.4),
-									math.sin(angle) * 3,
-									math.sin(angle) * (5 + i * 0.4)
-								)
-
-							local effectCF =
-								CFrame.lookAt(
-									targetPosition + offset,
-									targetPosition
-								)
-
-							slash(
-								effectCF,
-								12 + i,
-								0.55,
-								GREEN_BRIGHT
-							)
-						end)
+						)
 					end
 				end
-			end)
+			)
 		end
 
-		task.delay(0.75, function()
-			local _, _, currentHRP = getCharacter()
+		task.delay(
+			0.78,
+			function()
+				local _, _, currentHRP =
+					getCharacter()
 
-			if currentHRP then
-				burst(
-					currentHRP.CFrame,
-					35,
-					GREEN_BRIGHT,
-					0.8
-				)
+				if currentHRP then
+					burst(
+						currentHRP.CFrame,
+						35,
+						GREEN_BRIGHT,
+						0.8
+					)
 
-				ring(
-					currentHRP.CFrame,
-					10,
-					150,
-					GREEN_BRIGHT,
-					1
-				)
+					burst(
+						currentHRP.CFrame,
+						18,
+						BLACK,
+						0.65
+					)
+
+					ring(
+						currentHRP.CFrame,
+						10,
+						150,
+						GREEN_BRIGHT,
+						1
+					)
+
+					particles(
+						currentHRP,
+						150,
+						GREEN_BRIGHT
+					)
+				end
 			end
-		end)
-
-		playSound(hrp, 3, 0.4)
+		)
 	end
 
-	task.delay(1.25, function()
-		if track then
-			pcall(function()
-				track:Stop(0.08)
-			end)
-		end
+	task.delay(
+		1.4,
+		function()
+			if track then
+				pcall(function()
+					if track.IsPlaying then
+						track:Stop(0.08)
+					end
+				end)
 
-		S.Busy.Ult = nil
-		updateUltimateUI()
-	end)
+				removeTrackFromList(track)
+				safeDestroy(track)
+			end
+
+			S.Busy.Ult = nil
+		end
+	)
 end
 
 -- ============================================================
@@ -2064,162 +3860,273 @@ local function setupMoveHandler(
 	hrp: BasePart,
 	token: number
 )
-	addCharacterConnection(
-		humanoid.AnimationPlayed:Connect(function(track)
-			if token ~= S.Token then
-				return
-			end
+	addConnection(
+		S.CharacterConnections,
 
-			if not track.Animation then
-				return
-			end
+		humanoid.AnimationPlayed:Connect(
+			function(track)
+				if token ~= S.Token then
+					return
+				end
 
-			local id = track.Animation.AnimationId
+				if not track.Animation then
+					return
+				end
 
-			if id == MOVE1_TRIGGER then
-				pcall(function()
-					track:Stop()
-				end)
+				local id =
+					track.Animation.AnimationId
 
-				creatorMove1(token)
-				return
-			end
-
-			if id == MOVE2_TRIGGER then
-				pcall(function()
-					track:Stop()
-				end)
-
-				creatorMove2(token)
-				return
-			end
-
-			if id == MOVE3_TRIGGER then
-				pcall(function()
-					track:Stop()
-				end)
-
-				creatorMove3()
-				return
-			end
-
-			if id == MOVE4_TRIGGER then
-				pcall(function()
-					track:Stop()
-				end)
-
-				creatorMove4()
-				return
-			end
-
-			if id == SPECIAL_TRIGGER then
-				pcall(function()
-					track:Stop()
-				end)
-
-				playAnimation(
-					humanoid,
-					SPECIAL_ANIMATION,
-					Enum.AnimationPriority.Action4,
-					1,
-					0.9
-				)
-
-				return
-			end
-
-			for index, data in ipairs(ULT_MOVES) do
-				if id == data.Trigger then
+				if id == MOVE1_TRIGGER then
 					pcall(function()
 						track:Stop()
 					end)
 
-					creatorUltimate(index)
+					creatorMove1(token)
 					return
 				end
+
+				if id == MOVE2_TRIGGER then
+					pcall(function()
+						track:Stop()
+					end)
+
+					creatorMove2(token)
+					return
+				end
+
+				if id == MOVE3_TRIGGER then
+					pcall(function()
+						track:Stop()
+					end)
+
+					creatorMove3()
+					return
+				end
+
+				if id == MOVE4_TRIGGER then
+					pcall(function()
+						track:Stop()
+					end)
+
+					creatorMove4()
+					return
+				end
+
+				if id == SPECIAL_TRIGGER then
+					pcall(function()
+						track:Stop()
+					end)
+
+					playAnimation(
+						humanoid,
+						SPECIAL_ANIMATION,
+						Enum.AnimationPriority.Action4,
+						1,
+						0.9
+					)
+
+					burst(
+						hrp.CFrame,
+						10,
+						GREEN_BRIGHT,
+						0.25
+					)
+
+					particles(
+						hrp,
+						35,
+						GREEN_BRIGHT
+					)
+
+					return
+				end
+
+				for index, data in ipairs(
+					ULT_MOVES
+				) do
+					if id == data.Trigger then
+						pcall(function()
+							track:Stop()
+						end)
+
+						creatorUltimate(index)
+						return
+					end
+				end
 			end
-		end)
+		)
 	)
 end
 
 -- ============================================================
--- SPAWN VFX
+-- SPAWN EFFECT
 -- ============================================================
 
-local function spawnEffect(character: Model, hrp: BasePart)
-	burst(hrp.CFrame, 11, BLACK, 0.35, "spawn_black")
-	burst(hrp.CFrame, 8, GREEN_BRIGHT, 0.3, "spawn_green")
-	ring(hrp.CFrame, 2, 25, GREEN_BRIGHT, 0.45, "spawn_ring")
-	particles(hrp, 50, GREEN_BRIGHT, "spawn_particles")
+local function spawnEffect(
+	character: Model,
+	hrp: BasePart
+)
+	-- Initial black collapse
+	burst(
+		hrp.CFrame,
+		11,
+		BLACK,
+		0.35,
+		"spawn_black"
+	)
 
-	local highlight = Instance.new("Highlight")
-	highlight.Name = "CreatorSpawnHighlight"
-	highlight.FillColor = GREEN_DARK
-	highlight.OutlineColor = GREEN_BRIGHT
-	highlight.FillTransparency = 0.75
-	highlight.OutlineTransparency = 0
-	highlight.DepthMode = Enum.HighlightDepthMode.Occluded
-	highlight.Parent = character
+	-- Green core
+	burst(
+		hrp.CFrame,
+		8,
+		GREEN_BRIGHT,
+		0.3,
+		"spawn_green"
+	)
+
+	-- Ground shockwave
+	ring(
+		hrp.CFrame
+			* CFrame.Angles(
+				0,
+				0,
+				math.rad(90)
+			),
+
+		2,
+		25,
+		GREEN_BRIGHT,
+		0.45,
+		"spawn_ring"
+	)
+
+	ring(
+		hrp.CFrame
+			* CFrame.Angles(
+				math.rad(90),
+				0,
+				0
+			),
+
+		2,
+		20,
+		GREEN_DARK,
+		0.5
+	)
+
+	particles(
+		hrp,
+		50,
+		GREEN_BRIGHT,
+		"spawn_particles"
+	)
+
+	-- Character flash
+	local highlight =
+		Instance.new("Highlight")
+
+	highlight.Name =
+		"CreatorSpawnHighlight"
+
+	highlight.FillColor =
+		GREEN_DARK
+
+	highlight.OutlineColor =
+		GREEN_BRIGHT
+
+	highlight.FillTransparency =
+		0.72
+
+	highlight.OutlineTransparency =
+		0
+
+	highlight.DepthMode =
+		Enum.HighlightDepthMode.Occluded
+
+	highlight.Parent =
+		character
 
 	TweenService:Create(
 		highlight,
-		TweenInfo.new(0.8, Enum.EasingStyle.Quint),
+		TweenInfo.new(
+			0.85,
+			Enum.EasingStyle.Quint
+		),
 		{
 			FillTransparency = 1,
 			OutlineTransparency = 1,
 		}
 	):Play()
 
-	Debris:AddItem(highlight, 0.9)
+	Debris:AddItem(
+		highlight,
+		1
+	)
+
+	playSound(
+		hrp,
+		1.25,
+		0.75
+	)
 end
 
 -- ============================================================
--- HAND GLOW
+-- MOVEMENT MONITOR
 -- ============================================================
 
-local function setupHandGlow(character: Model)
-	local limbNames = {
-		"Left Arm",
-		"Right Arm",
-		"LeftHand",
-		"RightHand",
-		"LeftLowerArm",
-		"RightLowerArm",
-	}
+local function setupMovementEffects(
+	humanoid: Humanoid,
+	hrp: BasePart,
+	token: number
+)
+	local lastPosition =
+		hrp.Position
 
-	for _, limbName in ipairs(limbNames) do
-		local limb = character:FindFirstChild(limbName)
+	local lastDash =
+		0
 
-		if limb and limb:IsA("BasePart") then
-			local old = limb:FindFirstChild("CreatorHandGlow")
+	addConnection(
+		S.CharacterConnections,
 
-			if old then
-				old:Destroy()
+		RunService.Heartbeat:Connect(
+			function()
+				if token ~= S.Token then
+					return
+				end
+
+				if not hrp.Parent
+					or humanoid.Health <= 0
+				then
+					return
+				end
+
+				local current =
+					hrp.Position
+
+				local delta =
+					current - lastPosition
+
+				local speed =
+					delta.Magnitude
+					/ math.max(
+						RunService.Heartbeat:Wait(),
+						0.016
+					)
+
+				lastPosition = current
+
+				-- Only trigger the effect when actual
+				-- movement is fast enough.
+				if speed > 75
+					and os.clock() - lastDash > 0.13
+				then
+					lastDash = os.clock()
+
+					createDashEffect(hrp)
+				end
 			end
-
-			local attachment = Instance.new("Attachment")
-			attachment.Name = "CreatorHandGlow"
-			attachment.Parent = limb
-
-			local emitter = Instance.new("ParticleEmitter")
-			emitter.Color = ColorSequence.new(
-				GREEN_WHITE,
-				GREEN_BRIGHT
-			)
-			emitter.LightEmission = 1
-			emitter.Rate = 2
-			emitter.Lifetime = NumberRange.new(0.2, 0.45)
-			emitter.Speed = NumberRange.new(0.2, 1)
-			emitter.SpreadAngle = Vector2.new(180, 180)
-
-			emitter.Size = NumberSequence.new({
-				NumberSequenceKeypoint.new(0, 0.35),
-				NumberSequenceKeypoint.new(1, 0),
-			})
-
-			emitter.Parent = attachment
-		end
-	end
+		)
+	)
 end
 
 -- ============================================================
@@ -2227,53 +4134,92 @@ end
 -- ============================================================
 
 local function cleanupCharacter()
-	disconnectList(S.CharacterConnections)
+	disconnectList(
+		S.CharacterConnections
+	)
+
 	stopAnimations()
 
 	S.Busy = {}
 	S.Flying = false
+	S.Running = false
 
-	table.clear(S.LastVFX)
+	table.clear(
+		S.LastVFX
+	)
 
-	local vfx = workspace:FindFirstChild("TheCreator_VFX")
+	local vfx =
+		workspace:FindFirstChild(
+			"TheCreator_VFX"
+		)
 
 	if vfx then
-		pcall(function()
-			vfx:Destroy()
-		end)
+		safeDestroy(vfx)
 	end
+
+	for _, tool in pairs(
+		S.Tools
+	) do
+		if tool
+			and tool:IsA("Tool")
+		then
+			safeDestroy(tool)
+		end
+	end
+
+	table.clear(S.Tools)
 end
 
 -- ============================================================
 -- CHARACTER SETUP
 -- ============================================================
 
-local function setupCharacter(character: Model)
+local function setupCharacter(
+	character: Model
+)
 	S.Token += 1
 
-	local token = S.Token
+	local token =
+		S.Token
 
 	cleanupCharacter()
 
 	S.Ultimate = 0
 
-	local humanoid = character:WaitForChild(
-		"Humanoid",
-		10
-	) :: Humanoid?
+	local humanoid =
+		character:WaitForChild(
+			"Humanoid",
+			10
+		) :: Humanoid?
 
-	local hrp = character:WaitForChild(
-		"HumanoidRootPart",
-		10
-	) :: BasePart?
+	local hrp =
+		character:WaitForChild(
+			"HumanoidRootPart",
+			10
+		) :: BasePart?
 
-	if not humanoid or not hrp then
+	if not humanoid
+		or not hrp
+	then
 		return
 	end
 
-	spawnEffect(character, hrp)
-	setupHandGlow(character)
+	-- Spawn
+	spawnEffect(
+		character,
+		hrp
+	)
 
+	-- Permanent Creator visuals
+	setupHandGlow(
+		character
+	)
+
+	setupCreatorAura(
+		character
+	)
+
+	-- Move triggers
 	setupMoveHandler(
 		character,
 		humanoid,
@@ -2281,133 +4227,156 @@ local function setupCharacter(character: Model)
 		token
 	)
 
-	createCreatorUltimateUI()
-	updateUltimateUI()
+	-- Movement visuals
+	setupMovementEffects(
+		humanoid,
+		hrp,
+		token
+	)
 
+	-- Refresh the game's own UI.
 	task.spawn(function()
-		for _ = 1, 20 do
+		for _ = 1, 30 do
 			if token ~= S.Token then
 				return
 			end
 
-			fixCharacterTab()
-			refreshMoveBar()
-			styleExistingUltimateBar()
-			updateUltimateUI()
+			pcall(function()
+				fixCharacterTab()
+				refreshMoveBar()
+				styleExistingUltimateBar()
+			end)
 
 			task.wait(0.15)
 		end
 	end)
 
-	task.delay(0.5, function()
-		if token == S.Token then
+	-- Tools
+	task.delay(
+		0.35,
+		function()
+			if token ~= S.Token then
+				return
+			end
+
 			createFlyTool()
 			createRunTool()
 			createTeleportTool()
 		end
-	end)
+	)
 
-	addCharacterConnection(
-		humanoid.Died:Connect(function()
-			S.Busy = {}
-			S.Flying = false
-			stopAnimations()
-		end)
+	addConnection(
+		S.CharacterConnections,
+
+		humanoid.Died:Connect(
+			function()
+				S.Busy = {}
+				S.Flying = false
+				S.Running = false
+
+				stopAnimations()
+			end
+		)
 	)
 end
 
 -- ============================================================
--- INPUT
--- ============================================================
-
-table.insert(
-	S.Connections,
-	UserInputService.InputBegan:Connect(function(
-		input,
-		processed
-	)
-		if processed then
-			return
-		end
-
-		-- G = instantly fill ultimate for testing/use.
-		-- Remove this block if you do not want it.
-		if input.KeyCode == Enum.KeyCode.G then
-			S.Ultimate = CFG.ULT_MAX
-			updateUltimateUI()
-			return
-		end
-	end)
-)
-
--- ============================================================
--- INITIALIZE
--- ============================================================
-
-if not S.Started then
-	S.Started = true
-
-	table.insert(
-		S.Connections,
-		LocalPlayer.CharacterAdded:Connect(function(character)
-			task.spawn(function()
-				character:WaitForChild("Humanoid", 10)
-				character:WaitForChild("HumanoidRootPart", 10)
-
-				task.wait(0.2)
-
-				setupCharacter(character)
-			end)
-		end)
-	)
-
-	-- Keep UI alive if the game recreates it.
-	task.spawn(function()
-		while LocalPlayer.Parent do
-			pcall(function()
-				fixCharacterTab()
-				refreshMoveBar()
-				styleExistingUltimateBar()
-				updateUltimateUI()
-			end)
-
-			task.wait(0.3)
-		end
-	end)
-end
-
--- ============================================================
--- CURRENT CHARACTER
--- ============================================================
-
-local currentCharacter = LocalPlayer.Character
-
-if currentCharacter then
-	task.spawn(function()
-		setupCharacter(currentCharacter)
-	end)
-else
-	task.spawn(function()
-		local character = LocalPlayer.CharacterAdded:Wait()
-		setupCharacter(character)
-	end)
-end
-
--- ============================================================
--- FINAL TOOL SETUP
+-- GLOBAL UI REFRESH
 -- ============================================================
 
 task.spawn(function()
-	local backpack = LocalPlayer:WaitForChild(
-		"Backpack",
-		10
+	while LocalPlayer.Parent
+		and S.Started
+	do
+		pcall(function()
+			fixCharacterTab()
+			refreshMoveBar()
+			styleExistingUltimateBar()
+		end)
+
+		task.wait(0.3)
+	end
+end)
+
+-- ============================================================
+-- CHARACTER ADDED
+-- ============================================================
+
+addConnection(
+	S.Connections,
+
+	LocalPlayer.CharacterAdded:Connect(
+		function(character)
+			task.spawn(function()
+				character:WaitForChild(
+					"Humanoid",
+					10
+				)
+
+				character:WaitForChild(
+					"HumanoidRootPart",
+					10
+				)
+
+				task.wait(0.15)
+
+				if S.Started then
+					setupCharacter(
+						character
+					)
+				end
+			end)
+		end
 	)
+)
+
+-- ============================================================
+-- INITIAL CHARACTER
+-- ============================================================
+
+local currentCharacter =
+	LocalPlayer.Character
+
+if currentCharacter then
+	task.spawn(function()
+		setupCharacter(
+			currentCharacter
+		)
+	end)
+end
+
+-- ============================================================
+-- MUSIC
+-- ============================================================
+
+task.spawn(function()
+	task.wait(0.75)
+
+	if S.Started then
+		setupCreatorMusic()
+	end
+end)
+
+-- ============================================================
+-- FINAL TOOL BACKUP
+-- ============================================================
+
+task.spawn(function()
+	local backpack =
+		LocalPlayer:WaitForChild(
+			"Backpack",
+			10
+		)
 
 	if not backpack then
 		return
 	end
 
-	task.wait(0.5)
+	task.wait(0.7)
+
+	if not S.Started then
+		return
+	end
 
 	createFlyTool()
 	createRunTool()
@@ -2415,23 +4384,82 @@ task.spawn(function()
 end)
 
 -- ============================================================
--- FINAL UI SETUP
+-- DESTROY
 -- ============================================================
 
-task.spawn(function()
-	createCreatorUltimateUI()
-
-	for _ = 1, 35 do
-		pcall(function()
-			fixCharacterTab()
-			refreshMoveBar()
-			styleExistingUltimateBar()
-			updateUltimateUI()
-		end)
-
-		task.wait(0.12)
+S.Destroy = function()
+	if not S.Started then
+		return
 	end
-end)
+
+	S.Started = false
+
+	S.Token += 1
+
+	disconnectList(
+		S.CharacterConnections
+	)
+
+	disconnectList(
+		S.Connections
+	)
+
+	stopAnimations()
+
+	for _, tool in pairs(
+		S.Tools
+	) do
+		if tool then
+			safeDestroy(tool)
+		end
+	end
+
+	table.clear(
+		S.Tools
+	)
+
+	if S.Music then
+		safeDestroy(S.Music)
+		S.Music = nil
+	end
+
+	local audio =
+		workspace:FindFirstChild(
+			"TheCreator_Audio"
+		)
+
+	if audio then
+		safeDestroy(audio)
+	end
+
+	local vfx =
+		workspace:FindFirstChild(
+			"TheCreator_VFX"
+		)
+
+	if vfx then
+		safeDestroy(vfx)
+	end
+
+	local playerGui =
+		LocalPlayer:FindFirstChildOfClass(
+			"PlayerGui"
+		)
+
+	if playerGui then
+		-- Only remove our own UI if one exists.
+		-- The updated version does not create a custom
+		-- bottom Ultimate UI.
+		local oldUI =
+			playerGui:FindFirstChild(
+				"TheCreatorUltimateUI"
+			)
+
+		if oldUI then
+			safeDestroy(oldUI)
+		end
+	end
+end
 
 -- ============================================================
 -- NOTIFICATION
@@ -2441,9 +4469,14 @@ pcall(function()
 	StarterGui:SetCore(
 		"SendNotification",
 		{
-			Title = "T̷H̷E̷  C̷R̷E̷A̷T̷O̷R̷",
-			Text = "P̷H̷A̷N̷T̷O̷M̷  E̷N̷G̷I̷N̷E̷  //  O̷N̷L̷I̷N̷E̷",
+			Title =
+				"T̷H̷E̷  C̷R̷E̷A̷T̷O̷R̷",
+
+			Text =
+				"P̷H̷A̷N̷T̷O̷M̷  E̷N̷G̷I̷N̷E̷  //  O̷N̷L̷I̷N̷E̷",
+
 			Icon = DECAL_THUMB,
+
 			Duration = 3,
 		}
 	)
