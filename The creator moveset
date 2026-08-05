@@ -1,31 +1,37 @@
 --!strict
 -- ================================================================
--- THE CREATOR // R4FIX FINAL GLITCHED EDITION V2
+-- THE CREATOR // R4FIX FINAL GLITCHED EDITION
 -- ================================================================
--- ONE SCRIPT
+-- Place: The Strongest Battlegrounds
+-- PlaceId: 10449761463
 --
--- Target:
---     The Strongest Battlegrounds
---     PlaceId: 10449761463
+-- IDENTITY:
+--     THE CREATOR
 --
 -- CORE:
---     M1  = Closest-target lock -> behind TP -> Creator strike
---     1   = VOID EXECUTION
---     2   = REALITY BREAKER
---     3   = CREATOR'S GRASP
---     4   = ABSOLUTE OVERRIDE
+--     Move 1 = VOID EXECUTION + PHANTOM ENGINE
+--     Move 2 = REALITY BREAKER + PHANTOM ENGINE + VOID TP
+--     Move 3 = CREATOR'S GRASP
+--     Move 4 = ABSOLUTE OVERRIDE
 --
--- IMPORTANT:
---     This is a CLIENT-SIDE moveset/effects script.
---     It does not pretend to have server-authoritative damage APIs.
---
--- UI:
---     Uses ONLY existing TSB UI.
---     Does NOT create a bottom custom ability UI.
---
--- MUSIC:
---     Optional executor local-file support.
---     Requires writefile + getcustomasset/getcustomasset equivalent.
+-- FEATURES:
+--     * Existing TSB UI only
+--     * Existing hotbar gets corrupted/glitched
+--     * Existing ultimate bar gets corrupted/glitched
+--     * Creator selection is continuously enforced
+--     * M1 nearest-target behind-teleport
+--     * Custom animation chains
+--     * Phantom Engine
+--     * Void teleport
+--     * Creator-green VFX recolor
+--     * TSB ReplicatedStorage VFX templates
+--     * Spawn / idle / walk / run / dash effects
+--     * Head text typewriter corruption
+--     * Flight tool
+--     * Teleport tool
+--     * Run tool
+--     * Soviet Anthem local asset support
+--     * Respawn-safe
 --
 -- R4FIX
 -- ================================================================
@@ -34,6 +40,7 @@ local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 local Debris = game:GetService("Debris")
+local Lighting = game:GetService("Lighting")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local UserInputService = game:GetService("UserInputService")
 local StarterGui = game:GetService("StarterGui")
@@ -50,10 +57,10 @@ if game.PlaceId ~= 10449761463 then
 end
 
 -- ================================================================
--- EXECUTOR STATE
+-- EXECUTOR ENVIRONMENT
 -- ================================================================
 
-local GEN: any = nil
+local GEN = nil
 
 pcall(function()
 	GEN = getgenv()
@@ -63,11 +70,7 @@ if not GEN then
 	return
 end
 
-if GEN.R4FixCreatorV2 then
-	GEN.R4FixCreatorV2.Token += 1
-end
-
-GEN.R4FixCreatorV2 = GEN.R4FixCreatorV2 or {
+GEN.R4FixCreator = GEN.R4FixCreator or {
 	Started = false,
 	Token = 0,
 	Connections = {},
@@ -76,12 +79,79 @@ GEN.R4FixCreatorV2 = GEN.R4FixCreatorV2 or {
 	Busy = {},
 	LastFX = {},
 	Tools = {},
+	UIObjects = {},
 }
 
-local S = GEN.R4FixCreatorV2
+local S = GEN.R4FixCreator
 
 -- ================================================================
--- CONSTANTS
+-- CLEANUP
+-- ================================================================
+
+local function disconnectList(list)
+	for i = #list, 1, -1 do
+		local connection = list[i]
+
+		pcall(function()
+			connection:Disconnect()
+		end)
+
+		list[i] = nil
+	end
+end
+
+local function addCharacterConnection(connection)
+	if connection then
+		table.insert(S.CharacterConnections, connection)
+	end
+
+	return connection
+end
+
+local function cleanupTracks()
+	for i = #S.Tracks, 1, -1 do
+		local track = S.Tracks[i]
+
+		pcall(function()
+			if track.IsPlaying then
+				track:Stop(0.05)
+			end
+		end)
+
+		pcall(function()
+			track:Destroy()
+		end)
+
+		S.Tracks[i] = nil
+	end
+end
+
+local function cleanupCharacter()
+	disconnectList(S.CharacterConnections)
+	cleanupTracks()
+
+	S.Busy = {}
+	table.clear(S.LastFX)
+
+	local old = Workspace:FindFirstChild("R4Fix_CreatorFX")
+
+	if old then
+		pcall(function()
+			old:Destroy()
+		end)
+	end
+
+	local oldText = Workspace:FindFirstChild("R4Fix_CreatorText")
+
+	if oldText then
+		pcall(function()
+			oldText:Destroy()
+		end)
+	end
+end
+
+-- ================================================================
+-- IDENTITY
 -- ================================================================
 
 local PLACE_ID = 10449761463
@@ -91,57 +161,61 @@ local MOVESET_NAME = "The Creator"
 local DECAL_ID = "rbxassetid://666236509"
 
 local CREATOR_GREEN = Color3.fromRGB(40, 255, 125)
-local CREATOR_LIME = Color3.fromRGB(135, 255, 165)
 local CREATOR_GREEN_DARK = Color3.fromRGB(5, 65, 30)
 local CREATOR_GREEN_DEEP = Color3.fromRGB(0, 22, 10)
+local CREATOR_LIME = Color3.fromRGB(135, 255, 165)
 
 local BLACK = Color3.fromRGB(0, 0, 0)
 local WHITE = Color3.fromRGB(235, 255, 240)
 
+-- ================================================================
+-- CONFIG
+-- ================================================================
+
 local CFG = {
 	TargetRange = 250,
+	M1BehindDistance = 3.15,
 
-	-- M1 positioning
-	M1BehindDistance = 3.25,
-	M1FacingDistance = 3.0,
-	M1Cooldown = 0.075,
-
-	-- Phantom
 	PhantomSpeed = 330,
-	PhantomDuration1 = 0.42,
-	PhantomDuration2 = 0.62,
+	PhantomDuration1 = 0.65,
+	PhantomDuration2 = 0.82,
 
-	-- Void
 	VoidDistance = 850,
-	VoidDuration = 0.72,
+	VoidDuration = 1.15,
 
-	-- Effects
-	VFXCooldown = 0.035,
-	MaxVFXLifetime = 0.55,
+	M1Cooldown = 0.08,
 
-	-- UI
-	GlitchUIChance = 0.32,
+	VFXCooldown = 0.045,
 
-	-- Billboard
+	MaxVFXLifetime = 0.48,
+
+	GlitchUIChance = 0.35,
+
 	HeadTextDistance = 70,
 
-	-- Tools
 	FlightSpeed = 105,
+
 	RunSpeed = 125,
 }
 
 -- ================================================================
 -- ANIMATION LIBRARY
 -- ================================================================
+-- These are deliberately mixed from the supplied animation set
+-- instead of making every Creator action look like Garou.
 
 local ANIM = {
+
+	-- Spawn
 	Spawn = "rbxassetid://18716865654",
 
+	-- Custom combat chain
 	M1_1 = "rbxassetid://15259161390",
 	M1_2 = "rbxassetid://16515503507",
 	M1_3 = "rbxassetid://18715998497",
 	M1_4 = "rbxassetid://18716871856",
 
+	-- Ability animations
 	Move1 = "rbxassetid://15436465829",
 	Move1Finisher = "rbxassetid://15436668469",
 
@@ -154,15 +228,20 @@ local ANIM = {
 	Move4 = "rbxassetid://16737255386",
 	Move4End = "rbxassetid://17464644182",
 
+	-- Special
 	Special = "rbxassetid://12460977270",
 
+	-- Ultimate
 	Ult1 = "rbxassetid://12467789963",
 	Ult2 = "rbxassetid://18897118507",
 	Ult3 = "rbxassetid://16737255386",
 	Ult4 = "rbxassetid://17571752869",
 
+	-- Movement
 	Walk = "rbxassetid://18893366575",
 	Run = "rbxassetid://18897115785",
+
+	-- Extra Creator-like motion
 	Dash = "rbxassetid://12832505612",
 	Idle = "rbxassetid://18717034991",
 }
@@ -180,92 +259,101 @@ local SOUND_IDS = {
 local SONG_URL =
 	"https://github.com/r4faelllaust/R4Fix/raw/refs/heads/main/Soviet_Anthem_Instrumental_1955.ogg.mp3"
 
--- ================================================================
--- CLEANUP
--- ================================================================
-
-local function disconnectList(list: {RBXScriptConnection})
-	for i = #list, 1, -1 do
-		local connection = list[i]
-
-		pcall(function()
-			connection:Disconnect()
-		end)
-
-		list[i] = nil
-	end
-end
-
-local function addCharacterConnection(connection: RBXScriptConnection?)
-	if connection then
-		table.insert(S.CharacterConnections, connection)
+local function playImpactSound(parent: Instance?, volume: number?, speed: number?)
+	if not parent or not parent.Parent then
+		return
 	end
 
-	return connection
-end
+	local sound = Instance.new("Sound")
 
-local function cleanupTracks()
-	for i = #S.Tracks, 1, -1 do
-		local track = S.Tracks[i]
+	sound.Name = "CreatorImpact"
+	sound.SoundId = SOUND_IDS[math.random(1, #SOUND_IDS)]
+	sound.Volume = volume or 1
+	sound.PlaybackSpeed = speed or 1
+	sound.RollOffMaxDistance = 100
+	sound.Parent = parent
 
-		pcall(function()
-			track:Stop(0.05)
-		end)
+	pcall(function()
+		sound:Play()
+	end)
 
-		pcall(function()
-			track:Destroy()
-		end)
-
-		S.Tracks[i] = nil
-	end
-end
-
-local function destroyCreatorObjects()
-	local fx = Workspace:FindFirstChild("R4Fix_CreatorFX")
-
-	if fx then
-		pcall(function()
-			fx:Destroy()
-		end)
-	end
-
-	local text = Workspace:FindFirstChild("R4Fix_CreatorText")
-
-	if text then
-		pcall(function()
-			text:Destroy()
-		end)
-	end
-end
-
-local function cleanupCharacter()
-	disconnectList(S.CharacterConnections)
-	cleanupTracks()
-
-	S.Busy = {}
-	table.clear(S.LastFX)
-
-	destroyCreatorObjects()
-
-	local character = LocalPlayer.Character
-
-	if character then
-		local root = character:FindFirstChild("HumanoidRootPart")
-
-		if root then
-			local music = root:FindFirstChild("R4FixCreatorMusic")
-
-			if music then
-				pcall(function()
-					music:Destroy()
-				end)
-			end
-		end
-	end
+	Debris:AddItem(sound, 4)
 end
 
 -- ================================================================
--- CHARACTER HELPERS
+-- SONG
+-- ================================================================
+
+local function loadCreatorSong()
+	local writeFile = nil
+	local getCustomAsset = nil
+
+	pcall(function()
+		writeFile = writefile
+	end)
+
+	pcall(function()
+		getCustomAsset = getcustomasset
+	end)
+
+	if not writeFile or not getCustomAsset then
+		return nil
+	end
+
+	local fileName = "R4Fix_Creator_Soviet_Anthem.mp3"
+
+	local ok = pcall(function()
+		writeFile(fileName, game:HttpGet(SONG_URL))
+	end)
+
+	if not ok then
+		return nil
+	end
+
+	local asset
+
+	pcall(function()
+		asset = getCustomAsset(fileName)
+	end)
+
+	return asset
+end
+
+local function startCreatorSong(character: Model)
+	local root = character:FindFirstChild("HumanoidRootPart")
+
+	if not root then
+		return
+	end
+
+	local asset = loadCreatorSong()
+
+	if not asset then
+		return
+	end
+
+	local old = root:FindFirstChild("R4FixCreatorMusic")
+
+	if old then
+		old:Destroy()
+	end
+
+	local sound = Instance.new("Sound")
+
+	sound.Name = "R4FixCreatorMusic"
+	sound.SoundId = asset
+	sound.Volume = 0.38
+	sound.Looped = true
+	sound.RollOffMaxDistance = 10000
+	sound.Parent = root
+
+	pcall(function()
+		sound:Play()
+	end)
+end
+
+-- ================================================================
+-- CHARACTER
 -- ================================================================
 
 local function getCharacter()
@@ -303,8 +391,8 @@ local function playAnimation(
 	speed: number?,
 	looped: boolean?,
 	duration: number?
-): AnimationTrack?
-	if humanoid.Health <= 0 then
+)
+	if not humanoid or humanoid.Health <= 0 then
 		return nil
 	end
 
@@ -365,14 +453,10 @@ local function isValidTarget(model: Model, ownCharacter: Model)
 		return false
 	end
 
-	if model.Parent == nil then
-		return false
-	end
-
 	return true
 end
 
-local function findClosestTarget(origin: Vector3): Model?
+local function findClosestTarget(origin: Vector3)
 	local ownCharacter = LocalPlayer.Character
 
 	if not ownCharacter then
@@ -381,34 +465,30 @@ local function findClosestTarget(origin: Vector3): Model?
 
 	local live = Workspace:FindFirstChild("Live")
 
-	local container = live or Workspace
+	local candidates = live or Workspace
 
-	local closest: Model? = nil
-	local closestDistance = CFG.TargetRange
+	local best = nil
+	local bestDistance = CFG.TargetRange
 
-	for _, object in ipairs(container:GetChildren()) do
+	for _, object in ipairs(candidates:GetChildren()) do
 		if object:IsA("Model") and isValidTarget(object, ownCharacter) then
-			local targetRoot = object:FindFirstChild("HumanoidRootPart")
+			local root = object:FindFirstChild("HumanoidRootPart")
 
-			if targetRoot and targetRoot:IsA("BasePart") then
-				local distance = (targetRoot.Position - origin).Magnitude
+			if root then
+				local distance = (root.Position - origin).Magnitude
 
-				if distance < closestDistance then
-					closestDistance = distance
-					closest = object
+				if distance < bestDistance then
+					bestDistance = distance
+					best = object
 				end
 			end
 		end
 	end
 
-	return closest
+	return best
 end
 
--- ================================================================
--- M1 TARGET LOCK
--- ================================================================
-
-local function teleportBehindTarget(target: Model): boolean
+local function voidTeleportBehind(target: Model)
 	local character, humanoid, root = getCharacter()
 
 	if not character or not humanoid or not root then
@@ -417,23 +497,21 @@ local function teleportBehindTarget(target: Model): boolean
 
 	local targetRoot = target:FindFirstChild("HumanoidRootPart")
 
-	if not targetRoot or not targetRoot:IsA("BasePart") then
+	if not targetRoot then
 		return false
 	end
 
-	if humanoid.Health <= 0 then
-		return false
-	end
+	local targetPosition = targetRoot.Position
 
-	local behindPosition =
-		targetRoot.Position
+	local behind =
+		targetPosition
 		- targetRoot.CFrame.LookVector * CFG.M1BehindDistance
 
-	behindPosition += Vector3.new(0, 0.08, 0)
+	behind += Vector3.new(0, 0.1, 0)
 
 	root.CFrame = CFrame.lookAt(
-		behindPosition,
-		targetRoot.Position
+		behind,
+		targetPosition
 	)
 
 	root.AssemblyLinearVelocity = Vector3.zero
@@ -442,7 +520,7 @@ local function teleportBehindTarget(target: Model): boolean
 end
 
 -- ================================================================
--- FX FOLDER
+-- VFX FOLDER
 -- ================================================================
 
 local function getFXFolder()
@@ -459,6 +537,7 @@ end
 
 local function allowedFX(key: string, cooldown: number?)
 	local now = os.clock()
+
 	local previous = S.LastFX[key] or 0
 
 	if now - previous < (cooldown or CFG.VFXCooldown) then
@@ -471,65 +550,40 @@ local function allowedFX(key: string, cooldown: number?)
 end
 
 -- ================================================================
--- SAFE RESOURCE FINDER
--- ================================================================
-
-local function findPath(root: Instance, path: {string}): Instance?
-	local current: Instance? = root
-
-	for _, name in ipairs(path) do
-		if not current then
-			return nil
-		end
-
-		current = current:FindFirstChild(name)
-	end
-
-	return current
-end
-
-local VFX_PATHS = {
-	{"Resources", "Sorcerer", "LimitlessBarrier", "Core", "Attachment"},
-	{"Resources", "LastBreath", "Charge", "Charge", "Attachment"},
-	{"Resources", "FiveSeasonsFX", "CharFX", "TP"},
-	{"Resources", "SunsetEffects", "NewPre", "Pump", "Attachment"},
-	{"Emotes", "VFX", "VfxMods", "FS", "vfx", "BigAuraFx", "Attachment"},
-	{"Resources", "IceSlashVFX", "LastSlashFx", "LastSlashFx", "Attachment"},
-	{"Resources", "EsperAwakening", "IDEK", "Part", "Attachment"},
-	{"Emotes", "VFX", "RealAssets", "Pride", "Lines", "Attachment"},
-	{"Emotes", "VFX", "RealAssets", "SliceCombo", "cleave1", "Attachment"},
-	{"Emotes", "VFX", "VfxMods", "Flasher", "vfx", "BlackFlashFx", "Main"},
-	{"Emotes", "VFX", "VfxMods", "Flasher", "vfx", "LastImpactFx", "Attachment"},
-	{"Emotes", "VFX", "VfxMods", "ShadowEruption", "vfx", "BallFx", "Emit"},
-	{"Emotes", "VFX", "RealAssets", "Heart Strike", "Shock", "Attachment"},
-}
-
-local function getResource(index: number): Instance?
-	local path = VFX_PATHS[index]
-
-	if not path then
-		return nil
-	end
-
-	return findPath(ReplicatedStorage, path)
-end
-
--- ================================================================
--- CREATOR RECOLOR
+-- CREATOR COLOR OVERRIDE
 -- ================================================================
 
 local function recolorObject(object: Instance)
 	for _, descendant in ipairs(object:GetDescendants()) do
+
 		if descendant:IsA("ParticleEmitter") then
-			descendant.Color = ColorSequence.new({
-				ColorSequenceKeypoint.new(0, CREATOR_LIME),
-				ColorSequenceKeypoint.new(0.5, CREATOR_GREEN),
-				ColorSequenceKeypoint.new(1, CREATOR_GREEN_DARK),
-			})
+			local existing = descendant.Color
+
+			local keypoints = existing.Keypoints
+
+			if #keypoints > 0 then
+				local rebuilt = {}
+
+				for i, keypoint in ipairs(keypoints) do
+					local alpha = (i - 1) / math.max(#keypoints - 1, 1)
+
+					table.insert(
+						rebuilt,
+						ColorSequenceKeypoint.new(
+							keypoint.Time,
+							CREATOR_GREEN:Lerp(CREATOR_LIME, alpha)
+						)
+					)
+				end
+
+				descendant.Color = ColorSequence.new(rebuilt)
+			else
+				descendant.Color = ColorSequence.new(CREATOR_GREEN)
+			end
 
 			descendant.LightEmission = math.max(
 				descendant.LightEmission,
-				0.45
+				0.35
 			)
 
 		elseif descendant:IsA("Beam") then
@@ -553,12 +607,50 @@ local function recolorObject(object: Instance)
 	end
 end
 
-local function cloneResource(
-	index: number,
-	parent: Instance,
-	amount: number?,
-	lifetime: number?
-)
+-- ================================================================
+-- RESOURCE VFX
+-- ================================================================
+
+local VFX_PATHS = {
+
+	ReplicatedStorage.Resources.Sorcerer.LimitlessBarrier.Core.Attachment,
+
+	ReplicatedStorage.Resources.LastBreath.Charge.Charge.Attachment,
+
+	ReplicatedStorage.Resources.FiveSeasonsFX.CharFX.TP,
+
+	ReplicatedStorage.Resources.SunsetEffects.NewPre.Pump.Attachment,
+
+	ReplicatedStorage.Emotes.VFX.VfxMods.FS.vfx.BigAuraFx.Attachment,
+
+	ReplicatedStorage.Resources.IceSlashVFX.LastSlashFx.LastSlashFx.Attachment,
+
+	ReplicatedStorage.Resources.EsperAwakening.IDEK.Part.Attachment,
+
+	ReplicatedStorage.Emotes.VFX.RealAssets.Pride.Lines.Attachment,
+
+	ReplicatedStorage.Emotes.VFX.RealAssets.SliceCombo.cleave1.Attachment,
+
+	ReplicatedStorage.Emotes.VFX.VfxMods.Flasher.vfx.BlackFlashFx.Main,
+
+	ReplicatedStorage.Emotes.VFX.VfxMods.Flasher.vfx.LastImpactFx.Attachment,
+
+	ReplicatedStorage.Emotes.VFX.VfxMods.ShadowEruption.vfx.BallFx.Emit,
+
+	ReplicatedStorage.Emotes.VFX.RealAssets["Heart Strike"].Shock.Attachment,
+}
+
+local function getResource(index: number)
+	local object = VFX_PATHS[index]
+
+	if typeof(object) ~= "Instance" then
+		return nil
+	end
+
+	return object
+end
+
+local function cloneResource(index: number, parent: Instance, amount: number?, lifetime: number?)
 	local template = getResource(index)
 
 	if not template or not parent then
@@ -568,32 +660,33 @@ local function cloneResource(
 	local clone = template:Clone()
 
 	recolorObject(clone)
+
 	clone.Parent = parent
 
-	for _, descendant in ipairs(clone:GetDescendants()) do
-		if descendant:IsA("ParticleEmitter") then
-			descendant.Enabled = false
+	for _, child in ipairs(clone:GetDescendants()) do
+		if child:IsA("ParticleEmitter") then
+
+			child.Enabled = false
 
 			pcall(function()
-				descendant:Emit(amount or 8)
+				child:Emit(amount or 8)
 			end)
 		end
 	end
 
-	Debris:AddItem(
-		clone,
-		lifetime or CFG.MaxVFXLifetime
-	)
+	local life = lifetime or 0.38
+
+	Debris:AddItem(clone, life)
 
 	return clone
 end
 
 -- ================================================================
--- BASIC CREATOR VFX
+-- SHORT CREATOR VFX
 -- ================================================================
 
 local function creatorBurst(root: BasePart, size: number, duration: number)
-	if not root.Parent then
+	if not root or not root.Parent then
 		return
 	end
 
@@ -608,8 +701,8 @@ local function creatorBurst(root: BasePart, size: number, duration: number)
 	part.Shape = Enum.PartType.Ball
 	part.Material = Enum.Material.Neon
 	part.Color = CREATOR_GREEN
-	part.Transparency = 0.16
-	part.Size = Vector3.new(0.25, 0.25, 0.25)
+	part.Transparency = 0.2
+	part.Size = Vector3.one
 	part.CFrame = root.CFrame
 	part.Parent = getFXFolder()
 
@@ -626,7 +719,7 @@ local function creatorBurst(root: BasePart, size: number, duration: number)
 		}
 	):Play()
 
-	Debris:AddItem(part, duration + 0.05)
+	Debris:AddItem(part, duration + 0.03)
 end
 
 local function creatorRing(
@@ -635,7 +728,7 @@ local function creatorRing(
 	endSize: number,
 	duration: number
 )
-	if not root.Parent then
+	if not root or not root.Parent then
 		return
 	end
 
@@ -650,13 +743,8 @@ local function creatorRing(
 	part.Shape = Enum.PartType.Cylinder
 	part.Material = Enum.Material.Neon
 	part.Color = CREATOR_GREEN
-	part.Transparency = 0.18
-
-	part.Size = Vector3.new(
-		0.09,
-		startSize,
-		startSize
-	)
+	part.Transparency = 0.25
+	part.Size = Vector3.new(0.08, startSize, startSize)
 
 	part.CFrame =
 		root.CFrame
@@ -672,27 +760,19 @@ local function creatorRing(
 			Enum.EasingDirection.Out
 		),
 		{
-			Size = Vector3.new(
-				0.04,
-				endSize,
-				endSize
-			),
+			Size = Vector3.new(0.08, endSize, endSize),
 			Transparency = 1,
 		}
 	):Play()
 
-	Debris:AddItem(part, duration + 0.05)
+	Debris:AddItem(part, duration + 0.03)
 end
 
-local function creatorSlash(
-	root: BasePart,
-	length: number?,
-	width: number?
-)
-	if not root.Parent then
-		return
-	end
+-- ================================================================
+-- DIRECTIONAL VFX
+-- ================================================================
 
+local function directionalSlash(root: BasePart)
 	local slash = Instance.new("Part")
 
 	slash.Name = "CreatorSlash"
@@ -703,25 +783,17 @@ local function creatorSlash(
 	slash.CastShadow = false
 	slash.Material = Enum.Material.Neon
 	slash.Color = CREATOR_GREEN
-	slash.Transparency = 0.03
+	slash.Transparency = 0.08
 
-	slash.Size = Vector3.new(
-		width or 0.16,
-		3.2,
-		length or 7
-	)
+	slash.Size = Vector3.new(0.12, 3.2, 7)
 
 	slash.CFrame =
 		root.CFrame
-		* CFrame.new(
-			0,
-			math.random(-10, 10) / 10,
-			-3
-		)
+		* CFrame.new(0, 0, -3.2)
 		* CFrame.Angles(
-			math.rad(math.random(-18, 18)),
-			math.rad(math.random(-8, 8)),
-			math.rad(math.random(-30, 30))
+			math.rad(math.random(-12, 12)),
+			0,
+			math.rad(math.random(-20, 20))
 		)
 
 	slash.Parent = getFXFolder()
@@ -729,158 +801,17 @@ local function creatorSlash(
 	TweenService:Create(
 		slash,
 		TweenInfo.new(
-			0.16,
+			0.17,
 			Enum.EasingStyle.Quart,
 			Enum.EasingDirection.Out
 		),
 		{
-			Size = Vector3.new(
-				0.03,
-				0.35,
-				(length or 7) * 1.8
-			),
+			Size = Vector3.new(0.03, 0.4, 12),
 			Transparency = 1,
 		}
 	):Play()
 
 	Debris:AddItem(slash, 0.2)
-end
-
-local function creatorShockwave(root: BasePart)
-	if not root.Parent then
-		return
-	end
-
-	for i = 1, 3 do
-		task.delay(
-			(i - 1) * 0.035,
-			function()
-				if root.Parent then
-					creatorRing(
-						root,
-						2 + i,
-						18 + i * 9,
-						0.22 + i * 0.035
-					)
-				end
-			end
-		)
-	end
-end
-
--- ================================================================
--- SOUND
--- ================================================================
-
-local function playImpactSound(
-	parent: Instance?,
-	volume: number?,
-	speed: number?
-)
-	if not parent or not parent.Parent then
-		return
-	end
-
-	local sound = Instance.new("Sound")
-
-	sound.Name = "CreatorImpact"
-	sound.SoundId =
-		SOUND_IDS[
-			math.random(1, #SOUND_IDS)
-		]
-
-	sound.Volume = volume or 1
-	sound.PlaybackSpeed = speed or 1
-	sound.RollOffMaxDistance = 110
-	sound.Parent = parent
-
-	pcall(function()
-		sound:Play()
-	end)
-
-	Debris:AddItem(sound, 4)
-end
-
--- ================================================================
--- SOVIET ANTHEM LOCAL SUPPORT
--- ================================================================
-
-local function loadCreatorSong(): string?
-	local writeFile: any = nil
-	local getCustomAsset: any = nil
-
-	pcall(function()
-		writeFile = writefile
-	end)
-
-	pcall(function()
-		getCustomAsset = getcustomasset
-	end)
-
-	if not writeFile or not getCustomAsset then
-		return nil
-	end
-
-	local fileName =
-		"R4Fix_Creator_Soviet_Anthem.mp3"
-
-	local downloaded = pcall(function()
-		writeFile(
-			fileName,
-			game:HttpGet(SONG_URL)
-		)
-	end)
-
-	if not downloaded then
-		return nil
-	end
-
-	local asset: any = nil
-
-	pcall(function()
-		asset = getCustomAsset(fileName)
-	end)
-
-	if typeof(asset) ~= "string" then
-		return nil
-	end
-
-	return asset
-end
-
-local function startCreatorSong(character: Model)
-	local root = character:FindFirstChild("HumanoidRootPart")
-
-	if not root or not root:IsA("BasePart") then
-		return
-	end
-
-	local old = root:FindFirstChild(
-		"R4FixCreatorMusic"
-	)
-
-	if old then
-		old:Destroy()
-	end
-
-	local asset = loadCreatorSong()
-
-	if not asset then
-		return
-	end
-
-	local sound = Instance.new("Sound")
-
-	sound.Name = "R4FixCreatorMusic"
-	sound.SoundId = asset
-	sound.Volume = 0.38
-	sound.Looped = true
-	sound.RollOffMaxDistance = 10000
-	sound.Parent = root
-
-	pcall(function()
-		sound:Play()
-	end)
 end
 
 -- ================================================================
@@ -898,67 +829,64 @@ local function phantomEngine(
 		return false
 	end
 
-	if token ~= S.Token then
-		return false
-	end
-
-	if humanoid.Health <= 0 then
+	if token ~= S.Token or humanoid.Health <= 0 then
 		return false
 	end
 
 	local attachment = Instance.new("Attachment")
-	attachment.Name = "CreatorPhantomAttachment"
+	attachment.Name = "CreatorPhantomVelocity"
 	attachment.Parent = root
 
 	local velocity = Instance.new("LinearVelocity")
+
 	velocity.Name = "CreatorPhantomEngine"
 	velocity.Attachment0 = attachment
 	velocity.MaxForce = math.huge
 	velocity.RelativeTo = Enum.ActuatorRelativeTo.World
 	velocity.VectorVelocity =
 		root.CFrame.LookVector * speed
+
 	velocity.Parent = root
 
 	local a0 = Instance.new("Attachment")
-	a0.Position = Vector3.new(-1.05, 0, 0)
-	a0.Parent = root
-
 	local a1 = Instance.new("Attachment")
-	a1.Position = Vector3.new(1.05, 0, 0)
+
+	a0.Position = Vector3.new(-1.1, 0, 0)
+	a1.Position = Vector3.new(1.1, 0, 0)
+
+	a0.Parent = root
 	a1.Parent = root
 
 	local trail = Instance.new("Trail")
+
 	trail.Name = "CreatorPhantomTrail"
 	trail.Attachment0 = a0
 	trail.Attachment1 = a1
-	trail.Lifetime = 0.16
-	trail.MinLength = 0.05
+	trail.Lifetime = 0.12
+	trail.MinLength = 0.1
 	trail.LightEmission = 1
 	trail.Color = ColorSequence.new(
-		CREATOR_LIME,
-		CREATOR_GREEN
+		CREATOR_GREEN,
+		CREATOR_LIME
 	)
 	trail.Transparency = NumberSequence.new(
 		0.05,
 		1
 	)
+
 	trail.Parent = root
 
-	creatorBurst(root, 4.5, 0.11)
-	cloneResource(3, root, 6, 0.22)
+	creatorBurst(root, 4.5, 0.12)
 
 	local started = os.clock()
 
 	while os.clock() - started < duration do
+
 		if token ~= S.Token then
 			break
 		end
 
-		if not root.Parent then
-			break
-		end
-
-		if humanoid.Health <= 0 then
+		if humanoid.Health <= 0 or not root.Parent then
 			break
 		end
 
@@ -970,7 +898,7 @@ local function phantomEngine(
 			direction.Z * speed
 		)
 
-		RunService.Heartbeat:Wait()
+		task.wait()
 	end
 
 	pcall(function()
@@ -979,17 +907,8 @@ local function phantomEngine(
 
 	pcall(function()
 		attachment:Destroy()
-	end)
-
-	pcall(function()
 		a0:Destroy()
-	end)
-
-	pcall(function()
 		a1:Destroy()
-	end)
-
-	pcall(function()
 		trail:Destroy()
 	end)
 
@@ -1001,53 +920,45 @@ local function phantomEngine(
 end
 
 -- ================================================================
--- VOID EXECUTION
+-- VOID SEQUENCE
 -- ================================================================
 
-local function voidSequence(
-	target: Model,
-	token: number,
-	strong: boolean?
-)
+local function voidSequence(target: Model, token: number)
 	local character, humanoid, root = getCharacter()
 
 	if not character or not humanoid or not root then
 		return
 	end
 
-	if token ~= S.Token then
+	local targetRoot = target:FindFirstChild("HumanoidRootPart")
+
+	if not targetRoot then
 		return
 	end
 
-	local targetRoot =
-		target:FindFirstChild("HumanoidRootPart")
-
-	if not targetRoot or not targetRoot:IsA("BasePart") then
+	if token ~= S.Token then
 		return
 	end
 
 	local original = root.CFrame
 
-	-- FIRST: get behind target
-	if not teleportBehindTarget(target) then
+	-- Enter target's space.
+	voidTeleportBehind(target)
+
+	if not root.Parent then
 		return
 	end
 
-	creatorBurst(root, strong and 8 or 6, 0.12)
-	creatorRing(root, 2, strong and 15 or 11, 0.2)
+	-- Green void collapse.
+	creatorBurst(root, 7, 0.13)
+	creatorRing(root, 2, 12, 0.2)
 
-	cloneResource(3, root, strong and 10 or 7, 0.3)
+	cloneResource(3, root, 6, 0.3)
 	cloneResource(6, root, 6, 0.28)
 
 	playImpactSound(root, 1.2, 0.78)
 
-	task.wait(0.055)
-
-	if token ~= S.Token then
-		return
-	end
-
-	-- SECOND phase, cross through target
+	-- Briefly phase through the target.
 	local phasePosition =
 		targetRoot.Position
 		- targetRoot.CFrame.LookVector * 2.4
@@ -1057,35 +968,22 @@ local function voidSequence(
 		targetRoot.Position
 	)
 
-	creatorSlash(
-		root,
-		strong and 11 or 8,
-		strong and 0.2 or 0.14
-	)
+	creatorBurst(root, 5.5, 0.1)
+	directionalSlash(root)
 
-	creatorShockwave(root)
-
-	cloneResource(5, root, 9, 0.3)
-	cloneResource(10, root, 8, 0.28)
-
-	task.wait(0.07)
+	task.wait(0.08)
 
 	if token ~= S.Token then
 		return
 	end
 
-	-- THIRD phase, void displacement
+	-- Void displacement.
 	local forward =
 		targetRoot.CFrame.LookVector
 
-	local distance =
-		strong
-		and CFG.VoidDistance * 1.15
-		or CFG.VoidDistance
-
 	local destination =
 		targetRoot.Position
-		+ forward * distance
+		+ forward * CFG.VoidDistance
 
 	destination = Vector3.new(
 		destination.X,
@@ -1100,19 +998,15 @@ local function voidSequence(
 
 	root.AssemblyLinearVelocity = Vector3.zero
 
-	creatorBurst(root, strong and 15 or 11, 0.25)
-	creatorRing(root, 4, strong and 42 or 30, 0.34)
+	creatorBurst(root, 11, 0.25)
+	creatorRing(root, 4, 30, 0.32)
 
-	cloneResource(5, root, 11, 0.38)
-	cloneResource(10, root, 10, 0.32)
+	cloneResource(5, root, 8, 0.34)
+	cloneResource(10, root, 8, 0.3)
 
 	playImpactSound(root, 1.65, 0.68)
 
-	task.wait(
-		strong
-		and CFG.VoidDuration * 0.75
-		or CFG.VoidDuration
-	)
+	task.wait(CFG.VoidDuration)
 
 	if token ~= S.Token then
 		return
@@ -1124,6 +1018,7 @@ local function voidSequence(
 
 		creatorBurst(root, 8, 0.18)
 		creatorRing(root, 3, 20, 0.25)
+
 		cloneResource(4, root, 7, 0.3)
 	end
 end
@@ -1134,13 +1029,6 @@ end
 
 local lastM1 = 0
 local m1Index = 0
-
-local M1_ANIMATIONS = {
-	ANIM.M1_1,
-	ANIM.M1_2,
-	ANIM.M1_3,
-	ANIM.M1_4,
-}
 
 local function creatorM1()
 	local now = os.clock()
@@ -1157,102 +1045,67 @@ local function creatorM1()
 		return
 	end
 
-	if humanoid.Health <= 0 then
-		return
-	end
-
-	-- IMPORTANT:
-	-- Target is acquired BEFORE the attack animation.
-	-- This prevents the old behavior where the M1 could
-	-- start and only then decide where to teleport.
-	local target =
-		findClosestTarget(root.Position)
+	local target = findClosestTarget(root.Position)
 
 	m1Index += 1
 
-	if m1Index > #M1_ANIMATIONS then
+	if m1Index > 4 then
 		m1Index = 1
 	end
 
-	if target then
-		local targetRoot =
-			target:FindFirstChild("HumanoidRootPart")
+	local animations = {
+		ANIM.M1_1,
+		ANIM.M1_2,
+		ANIM.M1_3,
+		ANIM.M1_4,
+	}
 
-		if targetRoot and targetRoot:IsA("BasePart") then
-			-- Snap behind target FIRST.
-			local success =
-				teleportBehindTarget(target)
-
-			if success then
-				creatorBurst(root, 3.8, 0.08)
-				cloneResource(3, root, 5, 0.2)
-
-				-- Then play the actual M1.
-				playAnimation(
-					humanoid,
-					M1_ANIMATIONS[m1Index],
-					Enum.AnimationPriority.Action4,
-					1.12,
-					false,
-					0.38
-				)
-
-				-- Micro pause gives the animation the feeling
-				-- of starting directly from behind the target.
-				task.wait(0.035)
-
-				if not root.Parent then
-					return
-				end
-
-				creatorSlash(
-					root,
-					7 + m1Index,
-					0.12
-				)
-
-				cloneResource(
-					13,
-					targetRoot,
-					6,
-					0.28
-				)
-
-				creatorBurst(
-					root,
-					3.5 + m1Index,
-					0.1
-				)
-
-				playImpactSound(
-					targetRoot,
-					0.8,
-					0.92 + math.random() * 0.12
-				)
-
-				glitchBurst()
-
-				return
-			end
-		end
-	end
-
-	-- No target, still perform the animation locally.
-	playAnimation(
+	local track = playAnimation(
 		humanoid,
-		M1_ANIMATIONS[m1Index],
+		animations[m1Index],
 		Enum.AnimationPriority.Action4,
 		1.08,
 		false,
-		0.38
+		0.42
 	)
 
-	creatorSlash(root, 7, 0.12)
+	if target then
+		voidTeleportBehind(target)
+
+		local targetRoot = target:FindFirstChild("HumanoidRootPart")
+
+		if targetRoot then
+			local targetAttachment = targetRoot:FindFirstChild("CreatorHitFX")
+
+			if not targetAttachment then
+				targetAttachment = Instance.new("Attachment")
+				targetAttachment.Name = "CreatorHitFX"
+				targetAttachment.Parent = targetRoot
+			end
+
+			cloneResource(
+				13,
+				targetAttachment,
+				6,
+				0.28
+			)
+
+			creatorBurst(root, 3.8, 0.1)
+			directionalSlash(root)
+
+			playImpactSound(
+				targetRoot,
+				0.8,
+				0.92 + math.random() * 0.12
+			)
+		end
+	else
+		directionalSlash(root)
+	end
 end
 
 -- ================================================================
 -- MOVE 1
--- VOID EXECUTION
 -- ================================================================
 
 local function move1(token: number)
@@ -1269,39 +1122,45 @@ local function move1(token: number)
 		return
 	end
 
-	local target =
-		findClosestTarget(root.Position)
+	local target = findClosestTarget(root.Position)
 
-	playAnimation(
-		humanoid,
-		ANIM.Move1,
-		Enum.AnimationPriority.Action4,
-		1.08,
-		false,
-		0.65
-	)
-
-	creatorBurst(root, 6, 0.13)
-	creatorRing(root, 2, 14, 0.2)
-
-	cloneResource(3, root, 8, 0.28)
-
-	task.spawn(function()
-		phantomEngine(
-			CFG.PhantomDuration1,
-			CFG.PhantomSpeed,
-			token
+	if target then
+		playAnimation(
+			humanoid,
+			ANIM.Move1,
+			Enum.AnimationPriority.Action4,
+			1.08,
+			false,
+			0.65
 		)
-	end)
 
-	task.wait(0.1)
+		cloneResource(3, root, 8, 0.3)
+		creatorBurst(root, 6, 0.15)
 
-	if token == S.Token and target then
-		voidSequence(
-			target,
-			token,
-			false
+		task.spawn(function()
+			phantomEngine(
+				CFG.PhantomDuration1,
+				CFG.PhantomSpeed,
+				token
+			)
+		end)
+
+		task.wait(0.12)
+
+		if token == S.Token then
+			voidSequence(target, token)
+		end
+	else
+		playAnimation(
+			humanoid,
+			ANIM.Move1,
+			Enum.AnimationPriority.Action4,
+			1,
+			false,
+			0.65
 		)
+
+		creatorBurst(root, 7, 0.2)
 	end
 
 	S.Busy.Move1 = nil
@@ -1309,7 +1168,6 @@ end
 
 -- ================================================================
 -- MOVE 2
--- REALITY BREAKER
 -- ================================================================
 
 local function move2(token: number)
@@ -1326,40 +1184,32 @@ local function move2(token: number)
 		return
 	end
 
-	local target =
-		findClosestTarget(root.Position)
+	local target = findClosestTarget(root.Position)
 
 	playAnimation(
 		humanoid,
 		ANIM.Move2,
 		Enum.AnimationPriority.Action4,
-		1.14,
+		1.12,
 		false,
 		0.75
 	)
 
-	cloneResource(9, root, 9, 0.3)
-	cloneResource(11, root, 7, 0.28)
-
-	creatorBurst(root, 7, 0.15)
-	creatorRing(root, 2, 20, 0.23)
+	cloneResource(9, root, 7, 0.3)
+	creatorRing(root, 2, 18, 0.22)
 
 	task.spawn(function()
 		phantomEngine(
 			CFG.PhantomDuration2,
-			CFG.PhantomSpeed + 40,
+			CFG.PhantomSpeed + 35,
 			token
 		)
 	end)
 
-	task.wait(0.12)
+	task.wait(0.13)
 
-	if token == S.Token and target then
-		voidSequence(
-			target,
-			token,
-			true
-		)
+	if target and token == S.Token then
+		voidSequence(target, token)
 	end
 
 	S.Busy.Move2 = nil
@@ -1367,7 +1217,6 @@ end
 
 -- ================================================================
 -- MOVE 3
--- CREATOR'S GRASP
 -- ================================================================
 
 local function move3()
@@ -1390,49 +1239,29 @@ local function move3()
 		Enum.AnimationPriority.Action4,
 		1.05,
 		false,
-		0.72
+		0.65
 	)
 
-	creatorBurst(root, 6, 0.15)
-	creatorRing(root, 2, 18, 0.23)
+	cloneResource(1, root, 7, 0.32)
 
-	cloneResource(1, root, 9, 0.34)
-	cloneResource(8, root, 6, 0.3)
+	creatorBurst(root, 5.5, 0.14)
+	creatorRing(root, 2, 15, 0.2)
 
-	creatorSlash(root, 9, 0.14)
+	directionalSlash(root)
 
-	playImpactSound(
-		root,
-		1.05,
-		0.84
-	)
-
-	task.delay(
-		0.22,
-		function()
-			if root.Parent then
-				creatorShockwave(root)
-				cloneResource(
-					13,
-					root,
-					7,
-					0.28
-				)
-			end
+	task.delay(0.28, function()
+		if root.Parent then
+			cloneResource(8, root, 5, 0.25)
 		end
-	)
+	end)
 
-	task.delay(
-		0.65,
-		function()
-			S.Busy.Move3 = nil
-		end
-	)
+	task.delay(0.7, function()
+		S.Busy.Move3 = nil
+	end)
 end
 
 -- ================================================================
 -- MOVE 4
--- ABSOLUTE OVERRIDE
 -- ================================================================
 
 local function move4()
@@ -1453,49 +1282,26 @@ local function move4()
 		humanoid,
 		ANIM.Move4,
 		Enum.AnimationPriority.Action4,
-		1.02,
+		1,
 		false,
-		0.95
+		0.9
 	)
 
-	creatorBurst(root, 10, 0.22)
-	creatorRing(root, 4, 28, 0.34)
+	cloneResource(10, root, 9, 0.3)
+	cloneResource(11, root, 7, 0.3)
 
-	cloneResource(10, root, 11, 0.34)
-	cloneResource(11, root, 9, 0.32)
-	cloneResource(12, root, 7, 0.3)
+	creatorBurst(root, 9, 0.22)
+	creatorRing(root, 4, 25, 0.3)
 
-	creatorShockwave(root)
-	creatorSlash(root, 13, 0.2)
+	playImpactSound(root, 1.25, 0.7)
 
-	playImpactSound(
-		root,
-		1.4,
-		0.7
-	)
-
-	glitchBurst()
-
-	task.delay(
-		0.25,
-		function()
-			if root.Parent then
-				creatorBurst(root, 6, 0.13)
-				creatorRing(root, 2, 18, 0.2)
-			end
-		end
-	)
-
-	task.delay(
-		0.9,
-		function()
-			S.Busy.Move4 = nil
-		end
-	)
+	task.delay(0.9, function()
+		S.Busy.Move4 = nil
+	end)
 end
 
 -- ================================================================
--- ULTIMATE
+-- ULTIMATES
 -- ================================================================
 
 local ULTIMATES = {
@@ -1550,45 +1356,28 @@ local function playUltimate(index: number)
 		Enum.AnimationPriority.Action4,
 		1,
 		false,
-		1.25
+		1.2
 	)
 
 	cloneResource(
-		((index - 1) % #VFX_PATHS) + 1,
+		(index % #VFX_PATHS) + 1,
 		root,
-		12,
-		0.42
+		10,
+		0.38
 	)
 
-	creatorBurst(root, 14, 0.3)
-	creatorRing(root, 5, 42, 0.42)
-	creatorShockwave(root)
+	creatorBurst(root, 12, 0.28)
+	creatorRing(root, 4, 35, 0.4)
 
-	playImpactSound(
-		root,
-		1.7,
-		0.68
-	)
+	playImpactSound(root, 1.6, 0.7)
 
-	creatorHeadText(
-		data.Name
-	)
-
-	for _ = 1, 4 do
-		glitchBurst()
-		task.wait(0.035)
-	end
-
-	task.delay(
-		1.25,
-		function()
-			S.Busy.Ult = nil
-		end
-	)
+	task.delay(1.2, function()
+		S.Busy.Ult = nil
+	end)
 end
 
 -- ================================================================
--- HEAD GLITCH TEXT
+-- HEAD TEXT
 -- ================================================================
 
 local HEAD_MESSAGES = {
@@ -1622,13 +1411,7 @@ local function randomGlitchString(text: string)
 		local char = text:sub(i, i)
 
 		if math.random() < 0.12 then
-			char =
-				chars[
-					math.random(
-						1,
-						#chars
-					)
-				]
+			char = chars[math.random(1, #chars)]
 		end
 
 		output ..= char
@@ -1646,14 +1429,11 @@ local function creatorHeadText(message: string)
 
 	local head = character:FindFirstChild("Head")
 
-	if not head or not head:IsA("BasePart") then
+	if not head then
 		return
 	end
 
-	local folder =
-		Workspace:FindFirstChild(
-			"R4Fix_CreatorText"
-		)
+	local folder = Workspace:FindFirstChild("R4Fix_CreatorText")
 
 	if not folder then
 		folder = Instance.new("Folder")
@@ -1666,22 +1446,9 @@ local function creatorHeadText(message: string)
 	billboard.Name = "CreatorGlitchText"
 	billboard.Adornee = head
 	billboard.AlwaysOnTop = true
-	billboard.MaxDistance =
-		CFG.HeadTextDistance
-
-	billboard.Size =
-		UDim2.fromOffset(
-			430,
-			85
-		)
-
-	billboard.StudsOffset =
-		Vector3.new(
-			0,
-			3.3,
-			0
-		)
-
+	billboard.MaxDistance = CFG.HeadTextDistance
+	billboard.Size = UDim2.fromOffset(430, 85)
+	billboard.StudsOffset = Vector3.new(0, 3.3, 0)
 	billboard.Parent = folder
 
 	local label = Instance.new("TextLabel")
@@ -1697,30 +1464,32 @@ local function creatorHeadText(message: string)
 	label.Text = ""
 	label.Parent = billboard
 
-	TweenService:Create(
+	local appear = TweenService:Create(
 		label,
-		TweenInfo.new(0.1),
+		TweenInfo.new(
+			0.12,
+			Enum.EasingStyle.Quad
+		),
 		{
 			TextTransparency = 0,
 		}
-	):Play()
+	)
+
+	appear:Play()
 
 	task.spawn(function()
+
 		for i = 1, #message do
-			local realText =
-				message:sub(1, i)
+
+			local realText = message:sub(1, i)
 
 			label.Text = realText
 
 			if math.random() < 0.35 then
-				label.Text =
-					randomGlitchString(
-						realText
-					)
+				label.Text = randomGlitchString(realText)
 			end
 
-			label.Rotation =
-				math.random(-2, 2)
+			label.Rotation = math.random(-2, 2)
 
 			task.wait(
 				math.random(3, 7) / 100
@@ -1731,8 +1500,7 @@ local function creatorHeadText(message: string)
 		end
 
 		for _ = 1, 3 do
-			label.Text =
-				randomGlitchString(message)
+			label.Text = randomGlitchString(message)
 
 			task.wait(0.045)
 
@@ -1760,28 +1528,21 @@ local function creatorHeadText(message: string)
 end
 
 -- ================================================================
--- GLITCH EFFECT
+-- GLITCH SCREEN
 -- ================================================================
 
 local function getGlitchGui()
-	local playerGui =
-		LocalPlayer:FindFirstChildOfClass(
-			"PlayerGui"
-		)
+	local playerGui = LocalPlayer:FindFirstChildOfClass("PlayerGui")
 
 	if not playerGui then
 		return nil
 	end
 
-	-- This is ONLY for temporary screen corruption.
-	-- It is NOT an ability bar or bottom UI.
-	local gui =
-		playerGui:FindFirstChild(
-			"R4FixCreatorGlitch"
-		)
+	local gui = playerGui:FindFirstChild("R4FixCreatorGlitch")
 
 	if not gui then
 		gui = Instance.new("ScreenGui")
+
 		gui.Name = "R4FixCreatorGlitch"
 		gui.IgnoreGuiInset = true
 		gui.ResetOnSpawn = false
@@ -1792,7 +1553,7 @@ local function getGlitchGui()
 	return gui
 end
 
-local function glitchFlash()
+local function glitchFlash(strength: number?)
 	local gui = getGlitchGui()
 
 	if not gui then
@@ -1801,31 +1562,22 @@ local function glitchFlash()
 
 	local frame = Instance.new("Frame")
 
-	frame.BackgroundColor3 =
-		CREATOR_GREEN
-
-	frame.BackgroundTransparency =
-		0.91
-
+	frame.BackgroundColor3 = CREATOR_GREEN
+	frame.BackgroundTransparency = 0.92
 	frame.BorderSizePixel = 0
+	frame.Size = UDim2.fromScale(
+		math.random(20, 120) / 100,
+		math.random(2, 12) / 100
+	)
 
-	frame.Size =
-		UDim2.fromScale(
-			math.random(30, 120) / 100,
-			math.random(2, 10) / 100
-		)
+	frame.Position = UDim2.fromScale(
+		math.random(-10, 90) / 100,
+		math.random(0, 100) / 100
+	)
 
-	frame.Position =
-		UDim2.fromScale(
-			math.random(-10, 90) / 100,
-			math.random(),
-			0
-		)
-
-	frame.Rotation =
-		math.random(-4, 4)
-
+	frame.Rotation = math.random(-4, 4)
 	frame.ZIndex = 100
+
 	frame.Parent = gui
 
 	TweenService:Create(
@@ -1852,25 +1604,23 @@ local function glitchPixel()
 
 	pixel.Name = "CreatorPixel"
 	pixel.BorderSizePixel = 0
-
 	pixel.BackgroundColor3 =
 		math.random() < 0.75
 		and CREATOR_GREEN
 		or BLACK
 
-	pixel.Size =
-		UDim2.fromOffset(
-			math.random(2, 9),
-			math.random(2, 9)
-		)
+	pixel.Size = UDim2.fromOffset(
+		math.random(2, 9),
+		math.random(2, 9)
+	)
 
-	pixel.Position =
-		UDim2.fromScale(
-			math.random(),
-			math.random()
-		)
+	pixel.Position = UDim2.fromScale(
+		math.random(),
+		math.random()
+	)
 
 	pixel.ZIndex = 101
+
 	pixel.Parent = gui
 
 	task.delay(
@@ -1884,9 +1634,7 @@ local function glitchPixel()
 end
 
 local function glitchBurst()
-	if math.random() >
-		CFG.GlitchUIChance
-	then
+	if math.random() > CFG.GlitchUIChance then
 		return
 	end
 
@@ -1895,12 +1643,28 @@ local function glitchBurst()
 	end
 
 	if math.random() < 0.55 then
-		glitchFlash()
+		glitchFlash(1)
 	end
 end
 
 -- ================================================================
--- UI
+-- UI HELPERS
+-- ================================================================
+
+local function getPlayerGui()
+	return LocalPlayer:FindFirstChildOfClass("PlayerGui")
+end
+
+local function findRecursive(root: Instance?, name: string)
+	if not root then
+		return nil
+	end
+
+	return root:FindFirstChild(name, true)
+end
+
+-- ================================================================
+-- REAL HOTBAR
 -- ================================================================
 
 local MOVE_NAMES = {
@@ -1917,11 +1681,12 @@ local MOVE_LABELS = {
 	[4] = "|| OVERRIDE ||",
 }
 
-local function getPlayerGui()
-	return LocalPlayer:FindFirstChildOfClass(
-		"PlayerGui"
-	)
-end
+local ULT_NAMES = {
+	[1] = "CREATOR'S VERDICT",
+	[2] = "NULL CREATION",
+	[3] = "GREEN PARADOX",
+	[4] = "ABSOLUTE CREATION",
+}
 
 local function getHotbar()
 	local gui = getPlayerGui()
@@ -1930,15 +1695,13 @@ local function getHotbar()
 		return nil
 	end
 
-	local hotbar =
-		gui:FindFirstChild("Hotbar")
+	local hotbar = gui:FindFirstChild("Hotbar")
 
 	if not hotbar then
 		return nil
 	end
 
-	local backpack =
-		hotbar:FindFirstChild("Backpack")
+	local backpack = hotbar:FindFirstChild("Backpack")
 
 	if not backpack then
 		return nil
@@ -1954,25 +1717,15 @@ local function getSlot(index: number)
 		return nil
 	end
 
-	return hotbar:FindFirstChild(
-		tostring(index)
-	)
+	return hotbar:FindFirstChild(tostring(index))
 end
 
-local function styleTextObject(
-	object: Instance?,
-	text: string
-)
+local function styleTextObject(object: Instance?, text: string)
 	if object and object:IsA("TextLabel") then
 		object.Text = text
-		object.TextColor3 =
-			CREATOR_GREEN
-
-		object.TextStrokeColor3 =
-			BLACK
-
-		object.TextStrokeTransparency =
-			0.35
+		object.TextColor3 = CREATOR_GREEN
+		object.TextStrokeColor3 = BLACK
+		object.TextStrokeTransparency = 0.35
 	end
 end
 
@@ -1983,47 +1736,35 @@ local function styleMoveSlot(index: number)
 		return
 	end
 
-	local base =
-		slot:FindFirstChild("Base")
+	local base = slot:FindFirstChild("Base")
 
 	if not base then
 		return
 	end
 
-	local toolName =
-		base:FindFirstChild("ToolName")
+	local toolName = base:FindFirstChild("ToolName")
 
 	styleTextObject(
 		toolName,
 		MOVE_NAMES[index]
 	)
 
-	local reuse =
-		base:FindFirstChild("Reuse")
+	local reuse = base:FindFirstChild("Reuse")
 
 	if reuse and reuse:IsA("TextLabel") then
 		reuse.Visible = true
-		reuse.Text =
-			MOVE_LABELS[index]
-
-		reuse.TextColor3 =
-			CREATOR_GREEN
-
-		reuse.TextStrokeColor3 =
-			BLACK
+		reuse.Text = MOVE_LABELS[index]
+		reuse.TextColor3 = CREATOR_GREEN
+		reuse.TextStrokeColor3 = BLACK
 	end
 
-	local cooldown =
-		base:FindFirstChild("Cooldown")
+	local cooldown = base:FindFirstChild("Cooldown")
 
 	if cooldown then
-		for _, object in ipairs(
-			cooldown:GetDescendants()
-		) do
+		for _, object in ipairs(cooldown:GetDescendants()) do
 			if object:IsA("Frame") then
 				object.BackgroundColor3 =
 					CREATOR_GREEN
-
 			elseif object:IsA("ImageLabel") then
 				object.ImageColor3 =
 					CREATOR_GREEN
@@ -2033,7 +1774,86 @@ local function styleMoveSlot(index: number)
 end
 
 -- ================================================================
--- EXISTING ULTIMATE BAR
+-- HOTBAR GLITCH EFFECT
+-- ================================================================
+
+local function glitchSlot(index: number)
+	local slot = getSlot(index)
+
+	if not slot then
+		return
+	end
+
+	local base = slot:FindFirstChild("Base")
+
+	if not base then
+		return
+	end
+
+	local originalPosition = base.Position
+	local originalRotation = base.Rotation
+
+	local offsetX = math.random(-3, 3)
+	local offsetY = math.random(-2, 2)
+
+	base.Position =
+		originalPosition
+		+ UDim2.fromOffset(offsetX, offsetY)
+
+	base.Rotation =
+		originalRotation
+		+ math.random(-2, 2)
+
+	local pixel = Instance.new("Frame")
+
+	pixel.Name = "CreatorHotbarCorruption"
+	pixel.BorderSizePixel = 0
+	pixel.BackgroundColor3 =
+		math.random() < 0.7
+		and CREATOR_GREEN
+		or BLACK
+
+	pixel.BackgroundTransparency = 0.1
+
+	pixel.Size = UDim2.fromOffset(
+		math.random(2, 6),
+		math.random(2, 5)
+	)
+
+	pixel.Position = UDim2.fromScale(
+		math.random(),
+		math.random()
+	)
+
+	pixel.ZIndex = 100
+
+	pixel.Parent = base
+
+	task.delay(
+		math.random(3, 8) / 100,
+		function()
+			pcall(function()
+				pixel:Destroy()
+			end)
+
+			pcall(function()
+				base.Position = originalPosition
+				base.Rotation = originalRotation
+			end)
+		end
+	)
+end
+
+local function glitchHotbar()
+	for i = 1, 4 do
+		if math.random() < 0.32 then
+			glitchSlot(i)
+		end
+	end
+end
+
+-- ================================================================
+-- ULTIMATE BAR
 -- ================================================================
 
 local function styleUltimateBar()
@@ -2043,68 +1863,61 @@ local function styleUltimateBar()
 		return
 	end
 
-	local bar =
-		gui:FindFirstChild("Bar")
+	local bar = gui:FindFirstChild("Bar")
 
 	if not bar then
 		return
 	end
 
-	local magicHealth =
-		bar:FindFirstChild("MagicHealth")
+	local magicHealth = bar:FindFirstChild("MagicHealth")
 
 	if not magicHealth then
 		return
 	end
 
-	local text =
-		magicHealth:FindFirstChild("TextLabel")
+	local text = magicHealth:FindFirstChild("TextLabel")
 
 	if text and text:IsA("TextLabel") then
 		text.Text = "THE CREATOR"
-		text.TextColor3 =
-			CREATOR_GREEN
-
-		text.TextStrokeColor3 =
-			BLACK
-
-		text.TextStrokeTransparency =
-			0.15
+		text.TextColor3 = CREATOR_GREEN
+		text.TextStrokeColor3 = BLACK
+		text.TextStrokeTransparency = 0.15
 	end
 
-	local health =
-		magicHealth:FindFirstChild("Health")
+	local nested = text and text:FindFirstChild("TextLabel")
+
+	if nested and nested:IsA("TextLabel") then
+		nested.Text = "THE CREATOR"
+		nested.TextColor3 = CREATOR_GREEN
+		nested.TextStrokeColor3 = BLACK
+	end
+
+	local health = magicHealth:FindFirstChild("Health")
 
 	if not health then
 		return
 	end
 
-	local holder =
-		health:FindFirstChild("Bar")
+	local holder = health:FindFirstChild("Bar")
 
 	if not holder then
 		return
 	end
 
-	local fill =
-		holder:FindFirstChild("Bar")
+	local fill = holder:FindFirstChild("Bar")
 
 	if fill then
-		if fill:IsA("Frame") then
-			fill.BackgroundColor3 =
-				CREATOR_GREEN
 
+		if fill:IsA("Frame") then
+			fill.BackgroundColor3 = CREATOR_GREEN
 		elseif fill:IsA("ImageLabel")
 			or fill:IsA("ImageButton")
 		then
-			fill.ImageColor3 =
-				CREATOR_GREEN
+			fill.ImageColor3 = CREATOR_GREEN
 		end
 
 		local gradient =
-			fill:FindFirstChildOfClass(
-				"UIGradient"
-			)
+			fill:FindFirstChildOfClass("UIGradient")
 
 		if gradient then
 			gradient.Color =
@@ -2132,111 +1945,18 @@ local function styleUltimateBar()
 		end
 	end
 
-	local glow =
-		health:FindFirstChild("Glow")
+	local glow = health:FindFirstChild("Glow")
 
 	if glow and (
 		glow:IsA("ImageLabel")
 		or glow:IsA("ImageButton")
 	) then
-		glow.ImageColor3 =
-			CREATOR_GREEN
+		glow.ImageColor3 = CREATOR_GREEN
 	end
 end
 
 -- ================================================================
--- EXISTING HOTBAR GLITCH
--- ================================================================
-
-local function glitchSlot(index: number)
-	local slot = getSlot(index)
-
-	if not slot then
-		return
-	end
-
-	local base =
-		slot:FindFirstChild("Base")
-
-	if not base then
-		return
-	end
-
-	local originalPosition =
-		base.Position
-
-	local originalRotation =
-		base.Rotation
-
-	base.Position =
-		originalPosition
-		+ UDim2.fromOffset(
-			math.random(-3, 3),
-			math.random(-2, 2)
-		)
-
-	base.Rotation =
-		originalRotation
-		+ math.random(-2, 2)
-
-	local pixel =
-		Instance.new("Frame")
-
-	pixel.Name =
-		"CreatorHotbarCorruption"
-
-	pixel.BorderSizePixel = 0
-
-	pixel.BackgroundColor3 =
-		math.random() < 0.7
-		and CREATOR_GREEN
-		or BLACK
-
-	pixel.BackgroundTransparency = 0.1
-
-	pixel.Size =
-		UDim2.fromOffset(
-			math.random(2, 6),
-			math.random(2, 5)
-		)
-
-	pixel.Position =
-		UDim2.fromScale(
-			math.random(),
-			math.random()
-		)
-
-	pixel.ZIndex = 100
-	pixel.Parent = base
-
-	task.delay(
-		math.random(3, 8) / 100,
-		function()
-			pcall(function()
-				pixel:Destroy()
-			end)
-
-			pcall(function()
-				base.Position =
-					originalPosition
-
-				base.Rotation =
-					originalRotation
-			end)
-		end
-	)
-end
-
-local function glitchHotbar()
-	for i = 1, 4 do
-		if math.random() < 0.32 then
-			glitchSlot(i)
-		end
-	end
-end
-
--- ================================================================
--- EXISTING ULTIMATE BAR GLITCH
+-- ULT BAR GLITCH
 -- ================================================================
 
 local function glitchUltimateBar()
@@ -2246,25 +1966,20 @@ local function glitchUltimateBar()
 		return
 	end
 
-	local bar =
-		gui:FindFirstChild("Bar")
+	local bar = gui:FindFirstChild("Bar")
 
 	if not bar then
 		return
 	end
 
-	local magicHealth =
-		bar:FindFirstChild("MagicHealth")
+	local magicHealth = bar:FindFirstChild("MagicHealth")
 
 	if not magicHealth then
 		return
 	end
 
-	local originalPosition =
-		magicHealth.Position
-
-	local originalRotation =
-		magicHealth.Rotation
+	local originalRotation = magicHealth.Rotation
+	local originalPosition = magicHealth.Position
 
 	magicHealth.Position =
 		originalPosition
@@ -2277,11 +1992,10 @@ local function glitchUltimateBar()
 		math.random(-1, 1)
 
 	for _ = 1, math.random(2, 7) do
-		local corruption =
-			Instance.new("Frame")
 
-		corruption.Name =
-			"CreatorUltCorruption"
+		local corruption = Instance.new("Frame")
+
+		corruption.Name = "CreatorUltCorruption"
 
 		corruption.BorderSizePixel = 0
 
@@ -2301,19 +2015,18 @@ local function glitchUltimateBar()
 		corruption.BackgroundTransparency =
 			math.random(0, 5) / 10
 
-		corruption.Size =
-			UDim2.fromOffset(
-				math.random(3, 26),
-				math.random(2, 7)
-			)
+		corruption.Size = UDim2.fromOffset(
+			math.random(3, 26),
+			math.random(2, 7)
+		)
 
-		corruption.Position =
-			UDim2.fromScale(
-				math.random(),
-				math.random()
-			)
+		corruption.Position = UDim2.fromScale(
+			math.random(),
+			math.random()
+		)
 
 		corruption.ZIndex = 999
+
 		corruption.Parent = magicHealth
 
 		task.delay(
@@ -2341,7 +2054,7 @@ local function glitchUltimateBar()
 end
 
 -- ================================================================
--- CREATOR SELECTION
+-- CREATOR CHARACTER SELECTION FIX
 -- ================================================================
 
 local function fixCreatorSelection()
@@ -2351,44 +2064,41 @@ local function fixCreatorSelection()
 		return
 	end
 
-	for _, object in ipairs(
-		gui:GetDescendants()
-	) do
+	for _, object in ipairs(gui:GetDescendants()) do
+
 		if object.Name ~= "IconButton" then
 			continue
 		end
 
 		local label =
-			object:FindFirstChild(
-				"IconLabel"
-			)
+			object:FindFirstChild("IconLabel")
 
 		local image =
-			object:FindFirstChild(
-				"IconImage"
-			)
+			object:FindFirstChild("IconImage")
 
 		if label and label:IsA("TextLabel") then
+
 			local text =
-				string.lower(
-					label.Text
-				)
+				string.lower(label.Text)
 
 			if text == "creator"
 				or text == "the creator"
 				or text == "dark garou"
 				or text == "garou"
 			then
-				label.Text =
-					MOVESET_NAME
+
+				-- Do not hide the button.
+				-- Do not destroy the button.
+				-- Do not alter its font.
+
+				label.Text = MOVESET_NAME
 
 				if image and (
 					image:IsA("ImageLabel")
 					or image:IsA("ImageButton")
 				) then
-					image.Image =
-						DECAL_ID
 
+					image.Image = DECAL_ID
 					image.ImageColor3 =
 						Color3.new(1, 1, 1)
 				end
@@ -2400,16 +2110,12 @@ local function fixCreatorSelection()
 end
 
 -- ================================================================
--- SPAWN
+-- CREATOR SPAWN
 -- ================================================================
 
-local function creatorSpawn(
-	character: Model,
-	root: BasePart,
-	humanoid: Humanoid
-)
+local function creatorSpawn(character: Model, root: BasePart)
 	playAnimation(
-		humanoid,
+		character:FindFirstChildOfClass("Humanoid") :: Humanoid,
 		ANIM.Spawn,
 		Enum.AnimationPriority.Action4,
 		0.92,
@@ -2417,34 +2123,11 @@ local function creatorSpawn(
 		1.1
 	)
 
-	cloneResource(
-		7,
-		root,
-		11,
-		0.42
-	)
+	cloneResource(7, root, 9, 0.4)
+	cloneResource(3, root, 7, 0.35)
 
-	cloneResource(
-		3,
-		root,
-		9,
-		0.38
-	)
-
-	creatorBurst(
-		root,
-		10,
-		0.25
-	)
-
-	creatorRing(
-		root,
-		2,
-		26,
-		0.36
-	)
-
-	creatorShockwave(root)
+	creatorBurst(root, 9, 0.23)
+	creatorRing(root, 2, 23, 0.35)
 
 	creatorHeadText(
 		"ITS TIME TO CREATE"
@@ -2453,21 +2136,18 @@ local function creatorSpawn(
 	task.delay(
 		0.7,
 		function()
-			if character.Parent then
-				startCreatorSong(character)
-			end
+			startCreatorSong(character)
 		end
 	)
 end
 
 -- ================================================================
--- IDLE
+-- FLOATING IDLE
 -- ================================================================
 
-local idleConnection:
-	RBXScriptConnection? = nil
+local idleConnection: RBXScriptConnection? = nil
 
-local function stopIdle()
+local function startCreatorIdle(root: BasePart, humanoid: Humanoid)
 	if idleConnection then
 		pcall(function()
 			idleConnection:Disconnect()
@@ -2475,84 +2155,38 @@ local function stopIdle()
 
 		idleConnection = nil
 	end
-end
 
-local function startCreatorIdle(
-	root: BasePart,
-	humanoid: Humanoid
-)
-	stopIdle()
+	local baseY = root.Position.Y
+	local started = os.clock()
 
-	local started =
-		os.clock()
+	idleConnection = RunService.RenderStepped:Connect(function()
 
-	local baseCFrame =
-		root.CFrame
+		if not root.Parent
+			or humanoid.Health <= 0
+			or humanoid.MoveDirection.Magnitude > 0.05
+		then
+			return
+		end
 
-	idleConnection =
-		RunService.RenderStepped:Connect(
-			function()
-				if not root.Parent
-					or humanoid.Health <= 0
-				then
-					stopIdle()
-					return
-				end
+		local t = os.clock() - started
 
-				if humanoid.MoveDirection.Magnitude
-					> 0.05
-				then
-					baseCFrame =
-						root.CFrame
+		local offset =
+			math.sin(t * 2.4)
+			* 0.045
 
-					return
-				end
+		root.CFrame =
+			root.CFrame
+			+ Vector3.new(0, offset, 0)
+	end)
 
-				-- FIX:
-				-- Do not add sine offsets to the current CFrame.
-				-- That caused the old script to accumulate/jitter.
-				local elapsed =
-					os.clock() - started
-
-				local bob =
-					math.sin(
-						elapsed * 2.4
-					) * 0.045
-
-				local rotation =
-					math.sin(
-						elapsed * 1.7
-					) * 0.006
-
-				local position =
-					root.Position
-
-				root.CFrame =
-					CFrame.new(
-						position.X,
-						position.Y + bob,
-						position.Z
-					)
-					* CFrame.Angles(
-						0,
-						rotation,
-						0
-					)
-			end
-		)
-
-	addCharacterConnection(
-		idleConnection
-	)
+	addCharacterConnection(idleConnection)
 end
 
 -- ================================================================
--- AURA
+-- HAND AURA
 -- ================================================================
 
-local function creatorAura(
-	character: Model
-)
+local function creatorAura(character: Model)
 	for _, name in ipairs({
 		"Left Arm",
 		"Right Arm",
@@ -2561,18 +2195,11 @@ local function creatorAura(
 		"LeftLowerArm",
 		"RightLowerArm",
 	}) do
+
 		local limb =
 			character:FindFirstChild(name)
 
 		if limb and limb:IsA("BasePart") then
-			local old =
-				limb:FindFirstChild(
-					"CreatorAura"
-				)
-
-			if old then
-				old:Destroy()
-			end
 
 			local attachment =
 				Instance.new("Attachment")
@@ -2583,9 +2210,7 @@ local function creatorAura(
 			attachment.Parent = limb
 
 			local emitter =
-				Instance.new(
-					"ParticleEmitter"
-				)
+				Instance.new("ParticleEmitter")
 
 			emitter.Name =
 				"CreatorGreenPixels"
@@ -2597,18 +2222,19 @@ local function creatorAura(
 				)
 
 			emitter.LightEmission = 1
-			emitter.Rate = 3
+
+			emitter.Rate = 2
 
 			emitter.Lifetime =
 				NumberRange.new(
 					0.15,
-					0.32
+					0.3
 				)
 
 			emitter.Speed =
 				NumberRange.new(
 					0.15,
-					0.75
+					0.7
 				)
 
 			emitter.SpreadAngle =
@@ -2625,7 +2251,7 @@ local function creatorAura(
 					),
 
 					NumberSequenceKeypoint.new(
-						0.45,
+						0.5,
 						0.4
 					),
 
@@ -2635,26 +2261,21 @@ local function creatorAura(
 					),
 				})
 
-			emitter.Parent =
-				attachment
+			emitter.Parent = attachment
 		end
 	end
 end
 
 -- ================================================================
--- TOOLS
+-- FLIGHT TOOL
 -- ================================================================
 
 local function destroyTool(name: string)
 	local backpack =
-		LocalPlayer:FindFirstChild(
-			"Backpack"
-		)
+		LocalPlayer:FindFirstChild("Backpack")
 
 	if backpack then
-		for _, object in ipairs(
-			backpack:GetChildren()
-		) do
+		for _, object in ipairs(backpack:GetChildren()) do
 			if object:IsA("Tool")
 				and object.Name == name
 			then
@@ -2663,13 +2284,10 @@ local function destroyTool(name: string)
 		end
 	end
 
-	local character =
-		LocalPlayer.Character
+	local character = LocalPlayer.Character
 
 	if character then
-		for _, object in ipairs(
-			character:GetChildren()
-		) do
+		for _, object in ipairs(character:GetChildren()) do
 			if object:IsA("Tool")
 				and object.Name == name
 			then
@@ -2678,10 +2296,6 @@ local function destroyTool(name: string)
 		end
 	end
 end
-
--- ================================================================
--- FLIGHT
--- ================================================================
 
 local function createFlightTool()
 	local name = "Creator Flight"
@@ -2689,9 +2303,7 @@ local function createFlightTool()
 	destroyTool(name)
 
 	local backpack =
-		LocalPlayer:WaitForChild(
-			"Backpack"
-		)
+		LocalPlayer:WaitForChild("Backpack")
 
 	local tool =
 		Instance.new("Tool")
@@ -2704,14 +2316,10 @@ local function createFlightTool()
 	tool.Parent = backpack
 
 	local active = false
-	local connection:
-		RBXScriptConnection? = nil
+	local connection: RBXScriptConnection? = nil
 
-	local attachment:
-		Attachment? = nil
-
-	local velocity:
-		LinearVelocity? = nil
+	local attachment: Attachment? = nil
+	local velocity: LinearVelocity? = nil
 
 	local function stop()
 		active = false
@@ -2746,6 +2354,8 @@ local function createFlightTool()
 			return
 		end
 
+		active = true
+
 		local character, humanoid, root =
 			getCharacter()
 
@@ -2753,10 +2363,9 @@ local function createFlightTool()
 			or not humanoid
 			or not root
 		then
+			stop()
 			return
 		end
-
-		active = true
 
 		attachment =
 			Instance.new("Attachment")
@@ -2784,89 +2393,79 @@ local function createFlightTool()
 		velocity.Parent = root
 
 		connection =
-			RunService.RenderStepped:Connect(
-				function()
-					if not active
-						or not root.Parent
-						or humanoid.Health <= 0
-					then
-						stop()
-						return
-					end
+			RunService.RenderStepped:Connect(function()
 
-					local camera =
-						Workspace.CurrentCamera
-
-					if not camera then
-						return
-					end
-
-					local direction =
-						Vector3.zero
-
-					if UserInputService:IsKeyDown(
-						Enum.KeyCode.W
-					) then
-						direction +=
-							camera.CFrame.LookVector
-					end
-
-					if UserInputService:IsKeyDown(
-						Enum.KeyCode.S
-					) then
-						direction -=
-							camera.CFrame.LookVector
-					end
-
-					if UserInputService:IsKeyDown(
-						Enum.KeyCode.A
-					) then
-						direction -=
-							camera.CFrame.RightVector
-					end
-
-					if UserInputService:IsKeyDown(
-						Enum.KeyCode.D
-					) then
-						direction +=
-							camera.CFrame.RightVector
-					end
-
-					if UserInputService:IsKeyDown(
-						Enum.KeyCode.Space
-					) then
-						direction +=
-							Vector3.yAxis
-					end
-
-					if UserInputService:IsKeyDown(
-						Enum.KeyCode.LeftControl
-					) then
-						direction -=
-							Vector3.yAxis
-					end
-
-					if direction.Magnitude > 0 then
-						direction =
-							direction.Unit
-					end
-
-					velocity.VectorVelocity =
-						direction
-						* CFG.FlightSpeed
+				if not active
+					or not root.Parent
+					or humanoid.Health <= 0
+				then
+					stop()
+					return
 				end
-			)
+
+				local camera =
+					Workspace.CurrentCamera
+
+				if not camera then
+					return
+				end
+
+				local direction =
+					Vector3.zero
+
+				if UserInputService:IsKeyDown(
+					Enum.KeyCode.W
+				) then
+					direction += camera.CFrame.LookVector
+				end
+
+				if UserInputService:IsKeyDown(
+					Enum.KeyCode.S
+				) then
+					direction -= camera.CFrame.LookVector
+				end
+
+				if UserInputService:IsKeyDown(
+					Enum.KeyCode.A
+				) then
+					direction -= camera.CFrame.RightVector
+				end
+
+				if UserInputService:IsKeyDown(
+					Enum.KeyCode.D
+				) then
+					direction += camera.CFrame.RightVector
+				end
+
+				if UserInputService:IsKeyDown(
+					Enum.KeyCode.Space
+				) then
+					direction += Vector3.yAxis
+				end
+
+				if UserInputService:IsKeyDown(
+					Enum.KeyCode.LeftControl
+				) then
+					direction -= Vector3.yAxis
+				end
+
+				if direction.Magnitude > 0 then
+					direction =
+						direction.Unit
+				end
+
+				velocity.VectorVelocity =
+					direction * CFG.FlightSpeed
+			end)
 	end)
 
 	tool.Unequipped:Connect(stop)
 
-	tool.AncestryChanged:Connect(
-		function(_, parent)
-			if not parent then
-				stop()
-			end
+	tool.AncestryChanged:Connect(function(_, parent)
+		if not parent then
+			stop()
 		end
-	)
+	end)
 end
 
 -- ================================================================
@@ -2879,9 +2478,7 @@ local function createTeleportTool()
 	destroyTool(name)
 
 	local backpack =
-		LocalPlayer:WaitForChild(
-			"Backpack"
-		)
+		LocalPlayer:WaitForChild("Backpack")
 
 	local tool =
 		Instance.new("Tool")
@@ -2893,91 +2490,62 @@ local function createTeleportTool()
 
 	tool.Parent = backpack
 
-	tool.Activated:Connect(
-		function()
-			local character, humanoid, root =
-				getCharacter()
+	tool.Activated:Connect(function()
 
-			if not character
-				or not humanoid
-				or not root
-			then
-				return
-			end
+		local character, humanoid, root =
+			getCharacter()
 
-			local mouse =
-				LocalPlayer:GetMouse()
-
-			if not mouse then
-				return
-			end
-
-			local destination =
-				mouse.Hit.Position
-
-			creatorBurst(
-				root,
-				5,
-				0.13
-			)
-
-			creatorRing(
-				root,
-				2,
-				10,
-				0.17
-			)
-
-			cloneResource(
-				3,
-				root,
-				7,
-				0.25
-			)
-
-			task.wait(0.035)
-
-			if not root.Parent then
-				return
-			end
-
-			root.CFrame =
-				CFrame.lookAt(
-					destination
-						+ Vector3.new(
-							0,
-							2.5,
-							0
-						),
-					destination
-				)
-
-			root.AssemblyLinearVelocity =
-				Vector3.zero
-
-			creatorBurst(
-				root,
-				7,
-				0.16
-			)
-
-			creatorRing(
-				root,
-				2,
-				14,
-				0.21
-			)
-
-			cloneResource(
-				3,
-				root,
-				8,
-				0.28
-			)
-
-			glitchBurst()
+		if not character
+			or not humanoid
+			or not root
+		then
+			return
 		end
-	)
+
+		local mouse =
+			LocalPlayer:GetMouse()
+
+		if not mouse or not mouse.Hit then
+			return
+		end
+
+		local old =
+			root.CFrame
+
+		creatorBurst(root, 5, 0.13)
+
+		cloneResource(
+			3,
+			root,
+			6,
+			0.25
+		)
+
+		task.wait(0.035)
+
+		local destination =
+			mouse.Hit.Position
+
+		root.CFrame =
+			CFrame.lookAt(
+				destination + Vector3.new(0, 2.5, 0),
+				destination
+			)
+
+		root.AssemblyLinearVelocity =
+			Vector3.zero
+
+		creatorBurst(root, 6, 0.16)
+
+		cloneResource(
+			3,
+			root,
+			7,
+			0.28
+		)
+
+		glitchBurst()
+	end)
 end
 
 -- ================================================================
@@ -2990,9 +2558,7 @@ local function createRunTool()
 	destroyTool(name)
 
 	local backpack =
-		LocalPlayer:WaitForChild(
-			"Backpack"
-		)
+		LocalPlayer:WaitForChild("Backpack")
 
 	local tool =
 		Instance.new("Tool")
@@ -3005,12 +2571,8 @@ local function createRunTool()
 	tool.Parent = backpack
 
 	local active = false
-
-	local connection:
-		RBXScriptConnection? = nil
-
-	local track:
-		AnimationTrack? = nil
+	local connection: RBXScriptConnection? = nil
+	local track: AnimationTrack? = nil
 
 	local function stop()
 		active = false
@@ -3032,80 +2594,69 @@ local function createRunTool()
 		end
 	end
 
-	tool.Equipped:Connect(
-		function()
-			if active then
-				return
-			end
+	tool.Equipped:Connect(function()
 
-			local character, humanoid, root =
-				getCharacter()
-
-			if not character
-				or not humanoid
-				or not root
-			then
-				return
-			end
-
-			active = true
-
-			track =
-				playAnimation(
-					humanoid,
-					ANIM.Run,
-					Enum.AnimationPriority.Movement,
-					1.12,
-					true
-				)
-
-			connection =
-				RunService.RenderStepped:Connect(
-					function()
-						if not active
-							or not root.Parent
-							or humanoid.Health <= 0
-						then
-							stop()
-							return
-						end
-
-						if humanoid.MoveDirection.Magnitude
-							> 0.05
-						then
-							local direction =
-								humanoid.MoveDirection.Unit
-
-							root.AssemblyLinearVelocity =
-								Vector3.new(
-									direction.X
-										* CFG.RunSpeed,
-
-									root.AssemblyLinearVelocity.Y,
-
-									direction.Z
-										* CFG.RunSpeed
-								)
-
-							if allowedFX(
-								"Run",
-								0.1
-							) then
-								cloneResource(
-									8,
-									root,
-									2,
-									0.15
-								)
-							end
-						end
-					end
-				)
+		if active then
+			return
 		end
-	)
+
+		local character, humanoid, root =
+			getCharacter()
+
+		if not character
+			or not humanoid
+			or not root
+		then
+			return
+		end
+
+		active = true
+
+		track =
+			playAnimation(
+				humanoid,
+				ANIM.Run,
+				Enum.AnimationPriority.Movement,
+				1.12,
+				true
+			)
+
+		connection =
+			RunService.RenderStepped:Connect(function()
+
+				if not active
+					or not root.Parent
+					or humanoid.Health <= 0
+				then
+					stop()
+					return
+				end
+
+				if humanoid.MoveDirection.Magnitude > 0.05 then
+
+					local direction =
+						root.CFrame.LookVector
+
+					root.AssemblyLinearVelocity =
+						Vector3.new(
+							direction.X
+								* CFG.RunSpeed,
+
+							root.AssemblyLinearVelocity.Y,
+
+							direction.Z
+								* CFG.RunSpeed
+						)
+				end
+			end)
+	end)
 
 	tool.Unequipped:Connect(stop)
 end
+
+-- ================================================================
+-- TOOLS
+-- ================================================================
 
 local function setupTools()
 	createFlightTool()
@@ -3114,7 +2665,7 @@ local function setupTools()
 end
 
 -- ================================================================
--- ANIMATION TRIGGERS
+-- ANIMATION TRIGGER HANDLER
 -- ================================================================
 
 local TRIGGERS = {
@@ -3131,9 +2682,7 @@ local ULT_TRIGGERS = {
 	["14057231976"] = 2,
 }
 
-local function animationIdNumber(
-	track: AnimationTrack
-)
+local function animationIdNumber(track: AnimationTrack)
 	if not track.Animation then
 		return nil
 	end
@@ -3153,6 +2702,7 @@ local function setupMoveHandler(
 	addCharacterConnection(
 		humanoid.AnimationPlayed:Connect(
 			function(track)
+
 				if token ~= S.Token then
 					return
 				end
@@ -3168,6 +2718,7 @@ local function setupMoveHandler(
 					TRIGGERS[id]
 
 				if move then
+
 					pcall(function()
 						track:Stop()
 					end)
@@ -3198,11 +2749,14 @@ local function setupMoveHandler(
 					ULT_TRIGGERS[id]
 
 				if ult then
+
 					pcall(function()
 						track:Stop()
 					end)
 
 					playUltimate(ult)
+
+					return
 				end
 			end
 		)
@@ -3213,8 +2767,7 @@ end
 -- M1 INPUT
 -- ================================================================
 
-local m1Connection:
-	RBXScriptConnection? = nil
+local m1Connection: RBXScriptConnection? = nil
 
 local function setupM1()
 	if m1Connection then
@@ -3226,6 +2779,7 @@ local function setupM1()
 	m1Connection =
 		UserInputService.InputBegan:Connect(
 			function(input, processed)
+
 				if processed then
 					return
 				end
@@ -3245,12 +2799,15 @@ local function setupM1()
 end
 
 -- ================================================================
--- GLITCH LOOP
+-- GLOBAL GLITCH LOOP
 -- ================================================================
 
 local function startGlitchLoop()
+
 	task.spawn(function()
+
 		while LocalPlayer.Parent do
+
 			pcall(function()
 				fixCreatorSelection()
 				styleUltimateBar()
@@ -3259,21 +2816,21 @@ local function startGlitchLoop()
 					styleMoveSlot(i)
 				end
 
-				if math.random() < 0.3 then
+				if math.random() < 0.32 then
 					glitchHotbar()
 				end
 
-				if math.random() < 0.38 then
+				if math.random() < 0.42 then
 					glitchUltimateBar()
 				end
 
-				if math.random() < 0.18 then
+				if math.random() < 0.2 then
 					glitchBurst()
 				end
 			end)
 
 			task.wait(
-				math.random(14, 30) / 100
+				math.random(14, 31) / 100
 			)
 		end
 	end)
@@ -3283,9 +2840,8 @@ end
 -- CHARACTER SETUP
 -- ================================================================
 
-local function setupCharacter(
-	character: Model
-)
+local function setupCharacter(character: Model)
+
 	S.Token += 1
 
 	local token =
@@ -3307,25 +2863,26 @@ local function setupCharacter(
 
 	if not humanoid
 		or not root
-		or not humanoid:IsA("Humanoid")
-		or not root:IsA("BasePart")
 	then
 		return
 	end
 
+	-- Creator spawn
 	creatorSpawn(
 		character,
-		root,
-		humanoid
+		root
 	)
 
+	-- Green aura
 	creatorAura(character)
 
+	-- Custom idle floating effect
 	startCreatorIdle(
 		root,
 		humanoid
 	)
 
+	-- Move handler
 	setupMoveHandler(
 		character,
 		humanoid,
@@ -3333,8 +2890,12 @@ local function setupCharacter(
 		token
 	)
 
+	-- UI needs multiple passes because TSB can rebuild
+	-- character UI after character selection.
 	task.spawn(function()
+
 		for _ = 1, 30 do
+
 			if token ~= S.Token then
 				return
 			end
@@ -3355,18 +2916,21 @@ local function setupCharacter(
 	task.delay(
 		0.4,
 		function()
-			if token == S.Token then
-				setupTools()
+
+			if token ~= S.Token then
+				return
 			end
+
+			setupTools()
 		end
 	)
 
 	addCharacterConnection(
 		humanoid.Died:Connect(
 			function()
+
 				S.Busy = {}
 
-				stopIdle()
 				cleanupTracks()
 
 				creatorHeadText(
@@ -3379,6 +2943,7 @@ local function setupCharacter(
 	addCharacterConnection(
 		character.AncestryChanged:Connect(
 			function(_, parent)
+
 				if not parent then
 					S.Token += 1
 				end
@@ -3392,6 +2957,7 @@ end
 -- ================================================================
 
 if not S.Started then
+
 	S.Started = true
 
 	disconnectList(
@@ -3405,7 +2971,9 @@ if not S.Started then
 
 		LocalPlayer.CharacterAdded:Connect(
 			function(character)
+
 				task.spawn(function()
+
 					character:WaitForChild(
 						"Humanoid",
 						10
@@ -3418,11 +2986,9 @@ if not S.Started then
 
 					task.wait(0.18)
 
-					if character.Parent then
-						setupCharacter(
-							character
-						)
-					end
+					setupCharacter(
+						character
+					)
 				end)
 			end
 		)
@@ -3439,11 +3005,15 @@ local current =
 	LocalPlayer.Character
 
 if current then
+
 	task.spawn(function()
 		setupCharacter(current)
 	end)
+
 else
+
 	task.spawn(function()
+
 		local character =
 			LocalPlayer.CharacterAdded:Wait()
 
@@ -3456,6 +3026,7 @@ end
 -- ================================================================
 
 task.spawn(function()
+
 	local playerGui =
 		LocalPlayer:WaitForChild(
 			"PlayerGui",
@@ -3469,7 +3040,9 @@ task.spawn(function()
 	local connection =
 		playerGui.DescendantAdded:Connect(
 			function()
+
 				task.defer(function()
+
 					pcall(function()
 						fixCreatorSelection()
 						styleUltimateBar()
@@ -3489,10 +3062,11 @@ task.spawn(function()
 end)
 
 -- ================================================================
--- INITIAL TOOLS
+-- INITIAL TOOL SETUP
 -- ================================================================
 
 task.spawn(function()
+
 	local backpack =
 		LocalPlayer:WaitForChild(
 			"Backpack",
@@ -3501,20 +3075,20 @@ task.spawn(function()
 
 	if backpack then
 		task.wait(0.35)
-
-		if LocalPlayer.Character then
-			setupTools()
-		end
+		setupTools()
 	end
 end)
 
 -- ================================================================
--- INITIAL UI
+-- INITIAL UI PASSES
 -- ================================================================
 
 task.spawn(function()
+
 	for _ = 1, 40 do
+
 		pcall(function()
+
 			fixCreatorSelection()
 			styleUltimateBar()
 
@@ -3528,12 +3102,13 @@ task.spawn(function()
 end)
 
 -- ================================================================
--- STARTUP
+-- STARTUP GLITCH
 -- ================================================================
 
 task.delay(
 	0.45,
 	function()
+
 		creatorHeadText(
 			"CREATION PROTOCOL: ONLINE"
 		)
@@ -3550,6 +3125,7 @@ task.delay(
 -- ================================================================
 
 pcall(function()
+
 	StarterGui:SetCore(
 		"SendNotification",
 		{
@@ -3559,8 +3135,9 @@ pcall(function()
 			Duration = 3,
 		}
 	)
+
 end)
 
 -- ================================================================
 -- END
--- ================================================================
+-- =============================================================
