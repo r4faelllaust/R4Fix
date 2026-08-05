@@ -1,185 +1,196 @@
 --!strict
 -- ============================================================
--- THE CREATOR // FINAL FIXED EDITION
--- R4Fix
+-- THE CREATOR // R4FIX FINAL FIXED CONTROLLER
+-- ============================================================
+-- Place: 10449761463
 --
--- DARK / GREEN / BLACK CORRUPTION MOVESET
---
--- M1:
---   Closest valid target
---   -> teleport behind target
---   -> face target
---   -> procedural punch animation
---   -> corruption impact
---
--- 1:
---   VOID EXECUTION
---   Phantom Engine burst + corruption strike
---
--- 2:
---   CREATOR'S COLLAPSE
---   High-speed movement + collapsing green/black field
---
--- 3:
---   REALITY BREAK
---   Glitch field + reality fracture
---
--- 4:
---   ABSOLUTE NULL
---   Large corruption explosion
---
--- ULT:
---   NULL//CREATION
---   REALITY//OVERRIDE
---   666//GENESIS
---   THE//END
+-- INPUTS
+--   M1 / Mouse1 / Touch = Creator M1
+--   1 = NULL CREATION
+--   2 = CREATOR'S COLLAPSE
+--   3 = REALITY BREAK
+--   4 = ABSOLUTE NULL
+--   G = ULTIMATE
 --
 -- IMPORTANT:
--- This is a client-side controller.
--- It does not fake server damage or pretend a local
--- Humanoid.Health change kills another player server-side.
+-- This is a LOCAL controller.
+-- It does NOT fake Humanoid.Health or pretend client code
+-- can force server-authoritative damage.
+--
+-- Targeting / teleport / VFX / animation playback are local.
+-- Actual damage requires the game's legitimate combat system.
 -- ============================================================
 
 local Players = game:GetService("Players")
+local UIS = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 local Debris = game:GetService("Debris")
-local UserInputService = game:GetService("UserInputService")
 local Lighting = game:GetService("Lighting")
 local StarterGui = game:GetService("StarterGui")
 
-local LocalPlayer = Players.LocalPlayer
+local LP = Players.LocalPlayer
 
-if not LocalPlayer then
-	return
-end
-
-local PLACE_ID = 10449761463
-
-if game.PlaceId ~= PLACE_ID then
-	return
-end
-
-local GEN = getgenv and getgenv()
-
-if not GEN then
+if not LP then
 	return
 end
 
 -- ============================================================
--- STATE
+-- PLACE CHECK
 -- ============================================================
 
-GEN.TheCreator = GEN.TheCreator or {
-	Started = false,
-	Token = 0,
-	Connections = {},
-	CharacterConnections = {},
-	AnimationTracks = {},
-	Busy = {},
-	LastVFX = {},
-	LastM1 = 0,
-	MobileGui = nil,
-	EffectsFolder = nil,
-}
+local REQUIRED_PLACE = 10449761463
 
-local S = GEN.TheCreator
+if game.PlaceId ~= REQUIRED_PLACE then
+	warn(
+		"[THE CREATOR] Wrong place. Expected "
+			.. tostring(REQUIRED_PLACE)
+			.. ", current place is "
+			.. tostring(game.PlaceId)
+	)
+
+	pcall(function()
+		StarterGui:SetCore(
+			"SendNotification",
+			{
+				Title = "THE CREATOR",
+				Text = "Wrong place ID.",
+				Duration = 4,
+			}
+		)
+	end)
+
+	return
+end
 
 -- ============================================================
--- IDENTITY
+-- GLOBAL STATE
 -- ============================================================
 
-local MOVESET_NAME = "The Creator"
+local GEN = (getgenv and getgenv()) or _G
 
-local DECAL_ID =
-	"rbxthumb://type=Asset&id=666236509&w=150&h=150"
+GEN.R4FixCreator = GEN.R4FixCreator or {}
 
--- ============================================================
--- COLORS
--- ============================================================
+local S = GEN.R4FixCreator
 
-local BLACK = Color3.fromRGB(0, 0, 0)
-local NEAR_BLACK = Color3.fromRGB(1, 8, 3)
+-- Kill old execution cleanly
+if S.Destroy then
+	pcall(S.Destroy)
+end
 
-local DARK_GREEN = Color3.fromRGB(0, 35, 12)
-local VOID_GREEN = Color3.fromRGB(0, 80, 25)
-
-local GREEN = Color3.fromRGB(0, 170, 55)
-local BRIGHT_GREEN = Color3.fromRGB(35, 255, 100)
-local TOXIC_GREEN = Color3.fromRGB(120, 255, 150)
+S.Alive = true
+S.Connections = {}
+S.CharacterConnections = {}
+S.Tracks = {}
+S.Busy = {}
+S.LastInput = {}
+S.Token = 0
 
 -- ============================================================
 -- CONFIG
 -- ============================================================
 
 local CFG = {
-	M1_COOLDOWN = 0.12,
-
 	TARGET_RADIUS = 250,
 
-	BEHIND_DISTANCE = 3.5,
-	BEHIND_HEIGHT = 0,
+	BEHIND_DISTANCE = 3.25,
+
+	M1_COOLDOWN = 0.16,
+
+	MOVE_COOLDOWN = 0.55,
+
+	ULT_COOLDOWN = 2,
 
 	PHANTOM_SPEED = 330,
 
-	MOVE1_TIME = 1.15,
-	MOVE2_TIME = 0.95,
-	MOVE3_TIME = 1.05,
-	MOVE4_TIME = 1.25,
+	PHANTOM_TIME = 0.55,
 
-	ULT_TIME = 1.6,
+	MOVE1_TIME = 1.05,
+	MOVE2_TIME = 0.9,
+	MOVE3_TIME = 0.9,
+	MOVE4_TIME = 1.15,
 
-	VFX_COOLDOWN = 0.025,
+	ULT_TIME = 1.65,
+
+	VFX_LIFETIME = 2,
+
+	-- Set to false if you do not want the script to change time.
+	USE_NIGHT_LIGHTING = true,
 
 	NIGHT_TIME = 0,
-
-	RUN_SPEED = 145,
-
-	MOBILE_BUTTON_SIZE = 58,
-
-	-- Set to false if you do not want the local
-	-- procedural animation controller.
-	PROCEDURAL_ANIMATIONS = true,
 }
 
 -- ============================================================
--- SOUND
+-- COLORS
 -- ============================================================
 
-local SOUND = {
-	-- Optional Roblox sound assets.
-	-- The move system works even if these remain empty.
+local BLACK = Color3.fromRGB(0, 0, 0)
+
+local DARK_GREEN = Color3.fromRGB(0, 30, 8)
+
+local GREEN = Color3.fromRGB(0, 180, 55)
+
+local BRIGHT_GREEN = Color3.fromRGB(30, 255, 100)
+
+local TOXIC_GREEN = Color3.fromRGB(125, 255, 155)
+
+-- ============================================================
+-- OPTIONAL ANIMATION IDS
+--
+-- IMPORTANT:
+-- Blank IDs are intentionally ignored.
+-- The controller DOES NOT depend on these IDs to initialize.
+--
+-- Put real Roblox animation asset IDs here when available.
+-- ============================================================
+
+local ANIM = {
 	M1 = "",
+
 	MOVE1 = "",
 	MOVE2 = "",
 	MOVE3 = "",
 	MOVE4 = "",
 
-	ULT1 = "",
-	ULT2 = "",
-	ULT3 = "",
-	ULT4 = "",
-
-	TELEPORT = "",
-	SPAWN = "",
+	ULT = "",
 }
 
 -- ============================================================
--- CLEANUP
+-- UTILITY
 -- ============================================================
 
-local function disconnectList(list: {RBXScriptConnection})
-	for _, connection in ipairs(list) do
+local function disconnectAll(list)
+	for i = #list, 1, -1 do
+		local connection = list[i]
+
 		pcall(function()
 			connection:Disconnect()
 		end)
-	end
 
-	table.clear(list)
+		list[i] = nil
+	end
 end
 
-local function cleanupAnimations()
-	for _, track in ipairs(S.AnimationTracks) do
+local function addConnection(connection)
+	if connection then
+		table.insert(S.Connections, connection)
+	end
+
+	return connection
+end
+
+local function addCharacterConnection(connection)
+	if connection then
+		table.insert(S.CharacterConnections, connection)
+	end
+
+	return connection
+end
+
+local function cleanupTracks()
+	for i = #S.Tracks, 1, -1 do
+		local track = S.Tracks[i]
+
 		pcall(function()
 			if track.IsPlaying then
 				track:Stop(0.05)
@@ -187,37 +198,45 @@ local function cleanupAnimations()
 
 			track:Destroy()
 		end)
-	end
 
-	table.clear(S.AnimationTracks)
-end
-
-local function destroyVFXFolder()
-	if S.EffectsFolder then
-		pcall(function()
-			S.EffectsFolder:Destroy()
-		end)
-
-		S.EffectsFolder = nil
-	end
-
-	local old = workspace:FindFirstChild("TheCreator_VFX")
-
-	if old then
-		pcall(function()
-			old:Destroy()
-		end)
+		S.Tracks[i] = nil
 	end
 end
 
 local function cleanupCharacter()
-	disconnectList(S.CharacterConnections)
-	cleanupAnimations()
+	disconnectAll(S.CharacterConnections)
+	cleanupTracks()
 
 	S.Busy = {}
-	table.clear(S.LastVFX)
 
-	destroyVFXFolder()
+	local folder = workspace:FindFirstChild("R4Fix_TheCreator_VFX")
+
+	if folder then
+		pcall(function()
+			folder:Destroy()
+		end)
+	end
+
+	local character = LP.Character
+
+	if character then
+		local highlight =
+			character:FindFirstChild("R4FixCreatorHighlight")
+
+		if highlight then
+			pcall(function()
+				highlight:Destroy()
+			end)
+		end
+
+		for _, object in ipairs(character:GetDescendants()) do
+			if object.Name == "R4FixCreatorAura" then
+				pcall(function()
+					object:Destroy()
+				end)
+			end
+		end
+	end
 end
 
 -- ============================================================
@@ -225,7 +244,7 @@ end
 -- ============================================================
 
 local function getCharacter()
-	local character = LocalPlayer.Character
+	local character = LP.Character
 
 	if not character then
 		return nil, nil, nil
@@ -241,7 +260,91 @@ local function getCharacter()
 		return nil, nil, nil
 	end
 
+	if humanoid.Health <= 0 then
+		return nil, nil, nil
+	end
+
 	return character, humanoid, root
+end
+
+-- ============================================================
+-- ANIMATION
+-- ============================================================
+
+local function getAnimator(humanoid)
+	local animator =
+		humanoid:FindFirstChildOfClass("Animator")
+
+	if not animator then
+		animator = Instance.new("Animator")
+		animator.Parent = humanoid
+	end
+
+	return animator
+end
+
+local function playAnimation(
+	humanoid,
+	id,
+	speed,
+	fadeTime
+)
+	if not humanoid then
+		return nil
+	end
+
+	if humanoid.Health <= 0 then
+		return nil
+	end
+
+	if not id or id == "" then
+		return nil
+	end
+
+	local cleanID = tostring(id)
+
+	if not cleanID:find("rbxassetid://", 1, true) then
+		cleanID = "rbxassetid://" .. cleanID
+	end
+
+	local animation = Instance.new("Animation")
+
+	animation.AnimationId = cleanID
+
+	local animator = getAnimator(humanoid)
+
+	local success, track =
+		pcall(function()
+			return animator:LoadAnimation(animation)
+		end)
+
+	animation:Destroy()
+
+	if not success or not track then
+		warn(
+			"[THE CREATOR] Animation failed: "
+				.. cleanID
+		)
+
+		return nil
+	end
+
+	track.Priority =
+		Enum.AnimationPriority.Action4
+
+	track.Looped = false
+
+	table.insert(S.Tracks, track)
+
+	pcall(function()
+		track:Play(
+			fadeTime or 0.04,
+			1,
+			speed or 1
+		)
+	end)
+
+	return track
 end
 
 -- ============================================================
@@ -249,130 +352,107 @@ end
 -- ============================================================
 
 local function getVFXFolder()
-	if S.EffectsFolder and S.EffectsFolder.Parent then
-		return S.EffectsFolder
-	end
-
-	local folder = workspace:FindFirstChild("TheCreator_VFX")
+	local folder =
+		workspace:FindFirstChild(
+			"R4Fix_TheCreator_VFX"
+		)
 
 	if not folder then
 		folder = Instance.new("Folder")
-		folder.Name = "TheCreator_VFX"
+
+		folder.Name =
+			"R4Fix_TheCreator_VFX"
+
 		folder.Parent = workspace
 	end
-
-	S.EffectsFolder = folder
 
 	return folder
 end
 
 -- ============================================================
--- VFX RATE LIMIT
+-- VFX CLEANUP
 -- ============================================================
 
-local function allowed(key: string, cooldown: number?): boolean
-	local now = os.clock()
-
-	local last = S.LastVFX[key] or 0
-
-	if now - last < (cooldown or CFG.VFX_COOLDOWN) then
-		return false
-	end
-
-	S.LastVFX[key] = now
-
-	return true
-end
-
--- ============================================================
--- SOUND
--- ============================================================
-
-local function playSound(
-	parent: Instance?,
-	soundId: string,
-	volume: number?,
-	speed: number?
+local function tweenDestroy(
+	object,
+	info,
+	properties
 )
-	if not parent or not parent.Parent then
+	if not object then
 		return
 	end
 
-	if soundId == "" then
-		return
+	local success, tween =
+		pcall(function()
+			return TweenService:Create(
+				object,
+				info,
+				properties
+			)
+		end)
+
+	if success and tween then
+		tween:Play()
 	end
 
-	local sound = Instance.new("Sound")
-
-	sound.Name = "CreatorSound"
-	sound.SoundId = "rbxassetid://" .. soundId
-	sound.Volume = volume or 1
-	sound.PlaybackSpeed = speed or 1
-	sound.RollOffMaxDistance = 160
-	sound.RollOffMinDistance = 5
-
-	sound.Parent = parent
-
-	pcall(function()
-		sound:Play()
-	end)
-
-	Debris:AddItem(sound, 6)
+	Debris:AddItem(
+		object,
+		info.Time + 0.2
+	)
 end
 
 -- ============================================================
--- BASIC BURST
+-- BURST
 -- ============================================================
 
 local function burst(
-	cframe: CFrame,
-	size: number,
-	color: Color3,
-	duration: number?,
-	key: string?
+	position,
+	size,
+	color,
+	duration
 )
-	if key and not allowed(key) then
-		return
-	end
-
 	local part = Instance.new("Part")
 
-	part.Name = "CreatorBurst"
+	part.Name = "Creator_Burst"
+
 	part.Anchored = true
+
 	part.CanCollide = false
 	part.CanTouch = false
 	part.CanQuery = false
+
 	part.CastShadow = false
 
 	part.Shape = Enum.PartType.Ball
+
 	part.Material = Enum.Material.Neon
 
 	part.Color = color
+
 	part.Transparency = 0.08
 
-	part.Size = Vector3.one
-	part.CFrame = cframe
+	part.Size = Vector3.new(0.2, 0.2, 0.2)
+
+	part.CFrame = CFrame.new(position)
 
 	part.Parent = getVFXFolder()
 
-	local tween = TweenService:Create(
+	tweenDestroy(
 		part,
 		TweenInfo.new(
-			duration or 0.3,
+			duration,
 			Enum.EasingStyle.Quint,
 			Enum.EasingDirection.Out
 		),
 		{
-			Size = Vector3.new(size, size, size),
+			Size = Vector3.new(
+				size,
+				size,
+				size
+			),
+
 			Transparency = 1,
 		}
-	)
-
-	tween:Play()
-
-	Debris:AddItem(
-		part,
-		(duration or 0.3) + 0.1
 	)
 end
 
@@ -381,40 +461,41 @@ end
 -- ============================================================
 
 local function ring(
-	cframe: CFrame,
-	startSize: number,
-	endSize: number,
-	color: Color3,
-	duration: number?,
-	key: string?
+	position,
+	startSize,
+	endSize,
+	color,
+	duration
 )
-	if key and not allowed(key) then
-		return
-	end
-
 	local part = Instance.new("Part")
 
-	part.Name = "CreatorRing"
+	part.Name = "Creator_Ring"
+
 	part.Anchored = true
+
 	part.CanCollide = false
 	part.CanTouch = false
 	part.CanQuery = false
+
 	part.CastShadow = false
 
 	part.Shape = Enum.PartType.Cylinder
+
 	part.Material = Enum.Material.Neon
 
 	part.Color = color
+
 	part.Transparency = 0.1
 
-	part.Size = Vector3.new(
-		0.12,
-		startSize,
-		startSize
-	)
+	part.Size =
+		Vector3.new(
+			0.12,
+			startSize,
+			startSize
+		)
 
 	part.CFrame =
-		cframe *
+		CFrame.new(position) *
 		CFrame.Angles(
 			0,
 			0,
@@ -423,92 +504,53 @@ local function ring(
 
 	part.Parent = getVFXFolder()
 
-	TweenService:Create(
+	tweenDestroy(
 		part,
 		TweenInfo.new(
-			duration or 0.4,
+			duration,
 			Enum.EasingStyle.Quint,
 			Enum.EasingDirection.Out
 		),
 		{
-			Size = Vector3.new(
-				0.12,
-				endSize,
-				endSize
-			),
+			Size =
+				Vector3.new(
+					0.12,
+					endSize,
+					endSize
+				),
 
 			Transparency = 1,
 		}
-	):Play()
-
-	Debris:AddItem(
-		part,
-		(duration or 0.4) + 0.1
 	)
 end
 
 -- ============================================================
--- LINE / SLASH
+-- SHOCKWAVE
 -- ============================================================
 
-local function slash(
-	cframe: CFrame,
-	length: number,
-	width: number,
-	color: Color3,
-	duration: number?,
-	key: string?
+local function shockwave(
+	position,
+	radius,
+	color
 )
-	if key and not allowed(key) then
-		return
+	for i = 1, 3 do
+		task.delay(
+			(i - 1) * 0.07,
+			function()
+				if not S.Alive then
+					return
+				end
+
+				ring(
+					position,
+					2 + i,
+					radius + i * 8,
+					color,
+					0.38 + i * 0.05
+				)
+			end
+		)
 	end
-
-	local part = Instance.new("Part")
-
-	part.Name = "CreatorSlash"
-
-	part.Anchored = true
-	part.CanCollide = false
-	part.CanTouch = false
-	part.CanQuery = false
-	part.CastShadow = false
-
-	part.Material = Enum.Material.Neon
-	part.Color = color
-	part.Transparency = 0.05
-
-	part.Size = Vector3.new(
-		width,
-		width,
-		0.1
-	)
-
-	part.CFrame = cframe
-
-	part.Parent = getVFXFolder()
-
-	TweenService:Create(
-		part,
-		TweenInfo.new(
-			duration or 0.25,
-			Enum.EasingStyle.Quint,
-			Enum.EasingDirection.Out
-		),
-		{
-			Size = Vector3.new(
-				width,
-				width,
-				length
-			),
-
-			Transparency = 1,
-		}
-	):Play()
-
-	Debris:AddItem(
-		part,
-		(duration or 0.25) + 0.1
-	)
 end
 
 -- ============================================================
@@ -516,42 +558,45 @@ end
 -- ============================================================
 
 local function particles(
-	parent: Instance?,
-	amount: number,
-	color: Color3,
-	key: string?
+	parent,
+	amount,
+	color
 )
 	if not parent or not parent.Parent then
 		return
 	end
 
-	if key and not allowed(key) then
-		return
-	end
+	local attachment =
+		Instance.new("Attachment")
 
-	local attachment = Instance.new("Attachment")
+	attachment.Name =
+		"CreatorParticleAttachment"
 
-	attachment.Name = "CreatorParticles"
 	attachment.Parent = parent
 
-	local emitter = Instance.new("ParticleEmitter")
+	local emitter =
+		Instance.new("ParticleEmitter")
+
+	emitter.Name =
+		"CreatorCorruption"
 
 	emitter.Color =
 		ColorSequence.new(color)
 
 	emitter.LightEmission = 1
+
 	emitter.Rate = 0
 
 	emitter.Lifetime =
 		NumberRange.new(
-			0.18,
-			0.65
+			0.15,
+			0.55
 		)
 
 	emitter.Speed =
 		NumberRange.new(
-			5,
-			22
+			7,
+			25
 		)
 
 	emitter.Drag = 4
@@ -570,15 +615,15 @@ local function particles(
 
 	emitter.RotSpeed =
 		NumberRange.new(
-			-180,
-			180
+			-240,
+			240
 		)
 
 	emitter.Size =
 		NumberSequence.new({
 			NumberSequenceKeypoint.new(
 				0,
-				0.8
+				0.7
 			),
 
 			NumberSequenceKeypoint.new(
@@ -613,7 +658,7 @@ local function particles(
 
 	Debris:AddItem(
 		attachment,
-		1.2
+		1.3
 	)
 end
 
@@ -622,64 +667,71 @@ end
 -- ============================================================
 
 local function glitchShards(
-	cframe: CFrame,
-	count: number,
-	radius: number,
-	key: string?
+	position,
+	count,
+	radius
 )
-	if key and not allowed(key) then
-		return
-	end
-
 	local folder = getVFXFolder()
 
 	for i = 1, count do
-		local shard = Instance.new("Part")
+		local shard =
+			Instance.new("Part")
 
-		shard.Name = "CreatorGlitch"
+		shard.Name =
+			"Creator_GlitchShard"
 
 		shard.Anchored = true
+
 		shard.CanCollide = false
 		shard.CanTouch = false
 		shard.CanQuery = false
+
 		shard.CastShadow = false
 
-		shard.Material = Enum.Material.Neon
+		shard.Material =
+			Enum.Material.Neon
 
-		if i % 4 == 0 then
-			shard.Color = TOXIC_GREEN
-		elseif i % 2 == 0 then
+		local mode = i % 3
+
+		if mode == 0 then
+			shard.Color = BLACK
+		elseif mode == 1 then
 			shard.Color = GREEN
 		else
-			shard.Color = BLACK
+			shard.Color = BRIGHT_GREEN
 		end
 
-		shard.Transparency = 0.12
+		shard.Transparency = 0.1
 
 		local angle =
 			(i / count) *
 			math.pi *
 			2
 
-		local position =
-			cframe.Position +
+		local distance =
+			radius *
+			(0.55 + math.random() * 0.8)
+
+		local offset =
 			Vector3.new(
-				math.cos(angle) * radius,
+				math.cos(angle) * distance,
 				math.sin(angle * 3) *
 					radius *
-					0.5,
-				math.sin(angle) * radius
+					0.6,
+				math.sin(angle) * distance
 			)
 
 		shard.Size =
 			Vector3.new(
-				math.random(2, 8) / 10,
-				math.random(5, 18) / 10,
-				math.random(2, 8) / 10
+				math.random(3, 10) / 10,
+				math.random(5, 20) / 10,
+				math.random(3, 10) / 10
 			)
 
 		shard.CFrame =
-			CFrame.new(position) *
+			CFrame.new(
+				position + offset
+			) *
 			CFrame.Angles(
 				math.random(),
 				math.random(),
@@ -688,125 +740,88 @@ local function glitchShards(
 
 		shard.Parent = folder
 
-		TweenService:Create(
+		local destination =
+			shard.CFrame *
+			CFrame.new(
+				math.random(-10, 10),
+				math.random(-7, 10),
+				math.random(-10, 10)
+			)
+
+		tweenDestroy(
 			shard,
 			TweenInfo.new(
-				0.3 + math.random() * 0.25,
+				0.35 +
+					math.random() * 0.3,
 				Enum.EasingStyle.Quint,
 				Enum.EasingDirection.Out
 			),
 			{
-				CFrame =
-					shard.CFrame *
-					CFrame.new(
-						math.random(-8, 8),
-						math.random(-8, 8),
-						math.random(-8, 8)
-					),
-
+				CFrame = destination,
 				Transparency = 1,
 			}
-		):Play()
-
-		Debris:AddItem(
-			shard,
-			0.75
 		)
 	end
 end
 
 -- ============================================================
--- CORRUPTION FIELD
+-- LIGHT FLASH
 -- ============================================================
 
-local function corruptionField(
-	position: Vector3,
-	radius: number,
-	duration: number,
-	key: string
+local function flash(
+	position,
+	color
 )
-	if not allowed(key) then
-		return
-	end
+	local part =
+		Instance.new("Part")
 
-	local center = Instance.new("Part")
+	part.Name =
+		"Creator_Flash"
 
-	center.Name = "CreatorCorruptionField"
+	part.Anchored = true
 
-	center.Anchored = true
-	center.CanCollide = false
-	center.CanTouch = false
-	center.CanQuery = false
-	center.CastShadow = false
+	part.CanCollide = false
+	part.CanTouch = false
+	part.CanQuery = false
 
-	center.Shape = Enum.PartType.Cylinder
-	center.Material = Enum.Material.Neon
+	part.CastShadow = false
 
-	center.Color = DARK_GREEN
-	center.Transparency = 0.55
+	part.Material =
+		Enum.Material.Neon
 
-	center.Size = Vector3.new(
-		0.2,
-		2,
-		2
-	)
+	part.Color = color
 
-	center.CFrame =
-		CFrame.new(position) *
-		CFrame.Angles(
-			0,
-			0,
-			math.rad(90)
+	part.Transparency = 0.05
+
+	part.Size =
+		Vector3.new(
+			0.4,
+			0.4,
+			0.4
 		)
 
-	center.Parent = getVFXFolder()
+	part.CFrame =
+		CFrame.new(position)
 
-	TweenService:Create(
-		center,
+	part.Parent =
+		getVFXFolder()
+
+	tweenDestroy(
+		part,
 		TweenInfo.new(
-			duration * 0.45,
-			Enum.EasingStyle.Quint,
-			Enum.EasingDirection.Out
+			0.18,
+			Enum.EasingStyle.Quint
 		),
 		{
-			Size = Vector3.new(
-				0.2,
-				radius,
-				radius
-			),
+			Size =
+				Vector3.new(
+					8,
+					8,
+					8
+				),
 
-			Transparency = 0.2,
+			Transparency = 1,
 		}
-	):Play()
-
-	task.delay(
-		duration * 0.45,
-		function()
-			if center.Parent then
-				TweenService:Create(
-					center,
-					TweenInfo.new(
-						duration * 0.55,
-						Enum.EasingStyle.Quint,
-						Enum.EasingDirection.In
-					),
-					{
-						Size = Vector3.new(
-							0.2,
-							radius * 1.3,
-							radius * 1.3
-						),
-
-						Transparency = 1,
-					}
-				):Play()
-			end
-		end
-	)
-
-	Debris:AddItem(
-		center,
-		duration + 0.2
 	)
 end
 
@@ -814,17 +829,19 @@ end
 -- TARGET VALIDATION
 -- ============================================================
 
-local function isValidTarget(character: Model?): boolean
+local function validTarget(character)
 	if not character then
 		return false
 	end
 
-	if character == LocalPlayer.Character then
+	if character == LP.Character then
 		return false
 	end
 
 	local humanoid =
-		character:FindFirstChildOfClass("Humanoid")
+		character:FindFirstChildOfClass(
+			"Humanoid"
+		)
 
 	local root =
 		character:FindFirstChild(
@@ -843,12 +860,10 @@ local function isValidTarget(character: Model?): boolean
 end
 
 -- ============================================================
--- CLOSEST TARGET
+-- TARGET SEARCH
 -- ============================================================
 
-local function getClosestTarget(
-	maxDistance: number?
-): Model?
+local function getClosestTarget()
 	local _, _, myRoot =
 		getCharacter()
 
@@ -856,38 +871,38 @@ local function getClosestTarget(
 		return nil
 	end
 
-	local limit =
-		maxDistance or CFG.TARGET_RADIUS
+	local closest = nil
 
-	local closest: Model? = nil
-	local closestDistance = limit
+	local closestDistance =
+		CFG.TARGET_RADIUS
 
+	-- First search workspace.Live.
 	local live =
 		workspace:FindFirstChild("Live")
 
 	if live then
-		for _, object in ipairs(
-			live:GetChildren()
-		) do
-			if object:IsA("Model") and
-				isValidTarget(object)
-			then
-				local targetRoot =
+		for _, object in
+			ipairs(live:GetChildren())
+		do
+			if validTarget(object) then
+				local root =
 					object:FindFirstChild(
 						"HumanoidRootPart"
 					)
 
-				if targetRoot then
+				if root then
 					local distance =
 						(
-							targetRoot.Position -
+							root.Position -
 							myRoot.Position
 						).Magnitude
 
 					if distance <
 						closestDistance
 					then
-						closestDistance = distance
+						closestDistance =
+							distance
+
 						closest = object
 					end
 				end
@@ -895,34 +910,33 @@ local function getClosestTarget(
 		end
 	end
 
-	if closest then
-		return closest
-	end
-
-	for _, player in ipairs(
-		Players:GetPlayers()
-	) do
-		if player ~= LocalPlayer then
+	-- Then player characters.
+	for _, player in
+		ipairs(Players:GetPlayers())
+	do
+		if player ~= LP then
 			local character =
 				player.Character
 
-			if isValidTarget(character) then
-				local targetRoot =
+			if validTarget(character) then
+				local root =
 					character:FindFirstChild(
 						"HumanoidRootPart"
 					)
 
-				if targetRoot then
+				if root then
 					local distance =
 						(
-							targetRoot.Position -
+							root.Position -
 							myRoot.Position
 						).Magnitude
 
 					if distance <
 						closestDistance
 					then
-						closestDistance = distance
+						closestDistance =
+							distance
+
 						closest = character
 					end
 				end
@@ -934,12 +948,10 @@ local function getClosestTarget(
 end
 
 -- ============================================================
--- TELEPORT BEHIND
+-- TELEPORT BEHIND TARGET
 -- ============================================================
 
-local function teleportBehind(
-	target: Model
-): boolean
+local function teleportBehind(target)
 	local _, _, myRoot =
 		getCharacter()
 
@@ -947,7 +959,7 @@ local function teleportBehind(
 		return false
 	end
 
-	if not isValidTarget(target) then
+	if not validTarget(target) then
 		return false
 	end
 
@@ -960,83 +972,60 @@ local function teleportBehind(
 		return false
 	end
 
-	local destinationPosition =
+	local destination =
 		targetRoot.Position -
 		targetRoot.CFrame.LookVector *
 		CFG.BEHIND_DISTANCE
 
-	destinationPosition +=
-		Vector3.new(
-			0,
-			CFG.BEHIND_HEIGHT,
-			0
-		)
-
-	local destination =
+	local newCFrame =
 		CFrame.lookAt(
-			destinationPosition,
+			destination,
 			targetRoot.Position
 		)
 
-	-- Departure
+	-- Departure.
 	burst(
-		myRoot.CFrame,
-		7,
+		myRoot.Position,
+		6,
 		GREEN,
-		0.18,
-		"tp_depart"
+		0.16
 	)
 
 	glitchShards(
-		myRoot.CFrame,
+		myRoot.Position,
 		8,
-		2.2,
-		"tp_depart_glitch"
+		2.2
 	)
 
-	particles(
-		myRoot,
-		22,
-		BRIGHT_GREEN,
-		"tp_depart_particles"
-	)
-
-	playSound(
-		myRoot,
-		SOUND.TELEPORT,
-		0.8,
-		1.15
-	)
-
-	-- Actual local teleport
-	myRoot.CFrame = destination
+	-- Teleport.
+	myRoot.CFrame = newCFrame
 
 	myRoot.AssemblyLinearVelocity =
 		Vector3.zero
 
-	-- Arrival
+	myRoot.AssemblyAngularVelocity =
+		Vector3.zero
+
+	-- Arrival.
 	burst(
 		destination,
-		9,
+		8,
 		BRIGHT_GREEN,
-		0.2,
-		"tp_arrive"
+		0.18
 	)
 
 	ring(
 		destination,
 		2,
-		20,
+		22,
 		GREEN,
-		0.3,
-		"tp_ring"
+		0.3
 	)
 
-	glitchShards(
-		destination,
-		9,
-		2.5,
-		"tp_arrive_glitch"
+	particles(
+		myRoot,
+		25,
+		TOXIC_GREEN
 	)
 
 	return true
@@ -1046,11 +1035,15 @@ end
 -- FACE TARGET
 -- ============================================================
 
-local function faceTarget(target: Model)
-	local _, _, root =
+local function faceTarget(target)
+	local character, _, root =
 		getCharacter()
 
-	if not root then
+	if not character or not root then
+		return
+	end
+
+	if not validTarget(target) then
 		return
 	end
 
@@ -1063,310 +1056,20 @@ local function faceTarget(target: Model)
 		return
 	end
 
-	local targetPosition =
-		Vector3.new(
-			targetRoot.Position.X,
-			root.Position.Y,
-			targetRoot.Position.Z
-		)
+	local position = root.Position
 
-	if (targetPosition - root.Position).Magnitude
-		> 0.01
-	then
-		root.CFrame =
-			CFrame.lookAt(
-				root.Position,
-				targetPosition
+	root.CFrame =
+		CFrame.lookAt(
+			position,
+			Vector3.new(
+				targetRoot.Position.X,
+				position.Y,
+				targetRoot.Position.Z
 			)
-	end
-end
-
--- ============================================================
--- PROCEDURAL ARM ANIMATION
--- ============================================================
-
-local function proceduralPunch(
-	humanoid: Humanoid,
-	root: BasePart,
-	duration: number
-)
-	if not CFG.PROCEDURAL_ANIMATIONS then
-		return
-	end
-
-	local torso =
-		humanoid.Parent:FindFirstChild(
-			"UpperTorso"
-		)
-		or humanoid.Parent:FindFirstChild(
-			"Torso"
 		)
 
-	if not torso or not torso:IsA("BasePart") then
-		return
-	end
-
-	local rightShoulder =
-		torso:FindFirstChild(
-			"RightShoulder"
-		)
-
-	local leftShoulder =
-		torso:FindFirstChild(
-			"LeftShoulder"
-		)
-
-	if not rightShoulder or
-		not leftShoulder
-	then
-		return
-	end
-
-	if not rightShoulder:IsA("Motor6D") or
-		not leftShoulder:IsA("Motor6D")
-	then
-		return
-	end
-
-	local rightStart =
-		rightShoulder.C0
-
-	local leftStart =
-		leftShoulder.C0
-
-	local forward =
-		CFrame.Angles(
-			math.rad(-55),
-			math.rad(15),
-			math.rad(-20)
-		)
-
-	local windup =
-		CFrame.Angles(
-			math.rad(35),
-			math.rad(-30),
-			math.rad(45)
-		)
-
-	local tweenInfo =
-		TweenInfo.new(
-			duration * 0.25,
-			Enum.EasingStyle.Quart,
-			Enum.EasingDirection.Out
-		)
-
-	local tweenBack =
-		TweenInfo.new(
-			duration * 0.35,
-			Enum.EasingStyle.Quart,
-			Enum.EasingDirection.In
-		)
-
-	rightShoulder.C0 =
-		rightStart *
-		windup
-
-	leftShoulder.C0 =
-		leftStart *
-		CFrame.Angles(
-			math.rad(-15),
-			0,
-			math.rad(-15)
-		)
-
-	task.delay(
-		duration * 0.2,
-		function()
-			if rightShoulder.Parent then
-				TweenService:Create(
-					rightShoulder,
-					tweenInfo,
-					{
-						C0 =
-							rightStart *
-							forward,
-					}
-				):Play()
-
-				TweenService:Create(
-					leftShoulder,
-					tweenInfo,
-					{
-						C0 =
-							leftStart *
-							CFrame.Angles(
-								math.rad(15),
-								0,
-								math.rad(10)
-							),
-					}
-				):Play()
-			end
-		end
-	)
-
-	task.delay(
-		duration * 0.55,
-		function()
-			if rightShoulder.Parent then
-				TweenService:Create(
-					rightShoulder,
-					tweenBack,
-					{
-						C0 = rightStart,
-					}
-				):Play()
-
-				TweenService:Create(
-					leftShoulder,
-					tweenBack,
-					{
-						C0 = leftStart,
-					}
-				):Play()
-			end
-		end
-	)
-end
-
--- ============================================================
--- PROCEDURAL ATTACK MOTION
--- ============================================================
-
-local function proceduralAttack(
-	humanoid: Humanoid,
-	root: BasePart,
-	kind: string
-)
-	if not CFG.PROCEDURAL_ANIMATIONS then
-		return
-	end
-
-	local character =
-		humanoid.Parent
-
-	if not character then
-		return
-	end
-
-	local torso =
-		character:FindFirstChild(
-			"UpperTorso"
-		)
-		or character:FindFirstChild(
-			"Torso"
-		)
-
-	if not torso or not torso:IsA("BasePart") then
-		return
-	end
-
-	local right =
-		torso:FindFirstChild(
-			"RightShoulder"
-		)
-
-	local left =
-		torso:FindFirstChild(
-			"LeftShoulder"
-		)
-
-	if not right or not left then
-		return
-	end
-
-	if not right:IsA("Motor6D") or
-		not left:IsA("Motor6D")
-	then
-		return
-	end
-
-	local r0 = right.C0
-	local l0 = left.C0
-
-	local intensity = 1
-
-	if kind == "ULT" then
-		intensity = 1.5
-	elseif kind == "HEAVY" then
-		intensity = 1.25
-	end
-
-	right.C0 =
-		r0 *
-		CFrame.Angles(
-			math.rad(45 * intensity),
-			math.rad(-30),
-			math.rad(35)
-		)
-
-	left.C0 =
-		l0 *
-		CFrame.Angles(
-			math.rad(-25),
-			math.rad(20),
-			math.rad(-15)
-		)
-
-	task.delay(
-		0.13,
-		function()
-			if not right.Parent then
-				return
-			end
-
-			TweenService:Create(
-				right,
-				TweenInfo.new(
-					0.14,
-					Enum.EasingStyle.Quart,
-					Enum.EasingDirection.Out
-				),
-				{
-					C0 =
-						r0 *
-						CFrame.Angles(
-							math.rad(-65 * intensity),
-							math.rad(10),
-							math.rad(-20)
-						),
-				}
-			):Play()
-		end
-	)
-
-	task.delay(
-		0.35,
-		function()
-			if not right.Parent then
-				return
-			end
-
-			TweenService:Create(
-				right,
-				TweenInfo.new(
-					0.25,
-					Enum.EasingStyle.Quart,
-					Enum.EasingDirection.InOut
-				),
-				{
-					C0 = r0,
-				}
-			):Play()
-
-			TweenService:Create(
-				left,
-				TweenInfo.new(
-					0.25,
-					Enum.EasingStyle.Quart,
-					Enum.EasingDirection.InOut
-				),
-				{
-					C0 = l0,
-				}
-			):Play()
-		end
-	)
+	root.AssemblyLinearVelocity =
+		Vector3.zero
 end
 
 -- ============================================================
@@ -1374,9 +1077,9 @@ end
 -- ============================================================
 
 local function phantomEngine(
-	duration: number,
-	speed: number,
-	token: number
+	duration,
+	speed,
+	token
 )
 	local character, humanoid, root =
 		getCharacter()
@@ -1385,64 +1088,66 @@ local function phantomEngine(
 		not humanoid or
 		not root
 	then
-		return false
-	end
-
-	if humanoid.Health <= 0 then
-		return false
-	end
-
-	if token ~= S.Token then
-		return false
+		return
 	end
 
 	local velocity =
 		Instance.new("BodyVelocity")
 
 	velocity.Name =
-		"TheCreator_PhantomEngine"
+		"R4Fix_Creator_PhantomEngine"
 
 	velocity.MaxForce =
 		Vector3.new(
-			5000000,
+			10000000,
 			0,
-			5000000
+			10000000
 		)
 
-	velocity.P = 70000
+	velocity.P = 100000
+
 	velocity.Parent = root
 
-	local a0 =
+	local leftAttachment =
 		Instance.new("Attachment")
 
-	a0.Position =
+	leftAttachment.Position =
 		Vector3.new(
-			-1.2,
+			-1.15,
 			0,
 			0
 		)
 
-	a0.Parent = root
+	leftAttachment.Parent =
+		root
 
-	local a1 =
+	local rightAttachment =
 		Instance.new("Attachment")
 
-	a1.Position =
+	rightAttachment.Position =
 		Vector3.new(
-			1.2,
+			1.15,
 			0,
 			0
 		)
 
-	a1.Parent = root
+	rightAttachment.Parent =
+		root
 
 	local trail =
 		Instance.new("Trail")
 
-	trail.Attachment0 = a0
-	trail.Attachment1 = a1
+	trail.Name =
+		"Creator_PhantomTrail"
 
-	trail.Lifetime = 0.3
+	trail.Attachment0 =
+		leftAttachment
+
+	trail.Attachment1 =
+		rightAttachment
+
+	trail.Lifetime = 0.28
+
 	trail.LightEmission = 1
 
 	trail.Color =
@@ -1472,39 +1177,30 @@ local function phantomEngine(
 	trail.Parent = root
 
 	burst(
-		root.CFrame,
-		8,
+		root.Position,
+		7,
 		GREEN,
-		0.2,
-		"phantom_start"
+		0.18
 	)
 
 	ring(
-		root.CFrame,
+		root.Position,
 		2,
-		18,
+		19,
 		BRIGHT_GREEN,
-		0.25,
-		"phantom_ring"
+		0.25
 	)
 
-	local started = os.clock()
+	local start =
+		os.clock()
 
 	while
-		os.clock() - started < duration
+		S.Alive
+		and token == S.Token
+		and root.Parent
+		and humanoid.Health > 0
+		and os.clock() - start < duration
 	do
-		if token ~= S.Token then
-			break
-		end
-
-		if not root.Parent then
-			break
-		end
-
-		if humanoid.Health <= 0 then
-			break
-		end
-
 		local direction =
 			root.CFrame.LookVector
 
@@ -1515,7 +1211,7 @@ local function phantomEngine(
 				direction.Z * speed
 			)
 
-		task.wait()
+		RunService.Heartbeat:Wait()
 	end
 
 	pcall(function()
@@ -1524,21 +1220,18 @@ local function phantomEngine(
 
 	pcall(function()
 		trail:Destroy()
-		a0:Destroy()
-		a1:Destroy()
+		leftAttachment:Destroy()
+		rightAttachment:Destroy()
 	end)
 
 	if root.Parent then
 		burst(
-			root.CFrame,
-			10,
+			root.Position,
+			9,
 			BRIGHT_GREEN,
-			0.22,
-			"phantom_end"
+			0.2
 		)
 	end
-
-	return true
 end
 
 -- ============================================================
@@ -1546,19 +1239,19 @@ end
 -- ============================================================
 
 local function creatorM1()
+	if not S.Alive then
+		return
+	end
+
 	local now = os.clock()
 
-	if now - S.LastM1 <
+	if now - (S.LastM1 or 0) <
 		CFG.M1_COOLDOWN
 	then
 		return
 	end
 
 	S.LastM1 = now
-
-	if S.Busy.M1 then
-		return
-	end
 
 	local character, humanoid, root =
 		getCharacter()
@@ -1570,24 +1263,17 @@ local function creatorM1()
 		return
 	end
 
-	if humanoid.Health <= 0 then
-		return
-	end
-
-	S.Busy.M1 = true
-
 	local target =
-		getClosestTarget(
-			CFG.TARGET_RADIUS
-		)
+		getClosestTarget()
 
-	if target and
-		isValidTarget(target)
-	then
+	-- Target acquisition happens FIRST.
+	if target then
 		local success =
 			teleportBehind(target)
 
 		if success then
+			task.wait()
+
 			faceTarget(target)
 
 			local targetRoot =
@@ -1596,109 +1282,86 @@ local function creatorM1()
 				)
 
 			if targetRoot then
-				-- Wind-up
-				proceduralPunch(
-					humanoid,
-					root,
-					0.42
+				flash(
+					targetRoot.Position,
+					BRIGHT_GREEN
 				)
 
 				burst(
-					targetRoot.CFrame,
-					5,
-					BRIGHT_GREEN,
-					0.12,
-					"m1_target"
+					targetRoot.Position,
+					7,
+					TOXIC_GREEN,
+					0.15
 				)
 
-				task.delay(
-					0.08,
-					function()
-						if targetRoot.Parent then
-							burst(
-								targetRoot.CFrame,
-								9,
-								TOXIC_GREEN,
-								0.2,
-								"m1_impact"
-							)
+				ring(
+					targetRoot.Position,
+					2,
+					18,
+					GREEN,
+					0.23
+				)
 
-							ring(
-								targetRoot.CFrame,
-								2,
-								18,
-								GREEN,
-								0.25,
-								"m1_ring"
-							)
-
-							glitchShards(
-								targetRoot.CFrame,
-								9,
-								2,
-								"m1_glitch"
-							)
-
-							particles(
-								targetRoot,
-								25,
-								BRIGHT_GREEN,
-								"m1_target_particles"
-							)
-						end
-					end
+				glitchShards(
+					targetRoot.Position,
+					10,
+					2
 				)
 			end
 		end
 	else
-		-- No target.
-		-- Still perform the local punch instead of failing silently.
-		proceduralPunch(
-			humanoid,
-			root,
-			0.35
-		)
-
 		burst(
-			root.CFrame,
+			root.Position,
 			5,
 			GREEN,
-			0.14,
-			"m1_empty"
-		)
-
-		glitchShards(
-			root.CFrame,
-			5,
-			1.5,
-			"m1_empty_glitch"
+			0.15
 		)
 	end
 
-	playSound(
-		root,
-		SOUND.M1,
-		0.8,
-		1.05
+	playAnimation(
+		humanoid,
+		ANIM.M1,
+		1,
+		0.03
 	)
 
+	particles(
+		root,
+		20,
+		TOXIC_GREEN
+	)
+
+	-- Local impact effect.
 	task.delay(
-		0.16,
+		0.08,
 		function()
-			S.Busy.M1 = nil
+			if root.Parent then
+				burst(
+					root.Position +
+						root.CFrame.LookVector *
+						2,
+					4,
+					BRIGHT_GREEN,
+					0.12
+				)
+			end
 		end
 	)
 end
 
 -- ============================================================
 -- MOVE 1
--- VOID EXECUTION
+-- NULL CREATION
 -- ============================================================
 
 local function move1()
 	if S.Busy.Move1 then
 		return
 	end
+
+	S.Busy.Move1 = true
+
+	local token = S.Token
 
 	local character, humanoid, root =
 		getCharacter()
@@ -1707,109 +1370,64 @@ local function move1()
 		not humanoid or
 		not root
 	then
+		S.Busy.Move1 = nil
 		return
 	end
 
-	S.Busy.Move1 = true
-
-	local token = S.Token
-
 	local target =
-		getClosestTarget(
-			CFG.TARGET_RADIUS
-		)
+		getClosestTarget()
 
 	if target then
 		teleportBehind(target)
 		faceTarget(target)
 	end
 
-	proceduralAttack(
+	playAnimation(
 		humanoid,
-		root,
-		"HEAVY"
+		ANIM.MOVE1,
+		1,
+		0.04
 	)
 
 	burst(
-		root.CFrame,
+		root.Position,
 		14,
 		DARK_GREEN,
-		0.3,
-		"move1_dark"
+		0.3
 	)
 
 	burst(
-		root.CFrame,
+		root.Position,
 		8,
 		BRIGHT_GREEN,
-		0.22,
-		"move1_core"
+		0.2
 	)
 
-	ring(
-		root.CFrame,
-		3,
-		35,
-		GREEN,
-		0.4,
-		"move1_ring"
+	shockwave(
+		root.Position,
+		30,
+		GREEN
 	)
 
 	glitchShards(
-		root.CFrame,
-		20,
-		5,
-		"move1_glitch"
+		root.Position,
+		22,
+		5
 	)
 
 	particles(
 		root,
-		40,
-		TOXIC_GREEN,
-		"move1_particles"
-	)
-
-	playSound(
-		root,
-		SOUND.MOVE1,
-		1,
-		0.9
+		50,
+		TOXIC_GREEN
 	)
 
 	task.spawn(function()
 		phantomEngine(
-			0.48,
+			CFG.PHANTOM_TIME,
 			CFG.PHANTOM_SPEED,
 			token
 		)
 	end)
-
-	task.delay(
-		0.38,
-		function()
-			local _, _, currentRoot =
-				getCharacter()
-
-			if currentRoot then
-				burst(
-					currentRoot.CFrame,
-					11,
-					BRIGHT_GREEN,
-					0.2,
-					"move1_finish"
-				)
-
-				ring(
-					currentRoot.CFrame,
-					3,
-					28,
-					TOXIC_GREEN,
-					0.3,
-					"move1_finish_ring"
-				)
-			end
-		end
-	)
 
 	task.delay(
 		CFG.MOVE1_TIME,
@@ -1829,6 +1447,10 @@ local function move2()
 		return
 	end
 
+	S.Busy.Move2 = true
+
+	local token = S.Token
+
 	local character, humanoid, root =
 		getCharacter()
 
@@ -1836,102 +1458,67 @@ local function move2()
 		not humanoid or
 		not root
 	then
+		S.Busy.Move2 = nil
 		return
 	end
 
-	S.Busy.Move2 = true
-
-	local token = S.Token
-
 	local target =
-		getClosestTarget(
-			CFG.TARGET_RADIUS
-		)
+		getClosestTarget()
 
 	if target then
 		teleportBehind(target)
 		faceTarget(target)
 	end
 
-	proceduralAttack(
+	playAnimation(
 		humanoid,
-		root,
-		"HEAVY"
+		ANIM.MOVE2,
+		1,
+		0.04
 	)
 
 	burst(
-		root.CFrame,
-		12,
+		root.Position,
+		10,
 		GREEN,
-		0.25,
-		"move2_start"
-	)
-
-	ring(
-		root.CFrame,
-		3,
-		24,
-		BRIGHT_GREEN,
-		0.35,
-		"move2_ring"
+		0.2
 	)
 
 	particles(
 		root,
-		45,
-		BRIGHT_GREEN,
-		"move2_particles"
-	)
-
-	glitchShards(
-		root.CFrame,
-		18,
-		4,
-		"move2_glitch"
-	)
-
-	playSound(
-		root,
-		SOUND.MOVE2,
-		1,
-		0.95
+		55,
+		BRIGHT_GREEN
 	)
 
 	task.spawn(function()
 		phantomEngine(
 			CFG.MOVE2_TIME,
-			CFG.PHANTOM_SPEED + 70,
+			CFG.PHANTOM_SPEED + 80,
 			token
 		)
 	end)
 
 	task.delay(
-		0.35,
+		0.28,
 		function()
+			if not S.Alive then
+				return
+			end
+
 			local _, _, currentRoot =
 				getCharacter()
 
 			if currentRoot then
-				corruptionField(
+				shockwave(
 					currentRoot.Position,
-					35,
-					0.7,
-					"collapse_field"
-				)
-
-				burst(
-					currentRoot.CFrame,
-					18,
-					BLACK,
-					0.3,
-					"collapse_black"
+					36,
+					BRIGHT_GREEN
 				)
 
 				glitchShards(
-					currentRoot.CFrame,
-					25,
-					7,
-					"collapse_shards"
+					currentRoot.Position,
+					20,
+					6
 				)
 			end
 		end
@@ -1955,6 +1542,8 @@ local function move3()
 		return
 	end
 
+	S.Busy.Move3 = true
+
 	local character, humanoid, root =
 		getCharacter()
 
@@ -1962,123 +1551,84 @@ local function move3()
 		not humanoid or
 		not root
 	then
+		S.Busy.Move3 = nil
 		return
 	end
 
-	S.Busy.Move3 = true
-
 	local target =
-		getClosestTarget(
-			CFG.TARGET_RADIUS
-		)
+		getClosestTarget()
 
 	if target then
 		teleportBehind(target)
 		faceTarget(target)
 	end
 
-	proceduralAttack(
+	playAnimation(
 		humanoid,
-		root,
-		"HEAVY"
-	)
-
-	playSound(
-		root,
-		SOUND.MOVE3,
+		ANIM.MOVE3,
 		1,
-		0.85
+		0.04
 	)
 
+	-- Black center.
 	burst(
-		root.CFrame,
-		16,
+		root.Position,
+		18,
 		BLACK,
-		0.32,
-		"move3_black"
+		0.38
 	)
 
+	-- Green corruption layer.
 	burst(
-		root.CFrame,
-		7,
+		root.Position,
+		11,
 		BRIGHT_GREEN,
-		0.2,
-		"move3_core"
+		0.24
 	)
 
-	ring(
-		root.CFrame,
-		4,
-		42,
-		BRIGHT_GREEN,
-		0.5,
-		"move3_ring"
-	)
-
-	corruptionField(
+	shockwave(
 		root.Position,
 		45,
-		0.9,
-		"reality_field"
+		GREEN
 	)
 
 	glitchShards(
-		root.CFrame,
+		root.Position,
 		30,
-		7,
-		"move3_glitch"
+		8
 	)
 
 	particles(
 		root,
-		60,
-		TOXIC_GREEN,
-		"move3_particles"
+		80,
+		TOXIC_GREEN
 	)
 
-	-- Fracture slashes
-	for i = 1, 8 do
-		task.delay(
-			i * 0.055,
-			function()
-				local _, _, currentRoot =
-					getCharacter()
+	-- Second delayed reality crack.
+	task.delay(
+		0.25,
+		function()
+			local _, _, currentRoot =
+				getCharacter()
 
-				if not currentRoot then
-					return
-				end
+			if currentRoot then
+				burst(
+					currentRoot.Position,
+					10,
+					BLACK,
+					0.25
+				)
 
-				local angle =
-					(i / 8) *
-					math.pi *
-					2
-
-				local offset =
-					Vector3.new(
-						math.cos(angle) * 5,
-						math.sin(angle * 2) * 2,
-						math.sin(angle) * 5
-					)
-
-				local position =
-					currentRoot.Position +
-					offset
-
-				slash(
-					CFrame.lookAt(
-						position,
-						currentRoot.Position
-					),
-					12,
-					0.25,
-					i % 2 == 0
-						and GREEN
-						or BRIGHT_GREEN,
-					0.3
+				ring(
+					currentRoot.Position,
+					3,
+					50,
+					BRIGHT_GREEN,
+					0.5
 				)
 			end
-		)
-	end
+		end
+	)
 
 	task.delay(
 		CFG.MOVE3_TIME,
@@ -2098,6 +1648,8 @@ local function move4()
 		return
 	end
 
+	S.Busy.Move4 = true
+
 	local character, humanoid, root =
 		getCharacter()
 
@@ -2105,61 +1657,43 @@ local function move4()
 		not humanoid or
 		not root
 	then
+		S.Busy.Move4 = nil
 		return
 	end
 
-	S.Busy.Move4 = true
-
 	local target =
-		getClosestTarget(
-			CFG.TARGET_RADIUS
-		)
+		getClosestTarget()
 
 	if target then
 		teleportBehind(target)
 		faceTarget(target)
 	end
 
-	proceduralAttack(
+	playAnimation(
 		humanoid,
-		root,
-		"ULT"
-	)
-
-	playSound(
-		root,
-		SOUND.MOVE4,
+		ANIM.MOVE4,
 		1,
-		0.7
+		0.04
 	)
 
-	-- Charging phase
+	-- Charge.
 	burst(
-		root.CFrame,
-		10,
-		BLACK,
-		0.35,
-		"move4_charge_black"
+		root.Position,
+		8,
+		DARK_GREEN,
+		0.22
 	)
 
 	ring(
-		root.CFrame,
+		root.Position,
 		4,
 		25,
 		GREEN,
-		0.45,
-		"move4_charge_ring"
-	)
-
-	glitchShards(
-		root.CFrame,
-		25,
-		6,
-		"move4_charge_glitch"
+		0.35
 	)
 
 	task.delay(
-		0.32,
+		0.22,
 		function()
 			local _, _, currentRoot =
 				getCharacter()
@@ -2168,60 +1702,37 @@ local function move4()
 				return
 			end
 
-			-- Main null explosion
+			-- Null explosion.
 			burst(
-				currentRoot.CFrame,
-				30,
+				currentRoot.Position,
+				24,
 				BLACK,
-				0.65,
-				"move4_void"
+				0.52
 			)
 
 			burst(
-				currentRoot.CFrame,
-				17,
+				currentRoot.Position,
+				13,
 				BRIGHT_GREEN,
-				0.42,
-				"move4_core"
+				0.32
 			)
 
-			ring(
-				currentRoot.CFrame,
-				5,
-				65,
-				GREEN,
-				0.75,
-				"move4_ring"
-			)
-
-			ring(
-				currentRoot.CFrame,
-				2,
-				45,
-				TOXIC_GREEN,
-				0.55,
-				"move4_ring2"
-			)
-
-			corruptionField(
+			shockwave(
 				currentRoot.Position,
 				70,
-				1,
-				"move4_field"
+				GREEN
 			)
 
 			glitchShards(
-				currentRoot.CFrame,
-				45,
-				11,
-				"move4_glitch"
+				currentRoot.Position,
+				42,
+				10
 			)
 
 			particles(
 				currentRoot,
-				100,
-				BRIGHT_GREEN,
-				"move4_particles"
+				110,
+				TOXIC_GREEN
 			)
 		end
 	)
@@ -2235,21 +1746,10 @@ local function move4()
 end
 
 -- ============================================================
--- ULTIMATE MOVES
+-- ULTIMATE
 -- ============================================================
 
-local ULT_NAMES = {
-	"NULL//CREATION",
-	"REALITY//OVERRIDE",
-	"666//GENESIS",
-	"THE//END",
-}
-
-local function ultimateMove(index: number)
-	if index < 1 or index > 4 then
-		return
-	end
-
+local function ultimate()
 	if S.Busy.Ult then
 		return
 	end
@@ -2267,135 +1767,150 @@ local function ultimateMove(index: number)
 	S.Busy.Ult = true
 
 	local target =
-		getClosestTarget(
-			CFG.TARGET_RADIUS
-		)
+		getClosestTarget()
 
 	if target then
 		teleportBehind(target)
 		faceTarget(target)
 	end
 
-	proceduralAttack(
+	playAnimation(
 		humanoid,
-		root,
-		"ULT"
-	)
-
-	local soundId = SOUND.ULT1
-
-	if index == 2 then
-		soundId = SOUND.ULT2
-	elseif index == 3 then
-		soundId = SOUND.ULT3
-	elseif index == 4 then
-		soundId = SOUND.ULT4
-	end
-
-	playSound(
-		root,
-		soundId,
-		1.2,
-		0.65
-	)
-
-	-- Ultimate black core
-	burst(
-		root.CFrame,
-		32,
-		BLACK,
-		0.7,
-		"ult_black_" .. tostring(index)
-	)
-
-	-- Green core
-	burst(
-		root.CFrame,
-		16,
-		BRIGHT_GREEN,
-		0.42,
-		"ult_green_" .. tostring(index)
-	)
-
-	-- Giant rings
-	ring(
-		root.CFrame,
-		7,
-		85,
-		GREEN,
+		ANIM.ULT,
 		0.9,
-		"ult_ring_" .. tostring(index)
+		0.05
+	)
+
+	-- ========================================================
+	-- PHASE 1
+	-- ========================================================
+
+	burst(
+		root.Position,
+		18,
+		BLACK,
+		0.4
+	)
+
+	burst(
+		root.Position,
+		10,
+		BRIGHT_GREEN,
+		0.25
 	)
 
 	ring(
-		root.CFrame,
-		3,
-		60,
-		TOXIC_GREEN,
-		0.65,
-		"ult_ring2_" .. tostring(index)
-	)
-
-	-- Corruption field
-	corruptionField(
 		root.Position,
-		90,
-		1.2,
-		"ult_field_" .. tostring(index)
+		4,
+		45,
+		GREEN,
+		0.5
 	)
 
-	-- Shards
 	glitchShards(
-		root.CFrame,
-		65,
-		13,
-		"ult_glitch_" .. tostring(index)
+		root.Position,
+		45,
+		10
 	)
 
 	particles(
 		root,
-		140,
-		TOXIC_GREEN,
-		"ult_particles_" .. tostring(index)
+		100,
+		TOXIC_GREEN
 	)
 
-	-- Extra pulses
-	for pulse = 1, 3 do
-		task.delay(
-			pulse * 0.22,
-			function()
-				local _, _, currentRoot =
-					getCharacter()
+	-- ========================================================
+	-- PHASE 2
+	-- ========================================================
 
-				if not currentRoot then
-					return
-				end
-
-				burst(
-					currentRoot.CFrame,
-					12 + pulse * 5,
-					pulse % 2 == 0
-						and GREEN
-						or BRIGHT_GREEN,
-					0.28
-				)
-
-				ring(
-					currentRoot.CFrame,
-					2,
-					25 + pulse * 18,
-					GREEN,
-					0.35
-				)
-
-				glitchShards(
-					currentRoot.CFrame,
-					10 + pulse * 5,
-					3 + pulse * 2
-				)
+	task.delay(
+		0.32,
+		function()
+			if not S.Alive then
+				return
 			end
-		)
-	end
+
+			local _, _, currentRoot =
+				getCharacter()
+
+			if not currentRoot then
+				return
+			end
+
+			burst(
+				currentRoot.Position,
+				26,
+				BLACK,
+				0.55
+			)
+
+			shockwave(
+				currentRoot.Position,
+				85,
+				BRIGHT_GREEN
+			)
+
+			glitchShards(
+				currentRoot.Position,
+				65,
+				14
+			)
+
+			particles(
+				currentRoot,
+				150,
+				TOXIC_GREEN
+			)
+		end
+	)
+
+	-- ========================================================
+	-- PHASE 3
+	-- ========================================================
+
+	task.delay(
+		0.75,
+		function()
+			if not S.Alive then
+				return
+			end
+
+			local _, _, currentRoot =
+				getCharacter()
+
+			if not currentRoot then
+				return
+			end
+
+			flash(
+				currentRoot.Position,
+				BRIGHT_GREEN
+			)
+
+			burst(
+				currentRoot.Position,
+				35,
+				BLACK,
+				0.65
+			)
+
+			ring(
+				currentRoot.Position,
+				7,
+				110,
+				GREEN,
+				0.9
+			)
+
+			ring(
+				currentRoot.Position,
+				3,
+				75,
+				BRIGHT_GREEN,
+				0.7
+			)
+		end
+	)
 
 	task.delay(
 		CFG.ULT_TIME,
@@ -2406,13 +1921,11 @@ local function ultimateMove(index: number)
 end
 
 -- ============================================================
--- AURA
+-- CREATOR AURA
 -- ============================================================
 
-local function setupAura(
-	character: Model
-)
-	local limbNames = {
+local function setupAura(character)
+	for _, limbName in ipairs({
 		"Left Arm",
 		"Right Arm",
 		"LeftHand",
@@ -2421,11 +1934,7 @@ local function setupAura(
 		"RightLowerArm",
 		"LeftUpperArm",
 		"RightUpperArm",
-	}
-
-	for _, limbName in ipairs(
-		limbNames
-	) do
+	}) do
 		local limb =
 			character:FindFirstChild(
 				limbName
@@ -2434,26 +1943,20 @@ local function setupAura(
 		if limb and
 			limb:IsA("BasePart")
 		then
-			local old =
-				limb:FindFirstChild(
-					"CreatorAura"
-				)
-
-			if old then
-				old:Destroy()
-			end
-
 			local attachment =
 				Instance.new("Attachment")
 
 			attachment.Name =
-				"CreatorAura"
+				"R4FixCreatorAura"
 
 			attachment.Parent =
 				limb
 
 			local emitter =
 				Instance.new("ParticleEmitter")
+
+			emitter.Name =
+				"CreatorGreenCorruption"
 
 			emitter.Color =
 				ColorSequence.new({
@@ -2474,7 +1977,8 @@ local function setupAura(
 				})
 
 			emitter.LightEmission = 1
-			emitter.Rate = 5
+
+			emitter.Rate = 3
 
 			emitter.Lifetime =
 				NumberRange.new(
@@ -2484,8 +1988,8 @@ local function setupAura(
 
 			emitter.Speed =
 				NumberRange.new(
-					0.2,
-					1.2
+					0.3,
+					1.5
 				)
 
 			emitter.SpreadAngle =
@@ -2523,60 +2027,48 @@ end
 -- ============================================================
 
 local function spawnEffect(
-	character: Model,
-	root: BasePart
+	character,
+	root
 )
 	burst(
-		root.CFrame,
-		13,
+		root.Position,
+		15,
 		BLACK,
-		0.4,
-		"spawn_black"
+		0.4
 	)
 
 	burst(
-		root.CFrame,
+		root.Position,
 		8,
 		BRIGHT_GREEN,
-		0.28,
-		"spawn_green"
+		0.25
 	)
 
 	ring(
-		root.CFrame,
+		root.Position,
 		2,
-		30,
+		32,
 		GREEN,
-		0.55,
-		"spawn_ring"
+		0.55
 	)
 
 	glitchShards(
-		root.CFrame,
-		22,
-		5,
-		"spawn_glitch"
+		root.Position,
+		24,
+		6
 	)
 
 	particles(
 		root,
-		45,
-		TOXIC_GREEN,
-		"spawn_particles"
-	)
-
-	playSound(
-		root,
-		SOUND.SPAWN,
-		1,
-		0.8
+		50,
+		TOXIC_GREEN
 	)
 
 	local highlight =
 		Instance.new("Highlight")
 
 	highlight.Name =
-		"TheCreatorHighlight"
+		"R4FixCreatorHighlight"
 
 	highlight.FillColor =
 		DARK_GREEN
@@ -2585,7 +2077,7 @@ local function spawnEffect(
 		BRIGHT_GREEN
 
 	highlight.FillTransparency =
-		0.7
+		0.65
 
 	highlight.OutlineTransparency =
 		0
@@ -2596,618 +2088,75 @@ local function spawnEffect(
 	highlight.Parent =
 		character
 
-	TweenService:Create(
+	tweenDestroy(
 		highlight,
 		TweenInfo.new(
-			0.9,
+			1,
 			Enum.EasingStyle.Quint
 		),
 		{
 			FillTransparency = 1,
 			OutlineTransparency = 1,
 		}
-	):Play()
-
-	Debris:AddItem(
-		highlight,
-		1
 	)
 end
 
 -- ============================================================
--- UI HELPERS
+-- CHARACTER SETUP
 -- ============================================================
 
-local function getGui()
-	return LocalPlayer:FindFirstChild(
-		"PlayerGui"
-	)
-end
+local function setupCharacter(character)
+	S.Token += 1
 
-local function setSlot(
-	slotNumber: number,
-	name: string,
-	label: string
-)
-	local gui = getGui()
+	local token = S.Token
 
-	if not gui then
-		return
-	end
+	cleanupCharacter()
 
-	local hotbar =
-		gui:FindFirstChild(
-			"Hotbar"
-		)
-
-	if not hotbar then
-		return
-	end
-
-	local backpack =
-		hotbar:FindFirstChild(
-			"Backpack"
-		)
-
-	if not backpack then
-		return
-	end
-
-	local container =
-		backpack:FindFirstChild(
-			"Hotbar"
-		)
-
-	if not container then
-		return
-	end
-
-	local slot =
-		container:FindFirstChild(
-			tostring(slotNumber)
-		)
-
-	if not slot then
-		return
-	end
-
-	local base =
-		slot:FindFirstChild(
-			"Base"
-		)
-
-	if not base then
-		return
-	end
-
-	local toolName =
-		base:FindFirstChild(
-			"ToolName"
-		)
-
-	if toolName and
-		toolName:IsA("TextLabel")
-	then
-		toolName.Text = name
-	end
-
-	local reuse =
-		base:FindFirstChild(
-			"Reuse"
-		)
-
-	if reuse and
-		reuse:IsA("TextLabel")
-	then
-		reuse.Visible = true
-		reuse.Text = label
-	end
-end
-
-local function refreshHotbar()
-	setSlot(
-		1,
-		"NULL CREATION",
-		"666 // EXECUTE"
-	)
-
-	setSlot(
-		2,
-		"CREATOR'S COLLAPSE",
-		"PHANTOM ENGINE"
-	)
-
-	setSlot(
-		3,
-		"REALITY BREAK",
-		"CORRUPTION"
-	)
-
-	setSlot(
-		4,
-		"ABSOLUTE NULL",
-		"VOID"
-	)
-end
-
--- ============================================================
--- ULTIMATE BAR
--- ============================================================
-
-local function styleUltimateBar()
-	local gui = getGui()
-
-	if not gui then
-		return
-	end
-
-	local bar =
-		gui:FindFirstChild(
-			"Bar"
-		)
-
-	if not bar then
-		return
-	end
-
-	local magicHealth =
-		bar:FindFirstChild(
-			"MagicHealth"
-		)
-
-	if not magicHealth then
-		return
-	end
-
-	local text =
-		magicHealth:FindFirstChild(
-			"TextLabel"
-		)
-
-	if text and
-		text:IsA("TextLabel")
-	then
-		text.Text =
-			"ＴＨＥ  C R E A T O R"
-
-		text.TextColor3 =
-			BRIGHT_GREEN
-
-		text.TextSize = 25
-	end
-
-	local health =
-		magicHealth:FindFirstChild(
-			"Health"
-		)
-
-	if not health then
-		return
-	end
-
-	local holder =
-		health:FindFirstChild(
-			"Bar"
-		)
-
-	if not holder then
-		return
-	end
-
-	local fill =
-		holder:FindFirstChild(
-			"Bar"
-		)
-
-	if fill then
-		if fill:IsA("Frame") then
-			fill.BackgroundColor3 =
-				GREEN
-
-			fill.BackgroundTransparency = 0
-		elseif
-			fill:IsA("ImageLabel")
-			or fill:IsA("ImageButton")
-		then
-			fill.ImageColor3 =
-				GREEN
-
-			fill.ImageTransparency = 0
-		end
-
-		local gradient =
-			fill:FindFirstChildOfClass(
-				"UIGradient"
-			)
-
-		if gradient then
-			gradient.Color =
-				ColorSequence.new({
-					ColorSequenceKeypoint.new(
-						0,
-						BRIGHT_GREEN
-					),
-
-					ColorSequenceKeypoint.new(
-						0.35,
-						GREEN
-					),
-
-					ColorSequenceKeypoint.new(
-						0.7,
-						DARK_GREEN
-					),
-
-					ColorSequenceKeypoint.new(
-						1,
-						BLACK
-					),
-				})
-		end
-	end
-end
-
--- ============================================================
--- CHARACTER TAB
--- ============================================================
-
-local function fixCharacterTab()
-	local gui = getGui()
-
-	if not gui then
-		return
-	end
-
-	local topbar =
-		gui:FindFirstChild(
-			"TopbarPlus"
-		)
-
-	if not topbar then
-		return
-	end
-
-	for _, object in ipairs(
-		topbar:GetDescendants()
-	) do
-		if object.Name ~= "IconButton" then
-			continue
-		end
-
-		local label =
-			object:FindFirstChild(
-				"IconLabel"
-			)
-
-		local image =
-			object:FindFirstChild(
-				"IconImage"
-			)
-
-		if label and
-			label:IsA("TextLabel")
-		then
-			local current =
-				label.Text
-
-			if current == "Garou"
-				or current == "Hero Hunter"
-				or current == "Dark Garou"
-				or current == "The Creator"
-			then
-				label.Text =
-					MOVESET_NAME
-
-				if image and
-					(
-						image:IsA("ImageLabel")
-						or image:IsA("ImageButton")
-					)
-				then
-					image.Image =
-						DECAL_ID
-				end
-			end
-		end
-	end
-end
-
--- ============================================================
--- MOBILE GUI
--- ============================================================
-
-local function createMobileGui()
-	if not UserInputService.TouchEnabled then
-		return
-	end
-
-	local playerGui =
-		getGui()
-
-	if not playerGui then
-		return
-	end
-
-	if S.MobileGui and
-		S.MobileGui.Parent
-	then
-		S.MobileGui:Destroy()
-	end
-
-	local gui =
-		Instance.new("ScreenGui")
-
-	gui.Name =
-		"TheCreatorMobile"
-
-	gui.ResetOnSpawn = false
-	gui.IgnoreGuiInset = true
-	gui.DisplayOrder = 999
-
-	gui.Parent = playerGui
-
-	S.MobileGui = gui
-
-	local container =
-		Instance.new("Frame")
-
-	container.Name =
-		"Moves"
-
-	container.AnchorPoint =
-		Vector2.new(1, 1)
-
-	container.Position =
-		UDim2.new(
-			1,
-			-18,
-			1,
-			-120
-		)
-
-	container.Size =
-		UDim2.new(
-			0,
-			CFG.MOBILE_BUTTON_SIZE * 2 + 12,
-			0,
-			CFG.MOBILE_BUTTON_SIZE * 2 + 12
-		)
-
-	container.BackgroundTransparency = 1
-	container.Parent = gui
-
-	local function makeButton(
-		name: string,
-		text: string,
-		x: number,
-		y: number,
-		callback: () -> ()
-	)
-		local button =
-			Instance.new("TextButton")
-
-		button.Name = name
-
-		button.Size =
-			UDim2.fromOffset(
-				CFG.MOBILE_BUTTON_SIZE,
-				CFG.MOBILE_BUTTON_SIZE
-			)
-
-		button.Position =
-			UDim2.fromOffset(
-				x,
-				y
-			)
-
-		button.BackgroundColor3 =
-			Color3.fromRGB(
-				2,
-				20,
-				8
-			)
-
-		button.BackgroundTransparency =
-			0.12
-
-		button.BorderSizePixel = 0
-
-		button.Text =
-			text
-
-		button.TextColor3 =
-			BRIGHT_GREEN
-
-		button.TextScaled = true
-
-		button.Font =
-			Enum.Font.GothamBold
-
-		button.AutoButtonColor = false
-
-		button.Parent = container
-
-		local corner =
-			Instance.new("UICorner")
-
-		corner.CornerRadius =
-			UDim.new(
-				0,
-				10
-			)
-
-		corner.Parent =
-			button
-
-		local stroke =
-			Instance.new("UIStroke")
-
-		stroke.Color =
-			GREEN
-
-		stroke.Thickness = 1.5
-
-		stroke.Transparency = 0.15
-
-		stroke.Parent =
-			button
-
-		button.MouseButton1Click:Connect(
-			function()
-				callback()
-			end
-		)
-
-		button.MouseButton1Down:Connect(
-			function()
-				TweenService:Create(
-					button,
-					TweenInfo.new(
-						0.07
-					),
-					{
-						Size =
-							UDim2.fromOffset(
-								CFG.MOBILE_BUTTON_SIZE - 5,
-								CFG.MOBILE_BUTTON_SIZE - 5
-							),
-					}
-				):Play()
-			end
-		)
-
-		button.MouseButton1Up:Connect(
-			function()
-				TweenService:Create(
-					button,
-					TweenInfo.new(
-						0.1
-					),
-					{
-						Size =
-							UDim2.fromOffset(
-								CFG.MOBILE_BUTTON_SIZE,
-								CFG.MOBILE_BUTTON_SIZE
-							),
-					}
-				):Play()
-			end
-		)
-
-		return button
-	end
-
-	makeButton(
-		"Move1",
-		"1",
-		0,
-		0,
-		move1
-	)
-
-	makeButton(
-		"Move2",
-		"2",
-		CFG.MOBILE_BUTTON_SIZE + 6,
-		0,
-		move2
-	)
-
-	makeButton(
-		"Move3",
-		"3",
-		0,
-		CFG.MOBILE_BUTTON_SIZE + 6,
-		move3
-	)
-
-	makeButton(
-		"Move4",
-		"4",
-		CFG.MOBILE_BUTTON_SIZE + 6,
-		CFG.MOBILE_BUTTON_SIZE + 6,
-		move4
-	)
-
-	local ult =
-		Instance.new("TextButton")
-
-	ult.Name =
-		"Ultimate"
-
-	ult.AnchorPoint =
-		Vector2.new(
-			1,
-			1
-		)
-
-	ult.Position =
-		UDim2.new(
-			1,
-			-18,
-			1,
-			-18
-		)
-
-	ult.Size =
-		UDim2.fromOffset(
-			130,
-			48
-		)
-
-	ult.BackgroundColor3 =
-		Color3.fromRGB(
-			0,
-			30,
+	local humanoid =
+		character:WaitForChild(
+			"Humanoid",
 			10
 		)
 
-	ult.BackgroundTransparency =
-		0.1
-
-	ult.BorderSizePixel = 0
-
-	ult.Text =
-		"THE CREATOR"
-
-	ult.TextColor3 =
-		BRIGHT_GREEN
-
-	ult.TextScaled = true
-
-	ult.Font =
-		Enum.Font.GothamBold
-
-	ult.Parent =
-		gui
-
-	local ultCorner =
-		Instance.new("UICorner")
-
-	ultCorner.CornerRadius =
-		UDim.new(
-			0,
+	local root =
+		character:WaitForChild(
+			"HumanoidRootPart",
 			10
 		)
 
-	ultCorner.Parent =
-		ult
+	if not humanoid or not root then
+		warn(
+			"[THE CREATOR] Character setup failed."
+		)
 
-	local ultStroke =
-		Instance.new("UIStroke")
+		return
+	end
 
-	ultStroke.Color =
-		BRIGHT_GREEN
+	if CFG.USE_NIGHT_LIGHTING then
+		pcall(function()
+			Lighting.ClockTime =
+				CFG.NIGHT_TIME
+		end)
+	end
 
-	ultStroke.Thickness = 2
+	setupAura(character)
 
-	ultStroke.Parent =
-		ult
+	spawnEffect(
+		character,
+		root
+	)
 
-	ult.MouseButton1Click:Connect(
-		function()
-			ultimateMove(1)
-		end
+	addCharacterConnection(
+		humanoid.Died:Connect(
+			function()
+				S.Busy = {}
+				cleanupTracks()
+			end
+		)
+	)
+
+	print(
+		"[THE CREATOR] Character loaded."
 	)
 end
 
@@ -3215,15 +2164,16 @@ end
 -- INPUT
 -- ============================================================
 
-local function setupInput()
-	table.insert(
-		S.Connections,
-		UserInputService.InputBegan:Connect(
-			function(
-				input,
-				processed
-			)
+local function bindInput()
+	-- MOUSE / KEYBOARD
+	addConnection(
+		UIS.InputBegan:Connect(
+			function(input, processed)
 				if processed then
+					return
+				end
+
+				if not S.Alive then
 					return
 				end
 
@@ -3270,31 +2220,7 @@ local function setupInput()
 				if input.KeyCode ==
 					Enum.KeyCode.G
 				then
-					ultimateMove(1)
-
-					return
-				end
-
-				if input.KeyCode ==
-					Enum.KeyCode.H
-				then
-					ultimateMove(2)
-
-					return
-				end
-
-				if input.KeyCode ==
-					Enum.KeyCode.J
-				then
-					ultimateMove(3)
-
-					return
-				end
-
-				if input.KeyCode ==
-					Enum.KeyCode.K
-				then
-					ultimateMove(4)
+					ultimate()
 
 					return
 				end
@@ -3302,18 +2228,18 @@ local function setupInput()
 		)
 	)
 
-	table.insert(
-		S.Connections,
-		UserInputService.TouchTap:Connect(
-			function(
-				_,
-				processed
-			)
+	-- TOUCH / MOBILE M1
+	addConnection(
+		UIS.TouchTap:Connect(
+			function(_, processed)
 				if processed then
 					return
 				end
 
-				-- Touching empty screen performs M1.
+				if not S.Alive then
+					return
+				end
+
 				creatorM1()
 			end
 		)
@@ -3321,147 +2247,135 @@ local function setupInput()
 end
 
 -- ============================================================
--- CHARACTER SETUP
+-- OPTIONAL HOTBAR RENAMING
 -- ============================================================
 
-local function setupCharacter(
-	character: Model
-)
-	S.Token += 1
-
-	local token =
-		S.Token
-
-	cleanupCharacter()
-
-	local humanoid =
-		character:WaitForChild(
-			"Humanoid",
-			10
+local function renameExistingHotbar()
+	local playerGui =
+		LP:FindFirstChildOfClass(
+			"PlayerGui"
 		)
 
-	local root =
-		character:WaitForChild(
-			"HumanoidRootPart",
-			10
-		)
-
-	if not humanoid or
-		not root
-	then
+	if not playerGui then
 		return
 	end
 
-	Lighting.ClockTime =
-		CFG.NIGHT_TIME
+	-- Only modify existing elements.
+	-- No custom bottom UI is created.
 
-	setupAura(
-		character
-	)
-
-	spawnEffect(
-		character,
-		root
-	)
-
-	pcall(function()
-		humanoid.WalkSpeed =
-			CFG.RUN_SPEED
-	end)
-
-	table.insert(
-		S.CharacterConnections,
-		humanoid.Died:Connect(
-			function()
-				S.Busy = {}
-
-				cleanupAnimations()
-			end
+	local hotbar =
+		playerGui:FindFirstChild(
+			"Hotbar",
+			true
 		)
-	)
 
-	task.spawn(function()
-		task.wait(0.2)
-
-		if token ~= S.Token then
-			return
-		end
-
-		createMobileGui()
-
-		for _ = 1, 20 do
-			if token ~= S.Token then
-				return
-			end
-
-			pcall(function()
-				fixCharacterTab()
-				refreshHotbar()
-				styleUltimateBar()
-			end)
-
-			task.wait(0.15)
-		end
-	end)
-end
-
--- ============================================================
--- UI LOOP
--- ============================================================
-
-local function startUIUpdater()
-	task.spawn(function()
-		while LocalPlayer.Parent do
-			pcall(function()
-				fixCharacterTab()
-				refreshHotbar()
-				styleUltimateBar()
-			end)
-
-			task.wait(0.35)
-		end
-	end)
-end
-
--- ============================================================
--- START / RESTART
--- ============================================================
-
-if S.Started then
-	-- Prevent duplicate execution if the script is run again.
-	S.Token += 1
-
-	disconnectList(
-		S.Connections
-	)
-
-	disconnectList(
-		S.CharacterConnections
-	)
-
-	cleanupAnimations()
-	destroyVFXFolder()
-
-	if S.MobileGui then
-		pcall(function()
-			S.MobileGui:Destroy()
-		end)
-
-		S.MobileGui = nil
+	if not hotbar then
+		return
 	end
 
-	S.Started = false
+	local names = {
+		["1"] = "NULL CREATION",
+		["2"] = "CREATOR'S COLLAPSE",
+		["3"] = "REALITY BREAK",
+		["4"] = "ABSOLUTE NULL",
+	}
+
+	for number, name in pairs(names) do
+		local slot =
+			hotbar:FindFirstChild(
+				number,
+				true
+			)
+
+		if slot then
+			local toolName =
+				slot:FindFirstChild(
+					"ToolName",
+					true
+				)
+
+			if toolName and
+				toolName:IsA("TextLabel")
+			then
+				toolName.Text = name
+			end
+		end
+	end
 end
 
-S.Started = true
-
 -- ============================================================
--- CHARACTER ADDED
+-- NOTIFICATION
 -- ============================================================
 
-table.insert(
-	S.Connections,
-	LocalPlayer.CharacterAdded:Connect(
+local function notify()
+	pcall(function()
+		StarterGui:SetCore(
+			"SendNotification",
+			{
+				Title = "THE CREATOR",
+				Text =
+					"666 // CREATION PROTOCOL ONLINE",
+				Duration = 4,
+			}
+		)
+	end)
+end
+
+-- ============================================================
+-- DESTROY
+-- ============================================================
+
+function S.Destroy()
+	S.Alive = false
+
+	disconnectAll(S.Connections)
+	disconnectAll(S.CharacterConnections)
+
+	cleanupTracks()
+
+	local folder =
+		workspace:FindFirstChild(
+			"R4Fix_TheCreator_VFX"
+		)
+
+	if folder then
+		pcall(function()
+			folder:Destroy()
+		end)
+	end
+
+	local character =
+		LP.Character
+
+	if character then
+		for _, object in ipairs(
+			character:GetDescendants()
+		) do
+			if object.Name ==
+				"R4FixCreatorAura"
+			then
+				pcall(function()
+					object:Destroy()
+				end)
+			elseif object.Name ==
+				"R4FixCreatorHighlight"
+			then
+				pcall(function()
+					object:Destroy()
+				end)
+			end
+		end
+	end
+
+	S.Busy = {}
+end
+
+-- ============================================================
+-- CHARACTER CONNECTION
+-- ============================================================
+
+addConnection(
+	LP.CharacterAdded:Connect(
 		function(character)
 			task.spawn(function()
 				character:WaitForChild(
@@ -3476,7 +2390,7 @@ table.insert(
 
 				task.wait(0.2)
 
-				if character.Parent then
+				if S.Alive then
 					setupCharacter(
 						character
 					)
@@ -3487,59 +2401,44 @@ table.insert(
 )
 
 -- ============================================================
--- INPUT
+-- INITIALIZE
 -- ============================================================
 
-setupInput()
+bindInput()
 
--- ============================================================
--- UI
--- ============================================================
+task.spawn(function()
+	while S.Alive and LP.Parent do
+		pcall(renameExistingHotbar)
 
-startUIUpdater()
+		task.wait(0.5)
+	end
+end)
 
--- ============================================================
--- CURRENT CHARACTER
--- ============================================================
+local current =
+	LP.Character
 
-local currentCharacter =
-	LocalPlayer.Character
-
-if currentCharacter then
+if current then
 	task.spawn(function()
-		setupCharacter(
-			currentCharacter
-		)
+		setupCharacter(current)
 	end)
 else
 	task.spawn(function()
 		local character =
-			LocalPlayer.CharacterAdded:Wait()
+			LP.CharacterAdded:Wait()
 
-		setupCharacter(
-			character
-		)
+		setupCharacter(character)
 	end)
 end
 
--- ============================================================
--- NOTIFICATION
--- ============================================================
+notify()
 
-task.delay(
-	0.5,
-	function()
-		pcall(function()
-			StarterGui:SetCore(
-				"SendNotification",
-				{
-					Title = "THE CREATOR",
-					Text = "666 // CREATION PROTOCOL ONLINE",
-					Icon = DECAL_ID,
-					Duration = 3,
-				}
-			)
-		end)
-	end
-end
-)
+print("========================================")
+print(" THE CREATOR // R4FIX")
+print(" STATUS: ONLINE")
+print(" M1: Mouse1 / Touch")
+print(" 1: NULL CREATION")
+print(" 2: CREATOR'S COLLAPSE")
+print(" 3: REALITY BREAK")
+print(" 4: ABSOLUTE NULL")
+print(" G: ULTIMATE")
+print("========================================")
