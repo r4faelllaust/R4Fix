@@ -1,20 +1,17 @@
 --!strict
 -- ================================================================
--- MAI SAKURAJIMA 💗 V3
+-- MAI SAKURAJIMA 💗 V3.1
 -- ================================================================
--- v3 fixes:
--- [1] Music downloader now tries request()/http_request() first
---     (often more binary-safe than HttpGet), falls back to HttpGet,
---     and prints diagnostics so we can actually debug this together.
--- [2] Garou's blue trail neutralized -> pink/red, same technique
---     proven working on Dark Garou.
--- [3] Combo-escalation VFX for a more chaotic feel on consecutive hits.
--- [4] FIXED: ult names were being stomped by the continuous hotbar
---     refresh loop, which had no ult-state check at all.
--- [5] FIXED: Special and Ult1 accidentally shared one animation ID
---     (my copy-paste error). Gave Special its own ID. Added hard
---     stop-timers to Move4/Special/Ult1/Ult2/Ult3 so none of them
---     can run past their intended window.
+-- R4FIX PATCH
+--
+-- FIXES:
+-- [1] Music volume increased to 0.75
+-- [2] Hit sounds reduced to 0.4
+-- [3] Automatically forces the base character to Hunter/Garou
+--     before connecting the Mai moveset animation hooks.
+-- [4] Character swap waits properly before continuing setup.
+-- [5] Prevents the old character from receiving the new hooks.
+-- [6] Existing VFX / Love Meter / Ult / hotbar system preserved.
 -- ================================================================
 
 local Players = game:GetService("Players")
@@ -28,9 +25,21 @@ local PlayerGui = Player:WaitForChild("PlayerGui")
 local MOVESET_NAME = "Mai Sakurajima"
 local DECAL_ID = "rbxthumb://type=Asset&id=116579762411499&w=150&h=150"
 
+-- ================================================================
+-- MUSIC
+-- ================================================================
+
 local MUSIC_FILE = "FukashiginoCarte_MaiSakurajima.mp3"
-local MUSIC_URL = "https://raw.githubusercontent.com/r4faelllaust/R4Fix/main/%5B%E4%B8%8D%E5%8F%AF%E6%80%9D%E8%AD%B0%E3%81%AE%E3%82%AB%E3%83%AB%E3%83%86%5D%20Fukashigi%20no%20Carte%20FULL%20VER.%20Lyrics%20(BACKGROUND%20MUSIC%20%5BTEMPO%20105%20TS%206_8%5D).mp3"
-local MUSIC_VOLUME = 0.42
+
+local MUSIC_URL =
+	"https://raw.githubusercontent.com/r4faelllaust/R4Fix/main/%5B%E4%B8%8D%E5%8F%AF%E6%80%9D%E8%AD%B0%E3%81%AE%E3%82%AB%E3%83%AB%E3%83%86%5D%20Fukashigi%20no%20Carte%20FULL%20VER.%20Lyrics%20(BACKGROUND%20MUSIC%20%5BTEMPO%20105%20TS%206_8%5D).mp3"
+
+-- FIXED
+local MUSIC_VOLUME = 0.75
+
+-- ================================================================
+-- COLORS
+-- ================================================================
 
 local PINK = Color3.fromRGB(255, 105, 180)
 local HOT_PINK = Color3.fromRGB(255, 40, 140)
@@ -38,33 +47,54 @@ local LIGHT_PINK = Color3.fromRGB(255, 190, 225)
 local RED = Color3.fromRGB(255, 45, 70)
 local WHITE = Color3.fromRGB(255, 245, 250)
 
+-- ================================================================
+-- CONFIG
+-- ================================================================
+
 local CONFIG = {
 	VFXCooldown = 0.08,
 	HitSoundCooldown = 0.20,
+
 	Move1Name = "Love Breaker",
 	Move2Name = "Sakura Rush",
 	Move3Name = "Heartbreaker",
 	Move4Name = "Mai's Final Kiss",
+
 	Ult1Name = "Love Execution",
 	Ult2Name = "Sakura Storm",
 	Ult3Name = "Heart of Mai",
-	Ult4Name = "Forbidden Love", -- still label-only, no 4th real trigger found
+	Ult4Name = "Forbidden Love",
+
 	Move2AnimationLength = 0.78,
 	Move4AnimationLength = 1.0,
 	SpecialAnimationLength = 0.9,
 	UltAnimationLength = 1.1,
+
 	ComboWindow = 1.5,
 }
+
+-- ================================================================
+-- BASE MOVE TRIGGERS
+-- ================================================================
 
 local SLOT1_ID = "rbxassetid://12273188754"
 local SLOT2_ID = "rbxassetid://12296113986"
 local SLOT3_ID = "rbxassetid://12309835105"
 local SLOT4_ID = "rbxassetid://12351854556"
+
 local SPECIAL_ID = "rbxassetid://12460977270"
+
+-- ================================================================
+-- ULT TRIGGERS
+-- ================================================================
 
 local ULT1_TRIGGER = "rbxassetid://12467789963"
 local ULT2_TRIGGER = "rbxassetid://13630786846"
 local ULT3_TRIGGER = "rbxassetid://14057231976"
+
+-- ================================================================
+-- M1
+-- ================================================================
 
 local M1_TRIGGERS = {
 	["rbxassetid://18715994424"] = "rbxassetid://15259161390",
@@ -73,12 +103,20 @@ local M1_TRIGGERS = {
 	["rbxassetid://18716001119"] = "rbxassetid://15162694192",
 }
 
+-- ================================================================
+-- ANIMATIONS
+-- ================================================================
+
 local MOVE1_ANIMATION = "rbxassetid://15436465829"
+
 local MOVE2_ANIMATION = "rbxassetid://15290930205"
+
 local MOVE3_GROUND = "rbxassetid://15436465829"
 local MOVE3_AIR = "rbxassetid://15436668469"
+
 local MOVE4_ANIMATION = "rbxassetid://18897115785"
-local SPECIAL_ANIMATION = "rbxassetid://18716153127" -- FIXED: was colliding with ULT1
+
+local SPECIAL_ANIMATION = "rbxassetid://18716153127"
 
 local ULT1_ANIMATION = "rbxassetid://129651400898906"
 local ULT2_ANIMATION = "rbxassetid://18897118507"
@@ -87,445 +125,1454 @@ local ULT3_ANIMATION = "rbxassetid://18897118507"
 local SPAWN_EMOTE = "rbxassetid://18450373829"
 local IDLE_EMOTE = "rbxassetid://17268390209"
 
+-- ================================================================
+-- SESSION
+-- ================================================================
+
 getgenv().MaiSakurajimaV3 = getgenv().MaiSakurajimaV3 or {
-	Initialized = false, Connections = {}, CharacterConnections = {},
-	CharacterToken = 0, LastVFX = {}, LastHit = {},
-	IsUlted = false, ComboCount = 0, LastHitTime = 0,
+	Initialized = false,
+	Connections = {},
+	CharacterConnections = {},
+	CharacterToken = 0,
+
+	LastVFX = {},
+	LastHit = {},
+
+	IsUlted = false,
+
+	ComboCount = 0,
+	LastHitTime = 0,
 }
+
 local SESSION = getgenv().MaiSakurajimaV3
 
+-- ================================================================
+-- CONNECTION MANAGEMENT
+-- ================================================================
+
 local function disconnect(list)
-	for _, connection in ipairs(list) do pcall(function() connection:Disconnect() end) end
+	for _, connection in ipairs(list) do
+		pcall(function()
+			connection:Disconnect()
+		end)
+	end
+
 	table.clear(list)
 end
+
 local function track(connection)
-	if connection then table.insert(SESSION.CharacterConnections, connection) end
+	if connection then
+		table.insert(SESSION.CharacterConnections, connection)
+	end
+
 	return connection
 end
 
+-- ================================================================
+-- ANIMATION HELPERS
+-- ================================================================
+
 local function getAnimator(humanoid)
 	local animator = humanoid:FindFirstChildOfClass("Animator")
-	if not animator then animator = Instance.new("Animator"); animator.Parent = humanoid end
+
+	if not animator then
+		animator = Instance.new("Animator")
+		animator.Parent = humanoid
+	end
+
 	return animator
 end
 
-local function playAnimation(humanoid, id, priority, fade, speed)
-	if not humanoid or humanoid.Health <= 0 then return nil end
+local function playAnimation(
+	humanoid,
+	id,
+	priority,
+	fade,
+	speed
+)
+	if not humanoid or humanoid.Health <= 0 then
+		return nil
+	end
+
 	local animation = Instance.new("Animation")
 	animation.AnimationId = id
+
 	local animator = getAnimator(humanoid)
-	local success, result = pcall(function() return animator:LoadAnimation(animation) end)
+
+	local success, result = pcall(function()
+		return animator:LoadAnimation(animation)
+	end)
+
 	animation:Destroy()
-	if not success or not result then return nil end
+
+	if not success or not result then
+		return nil
+	end
+
 	result.Priority = priority or Enum.AnimationPriority.Action
-	result.Looped = false -- FIX: never let these silently loop past their window
-	pcall(function() result:Play(fade or 0.05, 1, speed or 1) end)
+	result.Looped = false
+
+	pcall(function()
+		result:Play(
+			fade or 0.05,
+			1,
+			speed or 1
+		)
+	end)
+
 	return result
 end
 
--- helper: play + guaranteed hard stop after `duration`
-local function playAnimationCapped(humanoid, id, priority, duration, fade, speed)
-	local trackResult = playAnimation(humanoid, id, priority, fade, speed)
+local function playAnimationCapped(
+	humanoid,
+	id,
+	priority,
+	duration,
+	fade,
+	speed
+)
+	local trackResult = playAnimation(
+		humanoid,
+		id,
+		priority,
+		fade,
+		speed
+	)
+
 	if trackResult and duration then
 		task.delay(duration, function()
-			pcall(function() if trackResult.IsPlaying then trackResult:Stop(0.08) end end)
+			pcall(function()
+				if trackResult.IsPlaying then
+					trackResult:Stop(0.08)
+				end
+			end)
 		end)
 	end
+
 	return trackResult
 end
 
+-- ================================================================
+-- VFX FOLDER
+-- ================================================================
+
 local function getVFXFolder()
 	local folder = workspace:FindFirstChild("MaiSakurajima_VFX")
-	if not folder then folder = Instance.new("Folder"); folder.Name = "MaiSakurajima_VFX"; folder.Parent = workspace end
+
+	if not folder then
+		folder = Instance.new("Folder")
+		folder.Name = "MaiSakurajima_VFX"
+		folder.Parent = workspace
+	end
+
 	return folder
 end
+
+-- ================================================================
+-- COOLDOWN
+-- ================================================================
 
 local function allowed(key, cooldown)
 	local now = os.clock()
 	local last = SESSION.LastVFX[key] or 0
-	if now - last < cooldown then return false end
+
+	if now - last < cooldown then
+		return false
+	end
+
 	SESSION.LastVFX[key] = now
+
 	return true
 end
 
--- combo escalation: more hearts / faster rings the more you're hitting in a row
+-- ================================================================
+-- COMBO
+-- ================================================================
+
 local function registerCombo()
 	local now = os.clock()
+
 	if now - SESSION.LastHitTime <= CONFIG.ComboWindow then
-		SESSION.ComboCount = math.min(SESSION.ComboCount + 1, 8)
+		SESSION.ComboCount = math.min(
+			SESSION.ComboCount + 1,
+			8
+		)
 	else
 		SESSION.ComboCount = 1
 	end
+
 	SESSION.LastHitTime = now
+
 	return SESSION.ComboCount
 end
 
-local function heartParticles(parent, amount, key, speed)
-	if not parent or not parent.Parent then return end
-	if key and not allowed(key, CONFIG.VFXCooldown) then return end
-	local comboMultiplier = 1 + (SESSION.ComboCount * 0.15)
+-- ================================================================
+-- HEART PARTICLES
+-- ================================================================
+
+local function heartParticles(
+	parent,
+	amount,
+	key,
+	speed
+)
+	if not parent or not parent.Parent then
+		return
+	end
+
+	if key and not allowed(
+		key,
+		CONFIG.VFXCooldown
+	) then
+		return
+	end
+
+	local comboMultiplier =
+		1 + (SESSION.ComboCount * 0.15)
+
 	local attachment = Instance.new("Attachment")
 	attachment.Name = "MaiHeartParticles"
 	attachment.Parent = parent
+
 	local emitter = Instance.new("ParticleEmitter")
-	emitter.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+
+	emitter.Texture =
+		"rbxasset://textures/particles/sparkles_main.dds"
+
 	emitter.Color = ColorSequence.new({
-		ColorSequenceKeypoint.new(0, LIGHT_PINK), ColorSequenceKeypoint.new(0.35, PINK),
-		ColorSequenceKeypoint.new(0.75, HOT_PINK), ColorSequenceKeypoint.new(1, RED),
+		ColorSequenceKeypoint.new(
+			0,
+			LIGHT_PINK
+		),
+
+		ColorSequenceKeypoint.new(
+			0.35,
+			PINK
+		),
+
+		ColorSequenceKeypoint.new(
+			0.75,
+			HOT_PINK
+		),
+
+		ColorSequenceKeypoint.new(
+			1,
+			RED
+		),
 	})
+
 	emitter.LightEmission = 0.8
 	emitter.Rate = 0
-	emitter.Lifetime = NumberRange.new(0.35, 0.85)
-	emitter.Speed = NumberRange.new((speed or 4) * comboMultiplier, ((speed or 4) + 7) * comboMultiplier)
-	emitter.SpreadAngle = Vector2.new(360, 360)
-	emitter.Rotation = NumberRange.new(0, 360)
-	emitter.RotSpeed = NumberRange.new(-180, 180)
-	emitter.Size = NumberSequence.new({NumberSequenceKeypoint.new(0, 0.35), NumberSequenceKeypoint.new(0.35, 0.75), NumberSequenceKeypoint.new(1, 0)})
-	emitter.Transparency = NumberSequence.new({NumberSequenceKeypoint.new(0, 0.05), NumberSequenceKeypoint.new(0.7, 0.25), NumberSequenceKeypoint.new(1, 1)})
+
+	emitter.Lifetime = NumberRange.new(
+		0.35,
+		0.85
+	)
+
+	emitter.Speed = NumberRange.new(
+		(speed or 4) * comboMultiplier,
+		((speed or 4) + 7) * comboMultiplier
+	)
+
+	emitter.SpreadAngle = Vector2.new(
+		360,
+		360
+	)
+
+	emitter.Rotation = NumberRange.new(
+		0,
+		360
+	)
+
+	emitter.RotSpeed = NumberRange.new(
+		-180,
+		180
+	)
+
+	emitter.Size = NumberSequence.new({
+		NumberSequenceKeypoint.new(
+			0,
+			0.35
+		),
+
+		NumberSequenceKeypoint.new(
+			0.35,
+			0.75
+		),
+
+		NumberSequenceKeypoint.new(
+			1,
+			0
+		),
+	})
+
+	emitter.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(
+			0,
+			0.05
+		),
+
+		NumberSequenceKeypoint.new(
+			0.7,
+			0.25
+		),
+
+		NumberSequenceKeypoint.new(
+			1,
+			1
+		),
+	})
+
 	emitter.Parent = attachment
-	pcall(function() emitter:Emit(math.floor((amount or 12) * comboMultiplier)) end)
-	Debris:AddItem(attachment, 1.2)
+
+	pcall(function()
+		emitter:Emit(
+			math.floor(
+				(amount or 12) * comboMultiplier
+			)
+		)
+	end)
+
+	Debris:AddItem(
+		attachment,
+		1.2
+	)
 end
 
-local function heartBurst(cframe, size, key, duration)
-	if key and not allowed(key, CONFIG.VFXCooldown) then return end
+-- ================================================================
+-- HEART BURST
+-- ================================================================
+
+local function heartBurst(
+	cframe,
+	size,
+	key,
+	duration
+)
+	if key and not allowed(
+		key,
+		CONFIG.VFXCooldown
+	) then
+		return
+	end
+
 	local part = Instance.new("Part")
+
 	part.Name = "MaiHeartBurst"
-	part.Anchored = true; part.CanCollide = false; part.CanTouch = false; part.CanQuery = false; part.CastShadow = false
-	part.Material = Enum.Material.Neon; part.Shape = Enum.PartType.Ball
-	part.Color = PINK; part.Transparency = 0.15; part.Size = Vector3.one; part.CFrame = cframe
+	part.Anchored = true
+	part.CanCollide = false
+	part.CanTouch = false
+	part.CanQuery = false
+	part.CastShadow = false
+
+	part.Material = Enum.Material.Neon
+	part.Shape = Enum.PartType.Ball
+
+	part.Color = PINK
+	part.Transparency = 0.15
+	part.Size = Vector3.one
+	part.CFrame = cframe
+
 	part.Parent = getVFXFolder()
+
 	local light = Instance.new("PointLight")
-	light.Color = PINK; light.Brightness = 4; light.Range = 12; light.Parent = part
-	TweenService:Create(part, TweenInfo.new(duration or 0.35, Enum.EasingStyle.Quint, Enum.EasingDirection.Out),
-		{Size = Vector3.new(size, size, size), Transparency = 1}):Play()
-	TweenService:Create(light, TweenInfo.new(duration or 0.35, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Brightness = 0}):Play()
-	Debris:AddItem(part, (duration or 0.35) + 0.1)
+
+	light.Color = PINK
+	light.Brightness = 4
+	light.Range = 12
+	light.Parent = part
+
+	local tweenDuration = duration or 0.35
+
+	TweenService:Create(
+		part,
+		TweenInfo.new(
+			tweenDuration,
+			Enum.EasingStyle.Quint,
+			Enum.EasingDirection.Out
+		),
+		{
+			Size = Vector3.new(
+				size,
+				size,
+				size
+			),
+
+			Transparency = 1,
+		}
+	):Play()
+
+	TweenService:Create(
+		light,
+		TweenInfo.new(
+			tweenDuration,
+			Enum.EasingStyle.Quad,
+			Enum.EasingDirection.Out
+		),
+		{
+			Brightness = 0
+		}
+	):Play()
+
+	Debris:AddItem(
+		part,
+		tweenDuration + 0.1
+	)
 end
 
-local function loveRing(cframe, startSize, endSize, key)
-	if key and not allowed(key, CONFIG.VFXCooldown) then return end
+-- ================================================================
+-- LOVE RING
+-- ================================================================
+
+local function loveRing(
+	cframe,
+	startSize,
+	endSize,
+	key
+)
+	if key and not allowed(
+		key,
+		CONFIG.VFXCooldown
+	) then
+		return
+	end
+
 	local ring = Instance.new("Part")
+
 	ring.Name = "MaiLoveRing"
-	ring.Anchored = true; ring.CanCollide = false; ring.CanTouch = false; ring.CanQuery = false; ring.CastShadow = false
-	ring.Shape = Enum.PartType.Cylinder; ring.Material = Enum.Material.Neon
-	ring.Color = HOT_PINK; ring.Transparency = 0.2
-	ring.Size = Vector3.new(0.1, startSize, startSize)
-	ring.CFrame = cframe * CFrame.Angles(0, 0, math.rad(90))
+
+	ring.Anchored = true
+	ring.CanCollide = false
+	ring.CanTouch = false
+	ring.CanQuery = false
+	ring.CastShadow = false
+
+	ring.Shape = Enum.PartType.Cylinder
+	ring.Material = Enum.Material.Neon
+	ring.Color = HOT_PINK
+	ring.Transparency = 0.2
+
+	ring.Size = Vector3.new(
+		0.1,
+		startSize,
+		startSize
+	)
+
+	ring.CFrame =
+		cframe *
+		CFrame.Angles(
+			0,
+			0,
+			math.rad(90)
+		)
+
 	ring.Parent = getVFXFolder()
-	TweenService:Create(ring, TweenInfo.new(0.42, Enum.EasingStyle.Quint, Enum.EasingDirection.Out),
-		{Size = Vector3.new(0.1, endSize, endSize), Transparency = 1}):Play()
-	Debris:AddItem(ring, 0.55)
+
+	TweenService:Create(
+		ring,
+		TweenInfo.new(
+			0.42,
+			Enum.EasingStyle.Quint,
+			Enum.EasingDirection.Out
+		),
+		{
+			Size = Vector3.new(
+				0.1,
+				endSize,
+				endSize
+			),
+
+			Transparency = 1,
+		}
+	):Play()
+
+	Debris:AddItem(
+		ring,
+		0.55
+	)
 end
 
--- CHAOTIC: staggered secondary burst rings for big moves
-local function chaosBurstSeries(cframe, key)
+-- ================================================================
+-- CHAOS BURST
+-- ================================================================
+
+local function chaosBurstSeries(
+	cframe,
+	key
+)
 	for i = 0, 2 do
-		task.delay(i * 0.08, function()
-			heartBurst(cframe, 8 + i * 3, key .. "_chaos" .. i, 0.3)
-			loveRing(cframe, 1, 15 + i * 8, nil)
-		end)
+		task.delay(
+			i * 0.08,
+			function()
+				heartBurst(
+					cframe,
+					8 + i * 3,
+					key .. "_chaos" .. i,
+					0.3
+				)
+
+				loveRing(
+					cframe,
+					1,
+					15 + i * 8,
+					nil
+				)
+			end
+		)
 	end
 end
 
+-- ================================================================
+-- LOVE AURA
+-- ================================================================
+
 local function createLoveAura(root)
 	local attachment = Instance.new("Attachment")
-	attachment.Name = "MaiSakurajimaLoveAura"
+
+	attachment.Name =
+		"MaiSakurajimaLoveAura"
+
 	attachment.Parent = root
+
 	local emitter = Instance.new("ParticleEmitter")
-	emitter.Texture = "rbxasset://textures/particles/sparkles_main.dds"
-	emitter.Color = ColorSequence.new(LIGHT_PINK, PINK)
+
+	emitter.Texture =
+		"rbxasset://textures/particles/sparkles_main.dds"
+
+	emitter.Color =
+		ColorSequence.new(
+			LIGHT_PINK,
+			PINK
+		)
+
 	emitter.LightEmission = 0.7
 	emitter.Rate = 5
-	emitter.Lifetime = NumberRange.new(0.4, 0.8)
-	emitter.Speed = NumberRange.new(0.5, 2)
-	emitter.SpreadAngle = Vector2.new(360, 360)
-	emitter.Size = NumberSequence.new({NumberSequenceKeypoint.new(0, 0.25), NumberSequenceKeypoint.new(0.5, 0.6), NumberSequenceKeypoint.new(1, 0)})
-	emitter.Transparency = NumberSequence.new({NumberSequenceKeypoint.new(0, 0.25), NumberSequenceKeypoint.new(1, 1)})
+
+	emitter.Lifetime =
+		NumberRange.new(
+			0.4,
+			0.8
+		)
+
+	emitter.Speed =
+		NumberRange.new(
+			0.5,
+			2
+		)
+
+	emitter.SpreadAngle =
+		Vector2.new(
+			360,
+			360
+		)
+
+	emitter.Size =
+		NumberSequence.new({
+			NumberSequenceKeypoint.new(
+				0,
+				0.25
+			),
+
+			NumberSequenceKeypoint.new(
+				0.5,
+				0.6
+			),
+
+			NumberSequenceKeypoint.new(
+				1,
+				0
+			),
+		})
+
+	emitter.Transparency =
+		NumberSequence.new({
+			NumberSequenceKeypoint.new(
+				0,
+				0.25
+			),
+
+			NumberSequenceKeypoint.new(
+				1,
+				1
+			),
+		})
+
 	emitter.Parent = attachment
+
 	return attachment
 end
 
+-- ================================================================
+-- HAND GLOW
+-- ================================================================
+
 local function setupHandGlow(character)
-	for _, name in ipairs({"Left Arm", "Right Arm", "LeftHand", "RightHand", "LeftLowerArm", "RightLowerArm"}) do
-		local limb = character:FindFirstChild(name)
+	for _, name in ipairs({
+		"Left Arm",
+		"Right Arm",
+		"LeftHand",
+		"RightHand",
+		"LeftLowerArm",
+		"RightLowerArm",
+	}) do
+
+		local limb =
+			character:FindFirstChild(name)
+
 		if limb and limb:IsA("BasePart") then
-			local highlight = Instance.new("Highlight")
-			highlight.Name = "MaiHandGlow"
-			highlight.Adornee = limb
-			highlight.FillColor = PINK; highlight.OutlineColor = WHITE
-			highlight.FillTransparency = 0.9; highlight.OutlineTransparency = 0.25
-			highlight.DepthMode = Enum.HighlightDepthMode.Occluded
+
+			local highlight =
+				Instance.new("Highlight")
+
+			highlight.Name =
+				"MaiHandGlow"
+
+			highlight.Adornee =
+				limb
+
+			highlight.FillColor =
+				PINK
+
+			highlight.OutlineColor =
+				WHITE
+
+			highlight.FillTransparency =
+				0.9
+
+			highlight.OutlineTransparency =
+				0.25
+
+			highlight.DepthMode =
+				Enum.HighlightDepthMode.Occluded
+
 			highlight.Parent = limb
 		end
 	end
 end
 
--- NEW: neutralize Garou's own blue trail -> pink/red (fixes #2)
+-- ================================================================
+-- GAROU TRAIL COLOR
+-- ================================================================
+
 local function neutralizeGarouTrail(obj)
-	local isOurs = string.match(obj.Name, "^Mai") or obj.Name == "MaiSakuraTrail"
-	if isOurs then return end
-	local isXd = obj.Name == "xd"
-	local isEffectType = obj:IsA("Trail") or obj:IsA("Beam") or obj:IsA("ParticleEmitter")
-	if not (isXd or isEffectType) then return end
+	local isOurs =
+		string.match(
+			obj.Name,
+			"^Mai"
+		)
+		or obj.Name == "MaiSakuraTrail"
+
+	if isOurs then
+		return
+	end
+
+	local isXd =
+		obj.Name == "xd"
+
+	local isEffectType =
+		obj:IsA("Trail")
+		or obj:IsA("Beam")
+		or obj:IsA("ParticleEmitter")
+
+	if not (
+		isXd
+		or isEffectType
+	) then
+		return
+	end
+
 	pcall(function()
-		local grad = ColorSequence.new(HOT_PINK, RED)
-		if obj:IsA("Trail") or obj:IsA("Beam") then
+
+		local grad =
+			ColorSequence.new(
+				HOT_PINK,
+				RED
+			)
+
+		if obj:IsA("Trail")
+			or obj:IsA("Beam") then
+
 			obj.Color = grad
-			if obj:IsA("Trail") then obj.LightEmission = 0.5 end
+
+			if obj:IsA("Trail") then
+				obj.LightEmission = 0.5
+			end
+
 		elseif obj:IsA("ParticleEmitter") then
+
 			obj.Color = grad
 			obj.LightEmission = 0.5
 		end
 	end)
 end
 
--- NEW: dedicated Sakura petal trail on the arms
+-- ================================================================
+-- SAKURA TRAIL
+-- ================================================================
+
 local function createSakuraTrail(character)
-	for _, limbName in ipairs({"Left Arm", "Right Arm"}) do
-		local limb = character:FindFirstChild(limbName)
+
+	for _, limbName in ipairs({
+		"Left Arm",
+		"Right Arm",
+	}) do
+
+		local limb =
+			character:FindFirstChild(limbName)
+
 		if limb and limb:IsA("BasePart") then
-			local a0 = Instance.new("Attachment"); a0.Position = Vector3.new(0, -0.1, 0); a0.Parent = limb
-			local a1 = Instance.new("Attachment"); a1.Position = Vector3.new(0, -1, 0); a1.Parent = limb
-			local trail = Instance.new("Trail")
-			trail.Name = "MaiSakuraTrail"
-			trail.Attachment0 = a0; trail.Attachment1 = a1
+
+			local a0 =
+				Instance.new("Attachment")
+
+			a0.Position =
+				Vector3.new(
+					0,
+					-0.1,
+					0
+				)
+
+			a0.Parent = limb
+
+			local a1 =
+				Instance.new("Attachment")
+
+			a1.Position =
+				Vector3.new(
+					0,
+					-1,
+					0
+				)
+
+			a1.Parent = limb
+
+			local trail =
+				Instance.new("Trail")
+
+			trail.Name =
+				"MaiSakuraTrail"
+
+			trail.Attachment0 = a0
+			trail.Attachment1 = a1
+
 			trail.Lifetime = 0.45
 			trail.LightEmission = 0.6
-			trail.Color = ColorSequence.new({
-				ColorSequenceKeypoint.new(0, WHITE), ColorSequenceKeypoint.new(0.4, HOT_PINK), ColorSequenceKeypoint.new(1, RED),
-			})
-			trail.Transparency = NumberSequence.new({NumberSequenceKeypoint.new(0, 0.15), NumberSequenceKeypoint.new(1, 1)})
-			trail.WidthScale = NumberSequence.new(1, 0)
+
+			trail.Color =
+				ColorSequence.new({
+					ColorSequenceKeypoint.new(
+						0,
+						WHITE
+					),
+
+					ColorSequenceKeypoint.new(
+						0.4,
+						HOT_PINK
+					),
+
+					ColorSequenceKeypoint.new(
+						1,
+						RED
+					),
+				})
+
+			trail.Transparency =
+				NumberSequence.new({
+					NumberSequenceKeypoint.new(
+						0,
+						0.15
+					),
+
+					NumberSequenceKeypoint.new(
+						1,
+						1
+					),
+				})
+
+			trail.WidthScale =
+				NumberSequence.new(
+					1,
+					0
+				)
+
 			trail.Parent = limb
 		end
 	end
 end
 
--- FIXED music installer: binary-safer request() first, diagnostics added
+-- ================================================================
+-- MUSIC
+-- ================================================================
+
 local function getMusic()
-	local existing = PlayerGui:FindFirstChild("MaiSakurajima_BGM")
-	if existing and existing:IsA("Sound") then return existing end
-	local sound = Instance.new("Sound")
-	sound.Name = "MaiSakurajima_BGM"
-	sound.Volume = MUSIC_VOLUME
+	local existing =
+		PlayerGui:FindFirstChild(
+			"MaiSakurajima_BGM"
+		)
+
+	if existing and existing:IsA("Sound") then
+		existing.Volume = MUSIC_VOLUME
+		existing.Looped = true
+
+		return existing
+	end
+
+	local sound =
+		Instance.new("Sound")
+
+	sound.Name =
+		"MaiSakurajima_BGM"
+
+	sound.Volume =
+		MUSIC_VOLUME
+
 	sound.Looped = true
-	sound.Parent = PlayerGui
+
+	sound.Parent =
+		PlayerGui
+
 	return sound
 end
 
 local function looksLikeAudio(data)
-	if not data or #data < 4 then return false end
-	return data:sub(1, 3) == "ID3" or data:byte(1) == 0xFF
+	if not data or #data < 4 then
+		return false
+	end
+
+	return
+		data:sub(1, 3) == "ID3"
+		or data:byte(1) == 0xFF
 end
 
 local function fetchBinary()
-	-- Try request()/http_request()/syn.request first — some executors
-	-- mangle binary through HttpGet specifically but not through these.
-	local requestFn = (syn and syn.request) or (getgenv and getgenv().request) or (getgenv and getgenv().http_request)
+
+	local requestFn =
+		(syn and syn.request)
+		or (getgenv and getgenv().request)
+		or (getgenv and getgenv().http_request)
+
 	if requestFn then
-		local ok, response = pcall(function()
-			return requestFn({Url = MUSIC_URL, Method = "GET"})
-		end)
-		if ok and response and response.Body then
-			print("[Mai Music] request() succeeded, body length:", #response.Body)
+
+		local ok, response =
+			pcall(function()
+				return requestFn({
+					Url = MUSIC_URL,
+					Method = "GET",
+				})
+			end)
+
+		if ok
+			and response
+			and response.Body then
+
+			print(
+				"[Mai Music] request() succeeded:",
+				#response.Body
+			)
+
 			return response.Body
-		else
-			print("[Mai Music] request() failed or returned no body, falling back to HttpGet")
 		end
-	else
-		print("[Mai Music] no request()/http_request() available, using HttpGet")
 	end
 
-	local ok, data = pcall(function() return game:HttpGet(MUSIC_URL) end)
+	local ok, data =
+		pcall(function()
+			return game:HttpGet(
+				MUSIC_URL
+			)
+		end)
+
 	if ok then
-		print("[Mai Music] HttpGet succeeded, body length:", data and #data or 0)
+		print(
+			"[Mai Music] HttpGet succeeded:",
+			data and #data or 0
+		)
+
 		return data
-	else
-		print("[Mai Music] HttpGet failed:", tostring(data))
-		return nil
 	end
+
+	warn(
+		"[Mai Music] HttpGet failed:",
+		tostring(data)
+	)
+
+	return nil
 end
 
 local function installMusic()
-	local sound = getMusic()
+
+	local sound =
+		getMusic()
+
 	local asset
 
 	if getcustomasset then
-		local ok, existingAsset = pcall(getcustomasset, MUSIC_FILE)
-		if ok then asset = existingAsset end
+
+		local ok, existingAsset =
+			pcall(
+				getcustomasset,
+				MUSIC_FILE
+			)
+
+		if ok then
+			asset = existingAsset
+		end
 	end
 
 	if not asset then
-		local data = fetchBinary()
-		if data then
-			if #data > 5 * 1024 * 1024 then
-				warn("[Mai Music] Downloaded file is over 5MB (" .. #data .. " bytes) — some executors cap HttpGet/request response size around here. If music still fails, this is likely why.")
-			end
-			if looksLikeAudio(data) then
-				local writeSuccess = pcall(function() writefile(MUSIC_FILE, data) end)
-				print("[Mai Music] writefile success:", writeSuccess)
-				if writeSuccess and getcustomasset then
-					local assetSuccess, assetResult = pcall(function() return getcustomasset(MUSIC_FILE) end)
-					print("[Mai Music] getcustomasset success:", assetSuccess, "result:", tostring(assetResult))
-					if assetSuccess then asset = assetResult end
+
+		local data =
+			fetchBinary()
+
+		if data
+			and looksLikeAudio(data) then
+
+			local writeSuccess =
+				pcall(function()
+					writefile(
+						MUSIC_FILE,
+						data
+					)
+				end)
+
+			if writeSuccess
+				and getcustomasset then
+
+				local assetSuccess,
+					assetResult =
+					pcall(function()
+						return getcustomasset(
+							MUSIC_FILE
+						)
+					end)
+
+				if assetSuccess then
+					asset = assetResult
 				end
-			else
-				local firstBytes = ""
-				for i = 1, math.min(8, #data) do firstBytes = firstBytes .. string.format("%02X ", data:byte(i)) end
-				warn("[Mai Music] Downloaded data does NOT look like audio (first bytes: " .. firstBytes .. "). Likely got HTML/redirect page instead of the mp3. Music will not play.")
 			end
+		else
+			warn(
+				"[Mai Music] Downloaded data is not valid MP3 data."
+			)
 		end
 	end
 
-	if asset then
-		sound.SoundId = asset
-		print("[Mai Music] SoundId set, attempting play")
-	else
-		warn("[Mai Music] Could not obtain a playable asset — see warnings above.")
+	if not asset then
+		warn(
+			"[Mai Music] Could not obtain playable music asset."
+		)
+
 		return
 	end
 
+	sound.SoundId = asset
 	sound.Looped = true
 	sound.Volume = MUSIC_VOLUME
-	if not sound.IsPlaying then
-		local playOk = pcall(function() sound:Play() end)
-		print("[Mai Music] sound:Play() success:", playOk, "IsPlaying:", sound.IsPlaying)
-	end
+
+	pcall(function()
+		if not sound.IsPlaying then
+			sound:Play()
+		end
+	end)
+
+	print(
+		"[Mai Music] Playing at volume:",
+		MUSIC_VOLUME
+	)
 end
 
-local function spawnEffect(character, root)
-	heartBurst(root.CFrame, 10, "spawn", 0.45)
-	heartBurst(root.CFrame * CFrame.new(0, 2, 0), 5, "spawn2", 0.3)
-	loveRing(root.CFrame, 2, 18, "spawnRing")
-	heartParticles(root, 30, "spawnParticles", 5)
+-- ================================================================
+-- SPAWN EFFECT
+-- ================================================================
 
-	local humanoid = character:FindFirstChildOfClass("Humanoid")
+local function spawnEffect(
+	character,
+	root
+)
+
+	heartBurst(
+		root.CFrame,
+		10,
+		"spawn",
+		0.45
+	)
+
+	heartBurst(
+		root.CFrame *
+			CFrame.new(0, 2, 0),
+		5,
+		"spawn2",
+		0.3
+	)
+
+	loveRing(
+		root.CFrame,
+		2,
+		18,
+		"spawnRing"
+	)
+
+	heartParticles(
+		root,
+		30,
+		"spawnParticles",
+		5
+	)
+
+	local humanoid =
+		character:FindFirstChildOfClass(
+			"Humanoid"
+		)
+
 	if humanoid then
-		playAnimationCapped(humanoid, SPAWN_EMOTE, Enum.AnimationPriority.Action2, 2, 0.1)
+		playAnimationCapped(
+			humanoid,
+			SPAWN_EMOTE,
+			Enum.AnimationPriority.Action2,
+			2,
+			0.1
+		)
 	end
 
-	local highlight = Instance.new("Highlight")
-	highlight.Name = "MaiSpawnHighlight"
-	highlight.Adornee = character
-	highlight.FillColor = PINK; highlight.OutlineColor = WHITE
-	highlight.FillTransparency = 0.75; highlight.OutlineTransparency = 0
-	highlight.DepthMode = Enum.HighlightDepthMode.Occluded
-	highlight.Parent = character
-	TweenService:Create(highlight, TweenInfo.new(0.9, Enum.EasingStyle.Quint, Enum.EasingDirection.Out),
-		{FillTransparency = 1, OutlineTransparency = 1}):Play()
-	Debris:AddItem(highlight, 1)
+	local highlight =
+		Instance.new("Highlight")
+
+	highlight.Name =
+		"MaiSpawnHighlight"
+
+	highlight.Adornee =
+		character
+
+	highlight.FillColor =
+		PINK
+
+	highlight.OutlineColor =
+		WHITE
+
+	highlight.FillTransparency =
+		0.75
+
+	highlight.OutlineTransparency =
+		0
+
+	highlight.DepthMode =
+		Enum.HighlightDepthMode.Occluded
+
+	highlight.Parent =
+		character
+
+	TweenService:Create(
+		highlight,
+		TweenInfo.new(
+			0.9,
+			Enum.EasingStyle.Quint,
+			Enum.EasingDirection.Out
+		),
+		{
+			FillTransparency = 1,
+			OutlineTransparency = 1,
+		}
+	):Play()
+
+	Debris:AddItem(
+		highlight,
+		1
+	)
 end
 
-local SOUND_IDS = {"rbxassetid://13064223399", "rbxassetid://13064223291", "rbxassetid://13064223483"}
+-- ================================================================
+-- HIT SOUNDS
+-- ================================================================
+
+local SOUND_IDS = {
+	"rbxassetid://13064223399",
+	"rbxassetid://13064223291",
+	"rbxassetid://13064223483",
+}
+
 local function playHitSound(character)
-	local root = character:FindFirstChild("HumanoidRootPart")
-	if not root then return end
-	local sound = Instance.new("Sound")
-	sound.Name = "MaiLoveHit"
-	sound.SoundId = SOUND_IDS[math.random(1, #SOUND_IDS)]
-	sound.Volume = 0.8
-	sound.PlaybackSpeed = math.random(95, 108) / 100
-	sound.Parent = root
-	pcall(function() sound:Play() end)
-	Debris:AddItem(sound, 3)
+
+	local root =
+		character:FindFirstChild(
+			"HumanoidRootPart"
+		)
+
+	if not root then
+		return
+	end
+
+	local sound =
+		Instance.new("Sound")
+
+	sound.Name =
+		"MaiLoveHit"
+
+	sound.SoundId =
+		SOUND_IDS[
+			math.random(
+				1,
+				#SOUND_IDS
+			)
+		]
+
+	-- FIXED
+	sound.Volume = 0.4
+
+	sound.PlaybackSpeed =
+		math.random(
+			95,
+			108
+		) / 100
+
+	sound.Parent =
+		root
+
+	pcall(function()
+		sound:Play()
+	end)
+
+	Debris:AddItem(
+		sound,
+		3
+	)
 end
+
+-- ================================================================
+-- HIT SOUND TRACKING
+-- ================================================================
 
 local function setupHitSounds()
-	local live = workspace:FindFirstChild("Live")
-	if not live then return end
-	local function connectTarget(model)
-		if not model:IsA("Model") or model == Player.Character then return end
-		local humanoid = model:FindFirstChildOfClass("Humanoid")
-		if not humanoid then return end
-		local lastHealth = humanoid.Health
-		track(humanoid.HealthChanged:Connect(function(newHealth)
-			if newHealth < lastHealth and model:GetAttribute("LastHit") == Player.Name then
-				local now = os.clock()
-				local previous = SESSION.LastHit[model] or 0
-				if now - previous >= CONFIG.HitSoundCooldown then
-					SESSION.LastHit[model] = now
-					local combo = registerCombo() -- CHAOTIC escalation
-					playHitSound(model)
-					local root = model:FindFirstChild("HumanoidRootPart")
-					if root then
-						heartBurst(root.CFrame, 5 + combo * 0.5, "hit_" .. model.Name, 0.22)
-						heartParticles(root, 8, "hitParticles_" .. model.Name, 7)
-					end
-				end
-			end
-			lastHealth = newHealth
-		end))
+
+	local live =
+		workspace:FindFirstChild(
+			"Live"
+		)
+
+	if not live then
+		return
 	end
-	for _, model in ipairs(live:GetChildren()) do connectTarget(model) end
-	track(live.ChildAdded:Connect(function(model) task.wait(0.05); connectTarget(model) end))
+
+	local function connectTarget(model)
+
+		if not model:IsA("Model")
+			or model == Player.Character then
+			return
+		end
+
+		local humanoid =
+			model:FindFirstChildOfClass(
+				"Humanoid"
+			)
+
+		if not humanoid then
+			return
+		end
+
+		local lastHealth =
+			humanoid.Health
+
+		track(
+			humanoid.HealthChanged:Connect(
+				function(newHealth)
+
+					if
+						newHealth < lastHealth
+						and model:GetAttribute(
+							"LastHit"
+						) == Player.Name
+					then
+
+						local now =
+							os.clock()
+
+						local previous =
+							SESSION.LastHit[
+								model
+							] or 0
+
+						if
+							now - previous
+							>= CONFIG.HitSoundCooldown
+						then
+
+							SESSION.LastHit[
+								model
+							] = now
+
+							local combo =
+								registerCombo()
+
+							playHitSound(
+								model
+							)
+
+							local root =
+								model:FindFirstChild(
+									"HumanoidRootPart"
+								)
+
+							if root then
+
+								heartBurst(
+									root.CFrame,
+									5 + combo * 0.5,
+									"hit_" .. model.Name,
+									0.22
+								)
+
+								heartParticles(
+									root,
+									8,
+									"hitParticles_" .. model.Name,
+									7
+								)
+							end
+						end
+					end
+
+					lastHealth =
+						newHealth
+				end
+			)
+		)
+	end
+
+	for _, model in ipairs(
+		live:GetChildren()
+	) do
+		connectTarget(model)
+	end
+
+	track(
+		live.ChildAdded:Connect(
+			function(model)
+				task.wait(0.05)
+				connectTarget(model)
+			end
+		)
+	)
 end
 
+-- ================================================================
+-- CHARACTER TAB
+-- ================================================================
+
 local function fixCharacterTab()
-	local topbar = PlayerGui:FindFirstChild("TopbarPlus")
-	if not topbar then return end
-	for _, descendant in ipairs(topbar:GetDescendants()) do
-		if descendant.Name == "IconButton" then
-			local label = descendant:FindFirstChild("IconLabel")
-			local image = descendant:FindFirstChild("IconImage")
+
+	local topbar =
+		PlayerGui:FindFirstChild(
+			"TopbarPlus"
+		)
+
+	if not topbar then
+		return
+	end
+
+	for _, descendant in ipairs(
+		topbar:GetDescendants()
+	) do
+
+		if descendant.Name ==
+			"IconButton" then
+
+			local label =
+				descendant:FindFirstChild(
+					"IconLabel"
+				)
+
+			local image =
+				descendant:FindFirstChild(
+					"IconImage"
+				)
+
 			if label then
-				local current = label.Text
-				if current == "Hero Hunter" or current == "Garou" or current == "Dark Garou" or current == MOVESET_NAME then
-					label.Text = MOVESET_NAME
-					if image then image.Image = DECAL_ID end
+
+				local current =
+					label.Text
+
+				if
+					current == "Hero Hunter"
+					or current == "Garou"
+					or current == "Dark Garou"
+					or current == MOVESET_NAME
+				then
+
+					label.Text =
+						MOVESET_NAME
+
+					if image then
+						image.Image =
+							DECAL_ID
+					end
 				end
 			end
 		end
 	end
 end
 
+-- ================================================================
+-- HOTBAR
+-- ================================================================
+
 local function findSlot(number)
-	local hotbar = PlayerGui:FindFirstChild("Hotbar")
-	if not hotbar then return nil end
-	local backpack = hotbar:FindFirstChild("Backpack")
-	if not backpack then return nil end
-	local frame = backpack:FindFirstChild("Hotbar")
-	if not frame then return nil end
-	local slot = frame:FindFirstChild(tostring(number))
-	if not slot then return nil end
-	return slot:FindFirstChild("Base") or slot
+
+	local hotbar =
+		PlayerGui:FindFirstChild(
+			"Hotbar"
+		)
+
+	if not hotbar then
+		return nil
+	end
+
+	local backpack =
+		hotbar:FindFirstChild(
+			"Backpack"
+		)
+
+	if not backpack then
+		return nil
+	end
+
+	local frame =
+		backpack:FindFirstChild(
+			"Hotbar"
+		)
+
+	if not frame then
+		return nil
+	end
+
+	local slot =
+		frame:FindFirstChild(
+			tostring(number)
+		)
+
+	if not slot then
+		return nil
+	end
+
+	return slot:FindFirstChild(
+		"Base"
+	) or slot
 end
 
-local function setMoveName(number, name, label)
-	local slot = findSlot(number)
-	if not slot then return end
-	local toolName = slot:FindFirstChild("ToolName")
-	if toolName then toolName.Text = name end
+local function setMoveName(
+	number,
+	name,
+	label
+)
+
+	local slot =
+		findSlot(number)
+
+	if not slot then
+		return
+	end
+
+	local toolName =
+		slot:FindFirstChild(
+			"ToolName"
+		)
+
+	if toolName then
+		toolName.Text =
+			name
+	end
+
 	if label then
-		local reuse = slot:FindFirstChild("Reuse")
+
+		local reuse =
+			slot:FindFirstChild(
+				"Reuse"
+			)
+
 		if reuse then
-			reuse.Visible = true
-			if reuse:IsA("TextLabel") or reuse:IsA("TextButton") then reuse.Text = label end
-			local nested = reuse:FindFirstChild("Reuse")
-			if nested and (nested:IsA("TextLabel") or nested:IsA("TextButton")) then nested.Text = label end
+
+			reuse.Visible =
+				true
+
+			if
+				reuse:IsA("TextLabel")
+				or reuse:IsA("TextButton")
+			then
+				reuse.Text =
+					label
+			end
+
+			local nested =
+				reuse:FindFirstChild(
+					"Reuse"
+				)
+
+			if nested
+				and (
+					nested:IsA("TextLabel")
+					or nested:IsA("TextButton")
+				)
+			then
+				nested.Text =
+					label
+			end
 		end
 	end
 end
 
 local function refreshBaseHotbar()
-	setMoveName(1, CONFIG.Move1Name, "|| INSTANT KILL ||")
-	setMoveName(2, CONFIG.Move2Name, "|| SAKURA RUSH ||")
-	setMoveName(3, CONFIG.Move3Name, "|| HEARTBREAKER ||")
-	setMoveName(4, CONFIG.Move4Name, "|| FINAL KISS ||")
+
+	setMoveName(
+		1,
+		CONFIG.Move1Name,
+		"|| INSTANT KILL ||"
+	)
+
+	setMoveName(
+		2,
+		CONFIG.Move2Name,
+		"|| SAKURA RUSH ||"
+	)
+
+	setMoveName(
+		3,
+		CONFIG.Move3Name,
+		"|| HEARTBREAKER ||"
+	)
+
+	setMoveName(
+		4,
+		CONFIG.Move4Name,
+		"|| FINAL KISS ||"
+	)
 end
 
--- FIX: dedicated ult hotbar refresh, only called while ulted
 local function refreshUltHotbar()
-	setMoveName(1, CONFIG.Ult1Name, "|| LOVE EXECUTION ||")
-	setMoveName(2, CONFIG.Ult2Name, "|| SAKURA STORM ||")
-	setMoveName(3, CONFIG.Ult3Name, "|| HEART OF MAI ||")
-	setMoveName(4, CONFIG.Ult4Name, "|| FORBIDDEN LOVE ||")
+
+	setMoveName(
+		1,
+		CONFIG.Ult1Name,
+		"|| LOVE EXECUTION ||"
+	)
+
+	setMoveName(
+		2,
+		CONFIG.Ult2Name,
+		"|| SAKURA STORM ||"
+	)
+
+	setMoveName(
+		3,
+		CONFIG.Ult3Name,
+		"|| HEART OF MAI ||"
+	)
+
+	setMoveName(
+		4,
+		CONFIG.Ult4Name,
+		"|| FORBIDDEN LOVE ||"
+	)
 end
 
--- FIX: this is now the single source of truth the loops call —
--- picks base or ult names depending on actual state, instead of
--- the old loop always forcing base names no matter what.
 local function refreshHotbar()
+
 	if SESSION.IsUlted then
 		refreshUltHotbar()
 	else
@@ -533,267 +1580,1125 @@ local function refreshHotbar()
 	end
 end
 
+-- ================================================================
+-- LOVE METER
+-- ================================================================
+
 local function styleUltimateBar()
-	local bar = PlayerGui:FindFirstChild("Bar")
-	if not bar then return end
-	local magic = bar:FindFirstChild("MagicHealth")
-	if not magic then return end
-	local health = magic:FindFirstChild("Health")
+
+	local bar =
+		PlayerGui:FindFirstChild(
+			"Bar"
+		)
+
+	if not bar then
+		return
+	end
+
+	local magic =
+		bar:FindFirstChild(
+			"MagicHealth"
+		)
+
+	if not magic then
+		return
+	end
+
+	local health =
+		magic:FindFirstChild(
+			"Health"
+		)
+
 	if health then
-		local healthBar = health:FindFirstChild("Bar")
+
+		local healthBar =
+			health:FindFirstChild(
+				"Bar"
+			)
+
 		if healthBar then
-			local fill = healthBar:FindFirstChild("Bar")
-			if fill and fill:IsA("ImageLabel") then fill.ImageColor3 = Color3.fromRGB(45, 5, 20) end
-		end
-		local glow = health:FindFirstChild("Glow")
-		if glow and glow:IsA("ImageLabel") then glow.ImageColor3 = PINK end
-	end
-	local text = magic:FindFirstChild("TextLabel")
-	if text then
-		if text:IsA("TextLabel") then
-			text.Text = "LOVE METER"
-			text.TextColor3 = LIGHT_PINK
-		end
-		local nested = text:FindFirstChild("TextLabel")
-		if nested and nested:IsA("TextLabel") then
-			nested.Text = "💗 " .. MOVESET_NAME .. " 💗"
-			nested.TextColor3 = PINK
-		end
-	end
-end
 
-local function ultimateEffect(root, amount, ringSize, key)
-	heartBurst(root.CFrame, amount, key .. "_burst", 0.55)
-	loveRing(root.CFrame, 5, ringSize, key .. "_ring")
-	heartParticles(root, 80, key .. "_particles", 10)
-	chaosBurstSeries(root.CFrame, key) -- CHAOTIC layered follow-up bursts
-	local light = Instance.new("PointLight")
-	light.Color = PINK; light.Brightness = 10; light.Range = 24; light.Parent = root
-	TweenService:Create(light, TweenInfo.new(0.8, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Brightness = 0, Range = 0}):Play()
-	Debris:AddItem(light, 1)
-end
+			local fill =
+				healthBar:FindFirstChild(
+					"Bar"
+				)
 
-local function setupMoveHandler(character, humanoid, root, token)
-	track(humanoid.AnimationPlayed:Connect(function(animationTrack)
-		if token ~= SESSION.CharacterToken then return end
-		if not animationTrack or not animationTrack.Animation then return end
-		local id = animationTrack.Animation.AnimationId
+			if fill
+				and fill:IsA("ImageLabel")
+			then
 
-		local m1Replacement = M1_TRIGGERS[id]
-		if m1Replacement then
-			pcall(function() animationTrack:Stop() end)
-			playAnimation(humanoid, m1Replacement, Enum.AnimationPriority.Action)
-			heartParticles(root, 4, "m1_" .. id, 4)
-			return
-		end
-
-		if id == SLOT1_ID then
-			pcall(function() animationTrack:Stop() end)
-			playAnimation(humanoid, MOVE1_ANIMATION, Enum.AnimationPriority.Action)
-			heartBurst(root.CFrame, 8, "move1", 0.3)
-			loveRing(root.CFrame, 2, 20, "move1ring")
-			heartParticles(root, 28, "move1particles", 7)
-			return
-		end
-
-		if id == SLOT2_ID then
-			pcall(function() animationTrack:Stop() end)
-			playAnimationCapped(humanoid, MOVE2_ANIMATION, Enum.AnimationPriority.Action, CONFIG.Move2AnimationLength, 0.03, 1)
-			heartBurst(root.CFrame, 9, "move2", 0.25)
-			loveRing(root.CFrame, 2, 24, "move2ring")
-			heartParticles(root, 35, "move2particles", 8)
-			return
-		end
-
-		if id == SLOT3_ID then
-			pcall(function() animationTrack:Stop() end)
-			local state = humanoid:GetState()
-			local airborne = state == Enum.HumanoidStateType.Jumping or state == Enum.HumanoidStateType.Freefall
-			playAnimation(humanoid, airborne and MOVE3_AIR or MOVE3_GROUND, Enum.AnimationPriority.Action)
-			heartBurst(root.CFrame, 11, "move3", 0.35)
-			loveRing(root.CFrame, 3, 30, "move3ring")
-			heartParticles(root, 45, "move3particles", 8)
-			return
-		end
-
-		if id == SLOT4_ID then
-			pcall(function() animationTrack:Stop() end)
-			playAnimationCapped(humanoid, MOVE4_ANIMATION, Enum.AnimationPriority.Action, CONFIG.Move4AnimationLength)
-			heartBurst(root.CFrame, 14, "move4", 0.4)
-			loveRing(root.CFrame, 4, 38, "move4ring")
-			heartParticles(root, 60, "move4particles", 10)
-			chaosBurstSeries(root.CFrame, "move4")
-			return
-		end
-
-		if id == SPECIAL_ID then
-			pcall(function() animationTrack:Stop() end)
-			playAnimationCapped(humanoid, SPECIAL_ANIMATION, Enum.AnimationPriority.Action, CONFIG.SpecialAnimationLength)
-			heartParticles(root, 30, "specialParticles", 7)
-			return
-		end
-
-		if id == ULT1_TRIGGER then
-			pcall(function() animationTrack:Stop() end)
-			SESSION.IsUlted = true
-			playAnimationCapped(humanoid, ULT1_ANIMATION, Enum.AnimationPriority.Action4, CONFIG.UltAnimationLength)
-			ultimateEffect(root, 22, 48, "ult1")
-			return
-		end
-
-		if id == ULT2_TRIGGER then
-			pcall(function() animationTrack:Stop() end)
-			playAnimationCapped(humanoid, ULT2_ANIMATION, Enum.AnimationPriority.Action4, CONFIG.UltAnimationLength)
-			ultimateEffect(root, 25, 50, "ult2")
-			return
-		end
-
-		if id == ULT3_TRIGGER then
-			pcall(function() animationTrack:Stop() end)
-			playAnimationCapped(humanoid, ULT3_ANIMATION, Enum.AnimationPriority.Action4, CONFIG.UltAnimationLength)
-			ultimateEffect(root, 28, 55, "ult3")
-			return
-		end
-	end))
-
-	-- FIX: detect actual ult state via the game's own attribute + tool,
-	-- rather than guessing from animation triggers alone
-	track(character:GetAttributeChangedSignal("Ulted"):Connect(function()
-		SESSION.IsUlted = character:GetAttribute("Ulted") and true or false
-	end))
-	track(Player.Backpack.ChildAdded:Connect(function(tool)
-		if tool.Name == "Death Counter" then SESSION.IsUlted = true end
-	end))
-end
-
-local function setupIdle(character, humanoid, token)
-	local started = os.clock()
-	local idleTrack
-
-	local anim = Instance.new("Animation")
-	anim.AnimationId = IDLE_EMOTE
-	local ok, loaded = pcall(function() return getAnimator(humanoid):LoadAnimation(anim) end)
-	if ok then idleTrack = loaded; idleTrack.Priority = Enum.AnimationPriority.Idle; idleTrack.Looped = true end
-
-	track(RunService.RenderStepped:Connect(function()
-		if token ~= SESSION.CharacterToken then return end
-		if not character.Parent or humanoid.Health <= 0 then return end
-		local root = character:FindFirstChild("HumanoidRootPart")
-		if not root then return end
-
-		local moving = humanoid.MoveDirection.Magnitude > 0.05
-		local state = humanoid:GetState()
-		local airborne = state == Enum.HumanoidStateType.Jumping or state == Enum.HumanoidStateType.Freefall
-
-		if idleTrack then
-			if (moving or airborne) and idleTrack.IsPlaying then
-				idleTrack:Stop(0.2)
-			elseif not moving and not airborne and not idleTrack.IsPlaying then
-				idleTrack:Play(0.2)
+				fill.ImageColor3 =
+					Color3.fromRGB(
+						45,
+						5,
+						20
+					)
 			end
 		end
 
-		if not moving and not airborne and os.clock() - started > 0.55 then
-			heartParticles(root, 1, "idleHeart", 1)
-		end
-	end))
-end
+		local glow =
+			health:FindFirstChild(
+				"Glow"
+			)
 
-local function setupCharacter(character)
-	SESSION.CharacterToken += 1
-	local token = SESSION.CharacterToken
-	SESSION.IsUlted = false
-	SESSION.ComboCount = 0
+		if glow
+			and glow:IsA("ImageLabel")
+		then
 
-	disconnect(SESSION.CharacterConnections)
-
-	local humanoid = character:WaitForChild("Humanoid", 10)
-	local root = character:WaitForChild("HumanoidRootPart", 10)
-	if not humanoid or not root then return end
-
-	spawnEffect(character, root)
-	createLoveAura(root)
-	createSakuraTrail(character)
-	setupHandGlow(character)
-
-	for _, obj in ipairs(character:GetDescendants()) do neutralizeGarouTrail(obj) end
-	track(character.DescendantAdded:Connect(function(obj) task.defer(function() neutralizeGarouTrail(obj) end) end))
-
-	setupIdle(character, humanoid, token)
-	setupMoveHandler(character, humanoid, root, token)
-	setupHitSounds()
-
-	humanoid.Died:Connect(function() SESSION.IsUlted = false end)
-
-	task.spawn(function()
-		for _ = 1, 25 do
-			if token ~= SESSION.CharacterToken then return end
-			fixCharacterTab()
-			refreshHotbar() -- FIX: state-aware now
-			styleUltimateBar()
-			task.wait(0.15)
-		end
-	end)
-end
-
-if not SESSION.Initialized then
-	SESSION.Initialized = true
-
-	table.insert(SESSION.Connections, Player.CharacterAdded:Connect(function(character)
-		task.wait(0.2)
-		setupCharacter(character)
-		task.defer(function() installMusic() end)
-	end))
-
-	table.insert(SESSION.Connections, RunService.Heartbeat:Connect(function()
-		pcall(function()
-			fixCharacterTab()
-			refreshHotbar() -- FIX: state-aware now
-			styleUltimateBar()
-		end)
-	end))
-
-	PlayerGui.DescendantAdded:Connect(function()
-		task.defer(function()
-			fixCharacterTab()
-			refreshHotbar() -- FIX: state-aware now
-			styleUltimateBar()
-		end)
-	end)
-end
-
-if Player.Character then
-	task.spawn(function() setupCharacter(Player.Character) end)
-else
-	task.spawn(function() setupCharacter(Player.CharacterAdded:Wait()) end)
-end
-
-task.spawn(function()
-	task.wait(0.5)
-	installMusic()
-	while Player.Parent do
-		task.wait(3)
-		local sound = PlayerGui:FindFirstChild("MaiSakurajima_BGM")
-		if sound and sound:IsA("Sound") and not sound.IsPlaying then
-			pcall(function() sound:Play() end)
+			glow.ImageColor3 =
+				PINK
 		end
 	end
-end)
 
-task.spawn(function()
-	while Player.Parent do
+	local text =
+		magic:FindFirstChild(
+			"TextLabel"
+		)
+
+	if text then
+
+		if text:IsA("TextLabel") then
+
+			text.Text =
+				"LOVE METER"
+
+			text.TextColor3 =
+				LIGHT_PINK
+		end
+
+		local nested =
+			text:FindFirstChild(
+				"TextLabel"
+			)
+
+		if nested
+			and nested:IsA("TextLabel")
+		then
+
+			nested.Text =
+				"💗 " ..
+				MOVESET_NAME ..
+				" 💗"
+
+			nested.TextColor3 =
+				PINK
+		end
+	end
+end
+
+-- ================================================================
+-- ULTIMATE VFX
+-- ================================================================
+
+local function ultimateEffect(
+	root,
+	amount,
+	ringSize,
+	key
+)
+
+	heartBurst(
+		root.CFrame,
+		amount,
+		key .. "_burst",
+		0.55
+	)
+
+	loveRing(
+		root.CFrame,
+		5,
+		ringSize,
+		key .. "_ring"
+	)
+
+	heartParticles(
+		root,
+		80,
+		key .. "_particles",
+		10
+	)
+
+	chaosBurstSeries(
+		root.CFrame,
+		key
+	)
+
+	local light =
+		Instance.new("PointLight")
+
+	light.Color = PINK
+	light.Brightness = 10
+	light.Range = 24
+
+	light.Parent = root
+
+	TweenService:Create(
+		light,
+		TweenInfo.new(
+			0.8,
+			Enum.EasingStyle.Quad,
+			Enum.EasingDirection.Out
+		),
+		{
+			Brightness = 0,
+			Range = 0,
+		}
+	):Play()
+
+	Debris:AddItem(
+		light,
+		1
+	)
+end
+
+-- ================================================================
+-- MOVE HANDLER
+-- ================================================================
+
+local function setupMoveHandler(
+	character,
+	humanoid,
+	root,
+	token
+)
+
+	track(
+		humanoid.AnimationPlayed:Connect(
+			function(animationTrack)
+
+				if
+					token ~= SESSION.CharacterToken
+				then
+					return
+				end
+
+				if
+					not animationTrack
+					or not animationTrack.Animation
+				then
+					return
+				end
+
+				local id =
+					animationTrack.Animation.AnimationId
+
+				-- M1
+				local m1Replacement =
+					M1_TRIGGERS[id]
+
+				if m1Replacement then
+
+					pcall(function()
+						animationTrack:Stop()
+					end)
+
+					playAnimation(
+						humanoid,
+						m1Replacement,
+						Enum.AnimationPriority.Action
+					)
+
+					heartParticles(
+						root,
+						4,
+						"m1_" .. id,
+						4
+					)
+
+					return
+				end
+
+				-- MOVE 1
+				if id == SLOT1_ID then
+
+					pcall(function()
+						animationTrack:Stop()
+					end)
+
+					playAnimation(
+						humanoid,
+						MOVE1_ANIMATION,
+						Enum.AnimationPriority.Action
+					)
+
+					heartBurst(
+						root.CFrame,
+						8,
+						"move1",
+						0.3
+					)
+
+					loveRing(
+						root.CFrame,
+						2,
+						20,
+						"move1ring"
+					)
+
+					heartParticles(
+						root,
+						28,
+						"move1particles",
+						7
+					)
+
+					return
+				end
+
+				-- MOVE 2
+				if id == SLOT2_ID then
+
+					pcall(function()
+						animationTrack:Stop()
+					end)
+
+					playAnimationCapped(
+						humanoid,
+						MOVE2_ANIMATION,
+						Enum.AnimationPriority.Action,
+						CONFIG.Move2AnimationLength,
+						0.03,
+						1
+					)
+
+					heartBurst(
+						root.CFrame,
+						9,
+						"move2",
+						0.25
+					)
+
+					loveRing(
+						root.CFrame,
+						2,
+						24,
+						"move2ring"
+					)
+
+					heartParticles(
+						root,
+						35,
+						"move2particles",
+						8
+					)
+
+					return
+				end
+
+				-- MOVE 3
+				if id == SLOT3_ID then
+
+					pcall(function()
+						animationTrack:Stop()
+					end)
+
+					local state =
+						humanoid:GetState()
+
+					local airborne =
+						state ==
+						Enum.HumanoidStateType.Jumping
+						or state ==
+						Enum.HumanoidStateType.Freefall
+
+					playAnimation(
+						humanoid,
+						airborne
+							and MOVE3_AIR
+							or MOVE3_GROUND,
+						Enum.AnimationPriority.Action
+					)
+
+					heartBurst(
+						root.CFrame,
+						11,
+						"move3",
+						0.35
+					)
+
+					loveRing(
+						root.CFrame,
+						3,
+						30,
+						"move3ring"
+					)
+
+					heartParticles(
+						root,
+						45,
+						"move3particles",
+						8
+					)
+
+					return
+				end
+
+				-- MOVE 4
+				if id == SLOT4_ID then
+
+					pcall(function()
+						animationTrack:Stop()
+					end)
+
+					playAnimationCapped(
+						humanoid,
+						MOVE4_ANIMATION,
+						Enum.AnimationPriority.Action,
+						CONFIG.Move4AnimationLength
+					)
+
+					heartBurst(
+						root.CFrame,
+						14,
+						"move4",
+						0.4
+					)
+
+					loveRing(
+						root.CFrame,
+						4,
+						38,
+						"move4ring"
+					)
+
+					heartParticles(
+						root,
+						60,
+						"move4particles",
+						10
+					)
+
+					chaosBurstSeries(
+						root.CFrame,
+						"move4"
+					)
+
+					return
+				end
+
+				-- SPECIAL
+				if id == SPECIAL_ID then
+
+					pcall(function()
+						animationTrack:Stop()
+					end)
+
+					playAnimationCapped(
+						humanoid,
+						SPECIAL_ANIMATION,
+						Enum.AnimationPriority.Action,
+						CONFIG.SpecialAnimationLength
+					)
+
+					heartParticles(
+						root,
+						30,
+						"specialParticles",
+						7
+					)
+
+					return
+				end
+
+				-- ULT 1
+				if id == ULT1_TRIGGER then
+
+					pcall(function()
+						animationTrack:Stop()
+					end)
+
+					SESSION.IsUlted = true
+
+					playAnimationCapped(
+						humanoid,
+						ULT1_ANIMATION,
+						Enum.AnimationPriority.Action4,
+						CONFIG.UltAnimationLength
+					)
+
+					ultimateEffect(
+						root,
+						22,
+						48,
+						"ult1"
+					)
+
+					return
+				end
+
+				-- ULT 2
+				if id == ULT2_TRIGGER then
+
+					pcall(function()
+						animationTrack:Stop()
+					end)
+
+					playAnimationCapped(
+						humanoid,
+						ULT2_ANIMATION,
+						Enum.AnimationPriority.Action4,
+						CONFIG.UltAnimationLength
+					)
+
+					ultimateEffect(
+						root,
+						25,
+						50,
+						"ult2"
+					)
+
+					return
+				end
+
+				-- ULT 3
+				if id == ULT3_TRIGGER then
+
+					pcall(function()
+						animationTrack:Stop()
+					end)
+
+					playAnimationCapped(
+						humanoid,
+						ULT3_ANIMATION,
+						Enum.AnimationPriority.Action4,
+						CONFIG.UltAnimationLength
+					)
+
+					ultimateEffect(
+						root,
+						28,
+						55,
+						"ult3"
+					)
+
+					return
+				end
+			end
+		)
+	)
+
+	track(
+		character:GetAttributeChangedSignal(
+			"Ulted"
+		):Connect(function()
+
+			SESSION.IsUlted =
+				character:GetAttribute(
+					"Ulted"
+				) and true or false
+
+		end)
+	)
+
+	track(
+		Player.Backpack.ChildAdded:Connect(
+			function(tool)
+
+				if tool.Name ==
+					"Death Counter"
+				then
+
+					SESSION.IsUlted =
+						true
+				end
+			end
+		)
+	)
+end
+
+-- ================================================================
+-- IDLE
+-- ================================================================
+
+local function setupIdle(
+	character,
+	humanoid,
+	token
+)
+
+	local started =
+		os.clock()
+
+	local idleTrack
+
+	local anim =
+		Instance.new("Animation")
+
+	anim.AnimationId =
+		IDLE_EMOTE
+
+	local ok, loaded =
 		pcall(function()
+
+			return getAnimator(
+				humanoid
+			):LoadAnimation(anim)
+
+		end)
+
+	anim:Destroy()
+
+	if ok then
+
+		idleTrack =
+			loaded
+
+		idleTrack.Priority =
+			Enum.AnimationPriority.Idle
+
+		idleTrack.Looped =
+			true
+	end
+
+	track(
+		RunService.RenderStepped:Connect(
+			function()
+
+				if
+					token ~= SESSION.CharacterToken
+				then
+					return
+				end
+
+				if
+					not character.Parent
+					or humanoid.Health <= 0
+				then
+					return
+				end
+
+				local root =
+					character:FindFirstChild(
+						"HumanoidRootPart"
+					)
+
+				if not root then
+					return
+				end
+
+				local moving =
+					humanoid.MoveDirection.Magnitude
+					> 0.05
+
+				local state =
+					humanoid:GetState()
+
+				local airborne =
+					state ==
+					Enum.HumanoidStateType.Jumping
+					or state ==
+					Enum.HumanoidStateType.Freefall
+
+				if idleTrack then
+
+					if
+						(moving or airborne)
+						and idleTrack.IsPlaying
+					then
+
+						idleTrack:Stop(
+							0.2
+						)
+
+					elseif
+						not moving
+						and not airborne
+						and not idleTrack.IsPlaying
+					then
+
+						idleTrack:Play(
+							0.2
+						)
+					end
+				end
+
+				if
+					not moving
+					and not airborne
+					and os.clock() - started > 0.55
+				then
+
+					heartParticles(
+						root,
+						1,
+						"idleHeart",
+						1
+					)
+				end
+			end
+		)
+	)
+end
+
+-- ================================================================
+-- HUNTER / GAROU FORCE
+-- ================================================================
+
+local function forceHunterCharacter(
+	character
+)
+
+	-- Already Hunter, nothing to do.
+	if Player:GetAttribute(
+		"Character"
+	) == "Hunter" then
+
+		return character
+	end
+
+	local communicate =
+		character:FindFirstChild(
+			"Communicate"
+		)
+
+	if not communicate then
+
+		communicate =
+			character:WaitForChild(
+				"Communicate",
+				5
+			)
+	end
+
+	if not communicate then
+		warn(
+			"[Mai] Communicate was not found. Could not force Hunter."
+		)
+
+		return character
+	end
+
+	-- ============================================================
+	-- THIS IS THE IMPORTANT FIX
+	-- ============================================================
+
+	local fired = pcall(function()
+
+		(communicate :: any):FireServer({
+			Goal = "Change Character",
+			Character = "Hunter",
+		})
+
+	end)
+
+	if not fired then
+
+		warn(
+			"[Mai] Failed to request Hunter character."
+		)
+
+		return character
+	end
+
+	-- Give the game time to actually replace the character.
+	local deadline =
+		os.clock() + 3
+
+	while
+		os.clock() < deadline
+	do
+
+		if
+			Player:GetAttribute(
+				"Character"
+			) == "Hunter"
+		then
+
+			break
+		end
+
+		task.wait(0.05)
+	end
+
+	-- Wait for Roblox/game to create the replacement.
+	local newCharacter =
+		Player.Character
+
+	if
+		newCharacter
+		and newCharacter ~= character
+	then
+
+		local newHumanoid =
+			newCharacter:FindFirstChild(
+				"Humanoid"
+			)
+
+		local newRoot =
+			newCharacter:FindFirstChild(
+				"HumanoidRootPart"
+			)
+
+		if
+			newHumanoid
+			and newRoot
+		then
+
+			return newCharacter
+		end
+	end
+
+	-- Sometimes the Character object is reused.
+	return Player.Character or character
+end
+
+-- ================================================================
+-- CHARACTER SETUP
+-- ================================================================
+
+local function setupCharacter(
+	character
+)
+
+	SESSION.CharacterToken += 1
+
+	local token =
+		SESSION.CharacterToken
+
+	SESSION.IsUlted =
+		false
+
+	SESSION.ComboCount =
+		0
+
+	disconnect(
+		SESSION.CharacterConnections
+	)
+
+	-- ============================================================
+	-- IMPORTANT:
+	-- FORCE HUNTER BEFORE INSTALLING MOVESET HOOKS
+	-- ============================================================
+
+	local actualCharacter =
+		forceHunterCharacter(
+			character
+		)
+
+	-- Character may have changed.
+	if
+		actualCharacter ~= character
+	then
+
+		character =
+			actualCharacter
+	end
+
+	-- Make sure we did not get replaced again
+	-- while waiting for the Hunter swap.
+	if token ~= SESSION.CharacterToken then
+		return
+	end
+
+	local humanoid =
+		character:WaitForChild(
+			"Humanoid",
+			10
+		)
+
+	local root =
+		character:WaitForChild(
+			"HumanoidRootPart",
+			10
+		)
+
+	if
+		not humanoid
+		or not root
+	then
+
+		warn(
+			"[Mai] Character setup failed: Humanoid/Root missing."
+		)
+
+		return
+	end
+
+	-- ============================================================
+	-- MAI SETUP
+	-- ============================================================
+
+	spawnEffect(
+		character,
+		root
+	)
+
+	createLoveAura(
+		root
+	)
+
+	createSakuraTrail(
+		character
+	)
+
+	setupHandGlow(
+		character
+	)
+
+	for _, obj in ipairs(
+		character:GetDescendants()
+	) do
+
+		neutralizeGarouTrail(
+			obj
+		)
+	end
+
+	track(
+		character.DescendantAdded:Connect(
+			function(obj)
+
+				task.defer(
+					function()
+						neutralizeGarouTrail(
+							obj
+						)
+					end
+				)
+			end
+		)
+	)
+
+	setupIdle(
+		character,
+		humanoid,
+		token
+	)
+
+	setupMoveHandler(
+		character,
+		humanoid,
+		root,
+		token
+	)
+
+	setupHitSounds()
+
+	track(
+		humanoid.Died:Connect(
+			function()
+
+				SESSION.IsUlted =
+					false
+
+			end
+		)
+	)
+
+	task.spawn(function()
+
+		for _ = 1, 25 do
+
+			if
+				token ~= SESSION.CharacterToken
+			then
+				return
+			end
+
 			fixCharacterTab()
 			refreshHotbar()
 			styleUltimateBar()
-		end)
-		task.wait(0.75)
+
+			task.wait(
+				0.15
+			)
+		end
+	end)
+end
+
+-- ================================================================
+-- INITIALIZATION
+-- ================================================================
+
+if not SESSION.Initialized then
+
+	SESSION.Initialized =
+		true
+
+	table.insert(
+		SESSION.Connections,
+		Player.CharacterAdded:Connect(
+			function(character)
+
+				task.wait(
+					0.2
+				)
+
+				setupCharacter(
+					character
+				)
+
+				task.defer(
+					function()
+						installMusic()
+					end
+				)
+			end
+		)
+	)
+
+	table.insert(
+		SESSION.Connections,
+		RunService.Heartbeat:Connect(
+			function()
+
+				pcall(function()
+
+					fixCharacterTab()
+					refreshHotbar()
+					styleUltimateBar()
+
+				end)
+			end
+		)
+	)
+
+	PlayerGui.DescendantAdded:Connect(
+		function()
+
+			task.defer(function()
+
+				fixCharacterTab()
+				refreshHotbar()
+				styleUltimateBar()
+
+			end)
+		end
+	)
+end
+
+-- ================================================================
+-- FIRST CHARACTER
+-- ================================================================
+
+if Player.Character then
+
+	task.spawn(function()
+
+		setupCharacter(
+			Player.Character
+		)
+
+	end)
+
+else
+
+	task.spawn(function()
+
+		setupCharacter(
+			Player.CharacterAdded:Wait()
+		)
+
+	end)
+end
+
+-- ================================================================
+-- MUSIC LOOP
+-- ================================================================
+
+task.spawn(function()
+
+	task.wait(
+		0.5
+	)
+
+	installMusic()
+
+	while Player.Parent do
+
+		task.wait(
+			3
+		)
+
+		local sound =
+			PlayerGui:FindFirstChild(
+				"MaiSakurajima_BGM"
+			)
+
+		if
+			sound
+			and sound:IsA("Sound")
+		then
+
+			sound.Volume =
+				MUSIC_VOLUME
+
+			sound.Looped =
+				true
+
+			if not sound.IsPlaying then
+
+				pcall(function()
+					sound:Play()
+				end)
+
+			end
+		end
 	end
 end)
 
-game:GetService("StarterGui"):SetCore("SendNotification", {
-	Title = "MAI SAKURAJIMA 💗",
-	Text = "Moveset loaded — Love Meter online. R4Fix",
-	Icon = DECAL_ID,
-	Duration = 4,
-})
+-- ================================================================
+-- UI MAINTENANCE
+-- ================================================================
+
+task.spawn(function()
+
+	while Player.Parent do
+
+		pcall(function()
+
+			fixCharacterTab()
+			refreshHotbar()
+			styleUltimateBar()
+
+		end)
+
+		task.wait(
+			0.75
+		)
+	end
+end)
+
+-- ================================================================
+-- NOTIFICATION
+-- ================================================================
+
+pcall(function()
+
+	game:GetService(
+		"StarterGui"
+	):SetCore(
+		"SendNotification",
+		{
+			Title =
+				"MAI SAKURAJIMA 💗",
+
+			Text =
+				"Moveset loaded — Love Meter online. R4Fix",
+
+			Icon =
+				DECAL_ID,
+
+			Duration = 4,
+		}
+	)
+
+end)
+
+print(
+	"💗 MAI SAKURAJIMA V3.1 | R4FIX | LOADED"
+)
+
+print(
+	"🎵 Music Volume:",
+	MUSIC_VOLUME
+)
+
+print(
+	"💥 Hit Sound Volume:",
+	0.4
+)
+
+print(
+	"🥊 Hunter/Garou auto-selection: ENABLED"
+)
