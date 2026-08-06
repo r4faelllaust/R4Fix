@@ -1,626 +1,618 @@
--- // ========================================================== \\ --
--- //        ICHIKA NAKANO: CYBER HEART PROTOCOL V2             \\ --
--- //                  PART 1 - CORE SYSTEM                    \\ --
--- //                    R4FIX 🇦🇹                              \\ --
--- // ========================================================== \\ --
+-- ================================================================
+-- R4FIX // GOLDEN AWAKENING MOVESET SYSTEM
+-- PART 1/3
+-- Local player only
+-- ================================================================
+
 
 local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 local Debris = game:GetService("Debris")
+local RunService = game:GetService("RunService")
 
 local Player = Players.LocalPlayer
 
 
--- ==========================================================
--- CHARACTER SETUP
--- ==========================================================
+repeat task.wait() until Player.Character
 
-local Character
-local Humanoid
-local Root
+local Character = Player.Character
+local Humanoid = Character:WaitForChild("Humanoid")
+local Root = Character:WaitForChild("HumanoidRootPart")
 
 
-local function SetupCharacter(char)
+
+-- ================================================================
+-- CHARACTER RESET FIX
+-- ================================================================
+
+
+Player.CharacterAdded:Connect(function(char)
 
 	Character = char
+	Humanoid = char:WaitForChild("Humanoid")
+	Root = char:WaitForChild("HumanoidRootPart")
 
-	Humanoid =
-		char:WaitForChild("Humanoid")
-
-	Root =
-		char:WaitForChild("HumanoidRootPart")
-
-end
-
-
-SetupCharacter(
-	Player.Character or Player.CharacterAdded:Wait()
-)
-
-
-Player.CharacterAdded:Connect(
-	SetupCharacter
-)
+end)
 
 
 
--- ==========================================================
--- ICHIKA THEME
--- ==========================================================
-
-local CYBER_YELLOW =
-	Color3.fromRGB(
-		255,
-		220,
-		40
-	)
+-- ================================================================
+-- MOVESET SETTINGS
+-- ================================================================
 
 
-local LIGHT_YELLOW =
-	Color3.fromRGB(
-		255,
-		245,
-		150
-	)
+local MOVESET_NAME = "Golden Hero"
+
+local CHARACTER_DECAL =
+"rbxthumb://type=Asset&id=109192051567820&w=150&h=150"
+
+
+
+-- ================================================================
+-- GOLD COLOR THEME
+-- ================================================================
 
 
 local GOLD =
 	Color3.fromRGB(
 		255,
-		170,
-		20
+		215,
+		0
+	)
+
+
+local LIGHT_GOLD =
+	Color3.fromRGB(
+		255,
+		245,
+		120
+	)
+
+
+local DARK_GOLD =
+	Color3.fromRGB(
+		160,
+		100,
+		0
 	)
 
 
 
--- ==========================================================
--- CHARACTER TAB
--- ==========================================================
+local GOLD_SEQUENCE =
+	ColorSequence.new({
 
-local MOVESET_NAME =
-	"Ichika Nakano"
+		ColorSequenceKeypoint.new(
+			0,
+			LIGHT_GOLD
+		),
+
+		ColorSequenceKeypoint.new(
+			0.35,
+			GOLD
+		),
+
+		ColorSequenceKeypoint.new(
+			0.8,
+			GOLD
+		),
+
+		ColorSequenceKeypoint.new(
+			1,
+			DARK_GOLD
+		)
+
+	})
 
 
-local DECAL_ID =
-	"rbxthumb://type=Asset&id=98181799656366&w=150&h=150"
+
+-- ================================================================
+-- VFX FOLDER
+-- ================================================================
+
+
+local VFX_FOLDER_NAME =
+"R4FIX_Golden_VFX"
+
+
+
+local function GetVFXFolder()
+
+	local folder =
+		workspace:FindFirstChild(
+			VFX_FOLDER_NAME
+		)
+
+
+	if not folder then
+
+		folder =
+			Instance.new("Folder")
+
+		folder.Name =
+			VFX_FOLDER_NAME
+
+		folder.Parent =
+			workspace
+
+	end
+
+
+	return folder
+
+end
+
+
+
+
+-- ================================================================
+-- CLEANUP FUNCTION
+-- ================================================================
+
+
+local function Cleanup(object,time)
+
+	if object then
+
+		Debris:AddItem(
+			object,
+			time or 2
+		)
+
+	end
+
+end
+
+
+
+
+-- ================================================================
+-- LOCAL CHARACTER ONLY VFX COLOR OVERRIDE
+-- ================================================================
+
+
+local function ApplyGold(object)
+
+	if not object then
+		return
+	end
+
+
+	pcall(function()
+
+
+		if object:IsA("Trail") then
+
+
+			object.Color =
+				GOLD_SEQUENCE
+
+			object.LightEmission =
+				1
+
+
+
+		elseif object:IsA("ParticleEmitter") then
+
+
+			object.Color =
+				GOLD_SEQUENCE
+
+			object.LightEmission =
+				1
+
+
+
+		elseif object:IsA("Beam") then
+
+
+			object.Color =
+				GOLD_SEQUENCE
+
+			object.LightEmission =
+				1
+
+
+
+		elseif object:IsA("PointLight")
+			or object:IsA("SpotLight")
+			or object:IsA("SurfaceLight")
+		then
+
+
+			object.Color =
+				GOLD
+
+
+
+		elseif object:IsA("Highlight") then
+
+
+			object.FillColor =
+				GOLD
+
+			object.OutlineColor =
+				LIGHT_GOLD
+
+
+
+		end
+
+
+	end)
+
+end
+
+
+
+
+local function ScanCharacter()
+
+
+	if not Character then
+		return
+	end
+
+
+	for _,v in ipairs(
+		Character:GetDescendants()
+	) do
+
+		ApplyGold(v)
+
+	end
+
+
+end
+
+
+
+
+Character.DescendantAdded:Connect(function(object)
+
+
+	task.wait()
+
+
+	ApplyGold(object)
+
+
+end)
 
 
 
 task.spawn(function()
 
-	while task.wait(0.5) do
 
-		pcall(function()
+	while Player.Parent do
 
-			local Topbar =
-				Player.PlayerGui:FindFirstChild(
-					"TopbarPlus"
+
+		task.wait(0.5)
+
+
+		ScanCharacter()
+
+
+	end
+
+
+end)
+
+
+
+
+-- ================================================================
+-- CHARACTER TAB DECAL FIX
+-- ONLY YOUR MOVESet ICON
+-- ================================================================
+
+
+local function UpdateCharacterTab()
+
+
+	pcall(function()
+
+
+		local gui =
+			Player:FindFirstChild(
+				"PlayerGui"
+			)
+
+
+		if not gui then
+			return
+		end
+
+
+
+		for _,obj in ipairs(
+			gui:GetDescendants()
+		) do
+
+
+			if obj:IsA("TextLabel")
+				and (
+					obj.Text == "Garou"
+					or obj.Text == "Hero Hunter"
+					or obj.Text == MOVESET_NAME
 				)
+			then
 
 
-			if not Topbar then
-				return
+				obj.Text =
+					MOVESET_NAME
+
+
+
+			elseif obj:IsA("ImageLabel")
+				and obj.Name == "IconImage"
+			then
+
+
+				obj.Image =
+					CHARACTER_DECAL
+
+
+
 			end
 
 
-
-			for _,obj in ipairs(
-				Topbar:GetDescendants()
-			) do
+		end
 
 
-				if obj.Name ==
-					"IconButton"
-				then
+	end)
+
+end
 
 
-					local Label =
-						obj:FindFirstChild(
-							"IconLabel"
+
+task.spawn(function()
+
+
+	while Player.Parent do
+
+
+		task.wait(1)
+
+
+		UpdateCharacterTab()
+
+
+	end
+
+
+end)
+
+
+
+
+-- ================================================================
+-- HOTBAR SYSTEM
+-- ================================================================
+
+
+local NormalMoves = {
+
+	[1] = "Solar Impact",
+	[2] = "Golden Rush",
+	[3] = "Radiant Breaker",
+	[4] = "Final Judgment"
+
+}
+
+
+
+local UltimateMoves = {
+
+
+	[1] = "Golden Overdrive",
+	[2] = "Heaven Break",
+	[3] = "Solar Cataclysm",
+	[4] = "Absolute Light"
+
+
+}
+
+
+
+local IsUlted = false
+
+
+
+local function SetHotbar(names)
+
+
+	pcall(function()
+
+
+		local gui =
+			Player.PlayerGui
+
+
+		local hotbar =
+			gui.Hotbar.Backpack.Hotbar
+
+
+
+		for i = 1,4 do
+
+
+			local slot =
+				hotbar:FindFirstChild(
+					tostring(i)
+				)
+
+
+			if slot then
+
+
+				local base =
+					slot:FindFirstChild(
+						"Base"
+					)
+
+
+				if base then
+
+
+					local label =
+						base:FindFirstChild(
+							"ToolName"
 						)
 
 
-					local Image =
-						obj:FindFirstChild(
-							"IconImage"
-						)
+					if label then
 
 
+						label.Text =
+							names[i]
 
-					if Label then
-
-
-						Label.Text =
-							MOVESET_NAME
-
-
-						Label.TextColor3 =
-							CYBER_YELLOW
-
-
-
-					end
-
-
-
-					if Image then
-
-						Image.Image =
-							DECAL_ID
 
 					end
 
 
 				end
 
+
 			end
 
-		end)
+
+		end
+
+
+
+	end)
+
+end
+
+
+
+local function RefreshHotbar()
+
+
+	if IsUlted then
+
+		SetHotbar(
+			UltimateMoves
+		)
+
+	else
+
+		SetHotbar(
+			NormalMoves
+		)
 
 	end
+
+end
+
+
+
+task.spawn(function()
+
+
+	while Player.Parent do
+
+
+		task.wait(0.5)
+
+
+		RefreshHotbar()
+
+
+	end
+
 
 end)
 
 
 
--- ==========================================================
--- LOCAL VFX FOLDER
--- ==========================================================
-
-local VFX_FOLDER =
-	workspace:FindFirstChild(
-		"Ichika_Cyber_VFX"
-	)
+-- ================================================================
+-- ULTIMATE BAR STYLE
+-- ================================================================
 
 
-if not VFX_FOLDER then
+local UltimateName =
+"☀ GOLDEN AWAKENING ☀"
 
-	VFX_FOLDER =
-		Instance.new("Folder")
 
-	VFX_FOLDER.Name =
-		"Ichika_Cyber_VFX"
 
-	VFX_FOLDER.Parent =
-		workspace
+local function UpdateUltimateBar()
+
+
+	pcall(function()
+
+
+		local gui =
+			Player.PlayerGui
+
+
+		local health =
+			gui.ScreenGui.MagicHealth
+
+
+
+		local text =
+			health.TextLabel
+
+
+
+		text.Text =
+			UltimateName
+
+
+		text.TextColor3 =
+			GOLD
+
+
+
+		local bar =
+			health.Health.Bar.Bar
+
+
+		bar.ImageColor3 =
+			GOLD
+
+
+
+	end)
 
 end
 
 
 
--- ==========================================================
--- PHANTOM HEART STATE
--- ==========================================================
+task.spawn(function()
 
 
-local SESSION = {
-
-	IsUlted = false,
-
-	LastVFX = {}
-
-}
+	while Player.Parent do
 
 
-
--- ==========================================================
--- VFX COOLDOWN
--- ==========================================================
-
-local function Allowed(
-	key,
-	cooldown
-)
+		task.wait(1)
 
 
-	local now =
-		os.clock()
+		UpdateUltimateBar()
 
-
-	if SESSION.LastVFX[key]
-	and now - SESSION.LastVFX[key] < cooldown
-	then
-
-		return false
 
 	end
 
 
+end)
 
-	SESSION.LastVFX[key] =
-		now
-
-
-	return true
-
-end
-
-
-
--- ==========================================================
--- CYBER BURST
--- ==========================================================
-
-
-local function CyberBurst(
-	position,
-	size
-)
-
-
-	if not Allowed(
-		"burst",
-		0.1
-	)
-	then
-		return
-	end
-
-
-
-	local Part =
-		Instance.new("Part")
-
-
-	Part.Shape =
-		Enum.PartType.Ball
-
-
-	Part.Material =
-		Enum.Material.Neon
-
-
-	Part.Color =
-		CYBER_YELLOW
-
-
-	Part.Transparency =
-		0.15
-
-
-	Part.Anchored =
-		true
-
-
-	Part.CanCollide =
-		false
-
-
-	Part.Size =
-		Vector3.new(
-			2,
-			2,
-			2
-		)
-
-
-	Part.Position =
-		position
-
-
-	Part.Parent =
-		VFX_FOLDER
-
-
-
-	local Light =
-		Instance.new("PointLight")
-
-
-	Light.Color =
-		CYBER_YELLOW
-
-
-	Light.Brightness =
-		4
-
-
-	Light.Range =
-		15
-
-
-	Light.Parent =
-		Part
-
-
-
-	TweenService:Create(
-
-		Part,
-
-		TweenInfo.new(
-			0.45,
-			Enum.EasingStyle.Quint,
-			Enum.EasingDirection.Out
-		),
-
-		{
-
-			Size =
-				Vector3.new(
-					size,
-					size,
-					size
-				),
-
-
-			Transparency = 1
-
-		}
-
-	):Play()
-
-
-
-	TweenService:Create(
-
-		Light,
-
-		TweenInfo.new(
-			0.4
-		),
-
-		{
-
-			Brightness = 0
-
-		}
-
-	):Play()
-
-
-
-	Debris:AddItem(
-		Part,
-		1
-	)
-
-end
-
-
-
--- ==========================================================
--- CYBER RING
--- ==========================================================
-
-
-local function CyberRing(
-	position,
-	size
-)
-
-
-	local Ring =
-		Instance.new("Part")
-
-
-	Ring.Shape =
-		Enum.PartType.Cylinder
-
-
-	Ring.Material =
-		Enum.Material.Neon
-
-
-	Ring.Color =
-		GOLD
-
-
-	Ring.Transparency =
-		0.25
-
-
-	Ring.Anchored =
-		true
-
-
-	Ring.CanCollide =
-		false
-
-
-	Ring.Size =
-		Vector3.new(
-			0.2,
-			5,
-			5
-		)
-
-
-	Ring.CFrame =
-		CFrame.new(
-			position
-		)
-		*
-		CFrame.Angles(
-			0,
-			0,
-			math.rad(90)
-		)
-
-
-
-	Ring.Parent =
-		VFX_FOLDER
-
-
-
-	TweenService:Create(
-
-		Ring,
-
-		TweenInfo.new(
-			0.5,
-			Enum.EasingStyle.Quint,
-			Enum.EasingDirection.Out
-		),
-
-		{
-
-			Size =
-				Vector3.new(
-					0.2,
-					size,
-					size
-				),
-
-
-			Transparency = 1
-
-		}
-
-	):Play()
-
-
-
-	Debris:AddItem(
-		Ring,
-		0.8
-	)
-
-end
-
-
-
--- ==========================================================
--- SAFE MIRAGE LOCATION SYSTEM
--- ==========================================================
-
-
-local function CreateSafePlatform(
-	position
-)
-
-
-	local Platform =
-		Instance.new("Part")
-
-
-	Platform.Name =
-		"Ichika_Mirage_Platform"
-
-
-	Platform.Size =
-		Vector3.new(
-			15,
-			1,
-			15
-		)
-
-
-	Platform.Transparency =
-		1
-
-
-	Platform.Anchored =
-		true
-
-
-	Platform.CanCollide =
-		true
-
-
-	Platform.Position =
-		position
-
-
-	Platform.Parent =
-		VFX_FOLDER
-
-
-
-	Debris:AddItem(
-		Platform,
-		5
-	)
-
-
-	return Platform
-
-end
-
-
-
-local function MirageTeleport()
-
-	if not Root then
-		return
-	end
-
-
-
-	local OldPosition =
-		Root.CFrame
-
-
-
-	local SkyPosition =
-		CFrame.new(
-			OldPosition.Position.X,
-			OldPosition.Position.Y + 500,
-			OldPosition.Position.Z
-		)
-
-
-
-	CreateSafePlatform(
-		SkyPosition.Position
-	)
-
-
-
-	CyberBurst(
-		Root.Position,
-		20
-	)
-
-
-
-	CyberRing(
-		Root.Position,
-		45
-	)
-
-
-
-	Root.CFrame =
-		SkyPosition
-
-
-
-	task.wait(1.2)
-
-
-
-	CyberBurst(
-		SkyPosition.Position,
-		30
-	)
-
-
-
-	Root.CFrame =
-		OldPosition
-
-
-
-end
 
 
 
 print(
-	"[R4FIX] Ichika Cyber Heart Protocol V2 Part 1 Loaded"
+	"[R4FIX] Golden Awakening Part 1 Loaded"
 )
--- // ========================================================== \\ --
--- //        ICHIKA NAKANO: CYBER HEART PROTOCOL V2             \\ --
--- //                  PART 2 - MOVES                          \\ --
--- // ========================================================== \\ --
+-- ================================================================
+-- R4FIX // GOLDEN AWAKENING MOVE SYSTEM
+-- PART 2/3
+-- ================================================================
 
 
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local Debris = game:GetService("Debris")
-local RunService = game:GetService("RunService")
+
 
 local Player = Players.LocalPlayer
 
@@ -641,751 +633,571 @@ local Root =
 Player.CharacterAdded:Connect(function(char)
 
 	Character = char
-
-	Humanoid =
-		char:WaitForChild("Humanoid")
-
-	Root =
-		char:WaitForChild("HumanoidRootPart")
+	Humanoid = char:WaitForChild("Humanoid")
+	Root = char:WaitForChild("HumanoidRootPart")
 
 end)
 
 
 
--- ==========================================================
--- TARGET SYSTEM
--- ==========================================================
-
-local function GetClosestPlayer()
+-- ================================================================
+-- GOLD COLORS
+-- ================================================================
 
 
-	local Target
-	local Distance = math.huge
+local GOLD =
+	Color3.fromRGB(
+		255,
+		215,
+		0
+	)
 
 
-	for _,plr in ipairs(
-		Players:GetPlayers()
-	) do
-
-
-		if plr ~= Player
-		and plr.Character
-		then
-
-
-			local EnemyRoot =
-				plr.Character:FindFirstChild(
-					"HumanoidRootPart"
-				)
-
-
-			local EnemyHum =
-				plr.Character:FindFirstChildOfClass(
-					"Humanoid"
-				)
+local LIGHT =
+	Color3.fromRGB(
+		255,
+		245,
+		150
+	)
 
 
 
-			if EnemyRoot
-			and EnemyHum
-			and EnemyHum.Health > 0
-			then
+
+-- ================================================================
+-- VFX FOLDER
+-- ================================================================
 
 
-				local Dist =
-					(Root.Position -
-					EnemyRoot.Position).Magnitude
+local function GetFolder()
 
-
-
-				if Dist < Distance then
-
-					Distance = Dist
-					Target = plr.Character
-
-				end
-
-			end
-
-		end
-
-	end
-
-
-	return Target
-
-end
-
-
-
--- ==========================================================
--- AFTERIMAGE
--- ==========================================================
-
-local function CreatePhantomClone()
-
-
-	local Clone =
-		Character:Clone()
-
-
-
-	for _,obj in ipairs(
-		Clone:GetDescendants()
-	) do
-
-
-		if obj:IsA("BasePart") then
-
-
-			obj.Material =
-				Enum.Material.Neon
-
-
-			obj.Color =
-				Color3.fromRGB(
-					255,
-					220,
-					40
-				)
-
-
-			obj.Transparency =
-				0.45
-
-
-			obj.CanCollide =
-				false
-
-
-		elseif obj:IsA("Humanoid") then
-
-
-			obj:Destroy()
-
-
-		end
-
-
-	end
-
-
-
-	Clone.Parent =
+	local folder =
 		workspace:FindFirstChild(
-			"Ichika_Cyber_VFX"
+			"R4FIX_Golden_VFX"
 		)
 
 
-	Debris:AddItem(
-		Clone,
-		0.4
-	)
+	if not folder then
 
+		folder =
+			Instance.new("Folder")
+
+		folder.Name =
+			"R4FIX_Golden_VFX"
+
+		folder.Parent =
+			workspace
+
+	end
+
+
+	return folder
 
 end
 
 
 
--- ==========================================================
--- ANIMATION SYSTEM
--- ==========================================================
+
+-- ================================================================
+-- CREATE GOLD BURST
+-- ================================================================
 
 
-local ActiveTracks = {}
+local function GoldenBurst(position,size)
 
 
-
-local function PlayAnimation(
-	id,
-	speed
-)
+	local part =
+		Instance.new("Part")
 
 
-	if not Humanoid then
-		return
-	end
+	part.Anchored =
+		true
 
 
-
-	for _,track in ipairs(
-		Humanoid:GetPlayingAnimationTracks()
-	) do
-
-		if track.Priority ==
-			Enum.AnimationPriority.Action4
-		then
-
-			track:Stop(
-				0.1
-			)
-
-		end
-
-	end
+	part.CanCollide =
+		false
 
 
-
-	local Animation =
-		Instance.new("Animation")
-
-
-	Animation.AnimationId =
-		"rbxassetid://"..id
+	part.Material =
+		Enum.Material.Neon
 
 
-
-	local Track =
-		Humanoid:LoadAnimation(
-			Animation
-		)
+	part.Shape =
+		Enum.PartType.Ball
 
 
-
-	Track.Priority =
-		Enum.AnimationPriority.Action
-
+	part.Color =
+		GOLD
 
 
-	Track:Play(
+	part.Transparency =
 		0.1
-	)
+
+
+	part.Size =
+		Vector3.new(
+			1,
+			1,
+			1
+		)
+
+
+	part.CFrame =
+		CFrame.new(position)
+
+
+	part.Parent =
+		GetFolder()
 
 
 
-	Track:AdjustSpeed(
-		speed or 1
-	)
+	local light =
+		Instance.new("PointLight")
+
+
+	light.Color =
+		GOLD
+
+
+	light.Brightness =
+		8
+
+
+	light.Range =
+		20
+
+
+	light.Parent =
+		part
 
 
 
-	table.insert(
-		ActiveTracks,
-		Track
-	)
+	local tween =
+		TweenService:Create(
+
+			part,
+
+			TweenInfo.new(
+				0.35,
+				Enum.EasingStyle.Quint,
+				Enum.EasingDirection.Out
+			),
+
+			{
+
+				Size =
+					Vector3.new(
+						size,
+						size,
+						size
+					),
+
+				Transparency =
+					1
+
+			}
+
+		)
+
+
+	tween:Play()
+
+
+
+	TweenService:Create(
+
+		light,
+
+		TweenInfo.new(
+			0.35
+		),
+
+		{
+
+			Brightness =
+				0
+
+		}
+
+	):Play()
 
 
 
 	Debris:AddItem(
-		Animation,
-		2
+		part,
+		0.5
 	)
-
-
-
-	return Track
 
 end
 
 
 
--- ==========================================================
--- MOVE 1
--- CYBER MIRAGE STEP
--- ==========================================================
 
-local MirageAnimation =
-	16945550029
+-- ================================================================
+-- ENERGY RING
+-- ================================================================
 
 
-local function MirageStep()
+local function GoldenRing(position,size)
 
 
-	local Target =
-		GetClosestPlayer()
+	local ring =
+		Instance.new("Part")
 
 
-	if not Target then
-		return
-	end
+	ring.Anchored =
+		true
 
 
+	ring.CanCollide =
+		false
 
-	local EnemyRoot =
-		Target:FindFirstChild(
-			"HumanoidRootPart"
+
+	ring.Material =
+		Enum.Material.Neon
+
+
+	ring.Shape =
+		Enum.PartType.Cylinder
+
+
+	ring.Color =
+		GOLD
+
+
+	ring.Transparency =
+		0.2
+
+
+	ring.Size =
+		Vector3.new(
+			0.2,
+			2,
+			2
 		)
 
 
-	if not EnemyRoot then
-		return
-	end
+	ring.CFrame =
+		CFrame.new(position)
+		*
+		CFrame.Angles(
+			0,
+			0,
+			math.rad(90)
+		)
 
 
 
-	-- animation
-	PlayAnimation(
-		MirageAnimation,
-		1.4
+	ring.Parent =
+		GetFolder()
+
+
+
+	TweenService:Create(
+
+		ring,
+
+		TweenInfo.new(
+			0.45,
+			Enum.EasingStyle.Quint
+		),
+
+		{
+
+			Size =
+				Vector3.new(
+					0.2,
+					size,
+					size
+				),
+
+			Transparency =
+				1
+
+		}
+
+	):Play()
+
+
+
+	Debris:AddItem(
+		ring,
+		0.6
+	)
+
+end
+
+
+
+
+-- ================================================================
+-- SMALL PARTICLE BURST
+-- ================================================================
+
+
+local function GoldParticles(root)
+
+
+	local attachment =
+		Instance.new(
+			Attachment
+		)
+
+
+	attachment.Parent =
+		root
+
+
+
+	local emitter =
+		Instance.new(
+			ParticleEmitter
+		)
+
+
+	emitter.Texture =
+		"rbxasset://textures/particles/sparkles_main.dds"
+
+
+	emitter.Color =
+		ColorSequence.new(
+			GOLD,
+			LIGHT
+		)
+
+
+	emitter.LightEmission =
+		1
+
+
+	emitter.Lifetime =
+		NumberRange.new(
+			0.4,
+			0.8
+		)
+
+
+	emitter.Speed =
+		NumberRange.new(
+			15,
+			30
+		)
+
+
+	emitter.SpreadAngle =
+		Vector2.new(
+			360,
+			360
+		)
+
+
+	emitter.Parent =
+		attachment
+
+
+
+	emitter:Emit(
+		50
 	)
 
 
 
-	-- hologram trail
+	Debris:AddItem(
+		attachment,
+		1
+	)
 
-	for i = 1,6 do
+end
 
-		CreatePhantomClone()
 
-		task.wait(
-			0.05
-		)
 
+
+-- ================================================================
+-- MOVE EFFECT
+-- ================================================================
+
+
+local function MoveEffect(power)
+
+
+	if not Root then
+		return
 	end
 
 
 
-	local Original =
+	GoldenBurst(
+		Root.Position,
+		power
+	)
+
+
+	GoldenRing(
+		Root.Position,
+		power * 3
+	)
+
+
+	GoldParticles(
+		Root
+	)
+
+
+end
+
+
+
+
+-- ================================================================
+-- SAFE SKY PLATFORM TELEPORT
+-- MOVE 1 FEATURE
+-- ================================================================
+
+
+local function CinematicTeleport()
+
+
+	if not Root then
+		return
+	end
+
+
+
+	local old =
 		Root.CFrame
 
 
 
-	local SafePosition =
-		CFrame.new(
-
-			Original.Position.X,
-
-			Original.Position.Y + 500,
-
-			Original.Position.Z
-
-		)
-
-
-
-	-- invisible platform
-
-	local Platform =
+	local platform =
 		Instance.new("Part")
 
 
-	Platform.Size =
-		Vector3.new(
-			18,
-			1,
-			18
-		)
+	platform.Anchored =
+		true
 
 
-	Platform.Transparency =
+	platform.CanCollide =
+		true
+
+
+	platform.Transparency =
 		1
 
 
-	Platform.Anchored =
-		true
-
-
-	Platform.CanCollide =
-		true
-
-
-	Platform.Position =
-		SafePosition.Position
-
-
-	Platform.Parent =
-		workspace:FindFirstChild(
-			"Ichika_Cyber_VFX"
+	platform.Size =
+		Vector3.new(
+			20,
+			1,
+			20
 		)
 
 
-
-	Root.CFrame =
-		SafePosition
-
-
-
-	-- cyber charging
-
-	for i = 1,3 do
-
-		task.wait(
-			0.2
-		)
-
-		CyberBurst(
-			SafePosition.Position,
-			15+i*5
-		)
-
-	end
-
-
-
-	task.wait(
-		0.8
-	)
-
-
-
-	-- return behind enemy
-
-	Root.CFrame =
-		EnemyRoot.CFrame *
+	platform.CFrame =
 		CFrame.new(
+			Root.Position
+			+
+			Vector3.new(
+				0,
+				350,
+				0
+			)
+		)
+
+
+	platform.Parent =
+		workspace
+
+
+
+	Root.CFrame =
+		platform.CFrame
+		+
+		Vector3.new(
 			0,
-			0,
-			5
+			4,
+			0
 		)
 
 
 
-	CyberBurst(
-		EnemyRoot.Position,
+	task.wait(1.5)
+
+
+
+	GoldenBurst(
+		Root.Position,
 		25
 	)
 
 
+	GoldenRing(
+		Root.Position,
+		60
+	)
 
-	CyberRing(
-		EnemyRoot.Position,
-		45
+
+
+	task.wait(0.8)
+
+
+
+	Root.CFrame =
+		old
+
+
+
+	GoldenBurst(
+		Root.Position,
+		18
 	)
 
 
 
 	Debris:AddItem(
-		Platform,
-		1
+		platform,
+		2
 	)
 
-
 end
 
 
 
--- ==========================================================
--- MOVE 2
--- CYBER HEART BARRAGE
--- ==========================================================
-
-
-local BarrageAnimation =
-	94395585475029
-
-
-
-local function CyberHeartBarrage()
-
-
-	local Target =
-		GetClosestPlayer()
-
-
-
-	if not Target then
-		return
-	end
-
-
-
-	local EnemyRoot =
-		Target:FindFirstChild(
-			"HumanoidRootPart"
-		)
-
-
-	if not EnemyRoot then
-		return
-	end
-
-
-
-	PlayAnimation(
-		BarrageAnimation,
-		1.5
-	)
-
-
-
-	for i = 1,10 do
-
-
-		CreatePhantomClone()
-
-
-
-		Root.CFrame =
-			CFrame.lookAt(
-
-				EnemyRoot.Position
-				+
-				Vector3.new(
-					math.random(-4,4),
-					math.random(0,3),
-					math.random(-4,4)
-				),
-
-				EnemyRoot.Position
-
-			)
-
-
-
-		CyberBurst(
-			EnemyRoot.Position,
-			8+i
-		)
-
-
-		task.wait(
-			0.08
-		)
-
-
-	end
-
-
-
-end
-
-
-
--- ==========================================================
--- MOVE 3
--- SWEET SIGNAL OVERRIDE
--- ==========================================================
-
-
-local function SignalOverride()
-
-
-	local Target =
-		GetClosestPlayer()
-
-
-
-	if not Target then
-		return
-	end
-
-
-
-	local EnemyRoot =
-		Target:FindFirstChild(
-			"HumanoidRootPart"
-		)
-
-
-	if not EnemyRoot then
-		return
-	end
-
-
-
-	Root.CFrame =
-		CFrame.lookAt(
-
-			EnemyRoot.Position
-			-
-			EnemyRoot.CFrame.LookVector*6,
-
-			EnemyRoot.Position
-
-		)
-
-
-
-	for i = 1,5 do
-
-
-		CyberRing(
-			EnemyRoot.Position,
-			20+i*10
-		)
-
-
-
-		task.wait(
-			0.1
-		)
-
-
-	end
-
-
-end
-
-
-
--- ==========================================================
--- MOVE 4
--- IDOL BREAK PROTOCOL
--- ==========================================================
-
-
-local function IdolBreak()
-
-
-	PlayAnimation(
-		18896124320,
-		1
-	)
-
-
-
-	for i = 1,8 do
-
-
-		CyberBurst(
-			Root.Position,
-			15+i*5
-		)
-
-
-		CyberRing(
-			Root.Position,
-			30+i*5
-		)
-
-
-
-		task.wait(
-			0.07
-		)
-
-
-	end
-
-
-end
-
-
-
-print(
-"[R4FIX] Ichika Cyber Heart Protocol V2 Part 2 Loaded"
-)
--- ================================================================
--- R4FIX // ICHIKA CYBORG LOVE ENGINE
--- PART 3/3
--- ULTIMATE SYSTEM + TRANSFORMATION
--- ================================================================
-
-
-local Players = game:GetService("Players")
-local TweenService = game:GetService("TweenService")
-local Debris = game:GetService("Debris")
-local RunService = game:GetService("RunService")
-
-
-local Player = Players.LocalPlayer
-
-
-local Character =
-Player.Character or Player.CharacterAdded:Wait()
-
-
-local Humanoid =
-Character:WaitForChild("Humanoid")
-
-
-local Root =
-Character:WaitForChild("HumanoidRootPart")
-
 
 
 -- ================================================================
--- ICHIKA ULTIMATE SETTINGS
--- ================================================================
-
-
-local IsUlted = false
-
-
-local UltimateName =
-"💛 ICHIKA CYBER LOVE 💛"
-
-
-
-local ULT_COLORS = {
-
-	Main =
-	Color3.fromRGB(
-		255,
-		225,
-		40
-	),
-
-	Light =
-	Color3.fromRGB(
-		255,
-		255,
-		170
-	),
-
-	Orange =
-	Color3.fromRGB(
-		255,
-		150,
-		0
-	)
-
-}
-
-
-
-local VFXFolder =
-workspace:FindFirstChild(
-	"Ichika_Ultimate_VFX"
-)
-
-
-if not VFXFolder then
-
-	VFXFolder =
-	Instance.new("Folder")
-
-	VFXFolder.Name =
-	"Ichika_Ultimate_VFX"
-
-	VFXFolder.Parent =
-	workspace
-
-end
-
-
-
--- ================================================================
--- ULTIMATE ANIMATION FUNCTION
+-- ANIMATION REPLACER
 -- ================================================================
 
 
 local function PlayAnimation(id,speed)
 
-	if not Humanoid then
-		return
-	end
+
+	local anim =
+		Instance.new(
+			"Animation"
+		)
 
 
-	local animation =
-	Instance.new("Animation")
+	anim.AnimationId =
+		"rbxassetid://"..id
 
-
-	animation.AnimationId =
-	"rbxassetid://"..id
 
 
 	local track =
-	Humanoid:LoadAnimation(animation)
+		Humanoid:LoadAnimation(
+			anim
+		)
 
 
 	track.Priority =
-	Enum.AnimationPriority.Action4
+		Enum.AnimationPriority.Action4
 
 
-	track:Play(
-		0.1
-	)
+	track:Play()
+
 
 
 	track:AdjustSpeed(
 		speed or 1
-	)
-
-
-	Debris:AddItem(
-		animation,
-		2
 	)
 
 
@@ -1395,95 +1207,318 @@ end
 
 
 
+
 -- ================================================================
--- ULTIMATE BURST
+-- MOVE ANIMATION IDS
 -- ================================================================
 
 
-local function UltimateBurst(size)
+local Moves = {
 
 
-	local burst =
-	Instance.new("Part")
+	[1] = {
+
+		Trigger = 18716481342,
+
+		Animation = 14721837245
+
+	},
 
 
-	burst.Shape =
-	Enum.PartType.Ball
+	[2] = {
+
+		Trigger = 18716470698,
+
+		Animation = 13083332742
+
+	},
 
 
-	burst.Material =
-	Enum.Material.Neon
+	[3] = {
+
+		Trigger = 12618271998,
+
+		Animation = 13146710762
+
+	},
 
 
-	burst.Color =
-	ULT_COLORS.Main
+	[4] = {
+
+		Trigger = 12684390285,
+
+		Animation = 12832505612
+
+	}
 
 
-	burst.Transparency =
-	0.1
+}
 
 
-	burst.Anchored =
-	true
 
 
-	burst.CanCollide =
-	false
+-- ================================================================
+-- DETECT MOVES
+-- ================================================================
 
 
-	burst.Size =
-	Vector3.new(
+Humanoid.AnimationPlayed:Connect(function(track)
+
+
+	local id =
+		tonumber(
+			string.match(
+				track.Animation.AnimationId,
+				"%d+"
+			)
+		)
+
+
+
+	for _,move in pairs(Moves) do
+
+
+		if id == move.Trigger then
+
+
+
+			track:Stop()
+
+
+
+			PlayAnimation(
+				move.Animation,
+				1
+			)
+
+
+
+			MoveEffect(
+				20
+			)
+
+
+
+			if move.Trigger ==
+				Moves[1].Trigger
+			then
+
+				CinematicTeleport()
+
+			end
+
+
+
+		end
+
+
+	end
+
+
+end)
+
+
+
+print(
+	"[R4FIX] Golden Awakening Part 2 Loaded"
+)
+-- ==========================================================
+-- R4FIX // ULTIMATE SYSTEM PART 3
+-- FINAL ULTIMATE + CHARACTER ONLY YELLOW VFX OVERRIDE
+-- ==========================================================
+
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+local Debris = game:GetService("Debris")
+local Workspace = game:GetService("Workspace")
+
+local Player = Players.LocalPlayer
+
+local Character = Player.Character or Player.CharacterAdded:Wait()
+local Humanoid = Character:WaitForChild("Humanoid")
+
+local IsUlted = false
+
+local VFXFolder = Workspace:FindFirstChild("R4FIX_Yellow_Ult_VFX")
+
+if not VFXFolder then
+	VFXFolder = Instance.new("Folder")
+	VFXFolder.Name = "R4FIX_Yellow_Ult_VFX"
+	VFXFolder.Parent = Workspace
+end
+
+
+-- ==========================================================
+-- COLORS
+-- ==========================================================
+
+local GOLD = Color3.fromRGB(255,220,50)
+local YELLOW = Color3.fromRGB(255,255,120)
+local WHITE = Color3.fromRGB(255,255,255)
+
+
+local YellowSequence = ColorSequence.new({
+
+	ColorSequenceKeypoint.new(
+		0,
+		WHITE
+	),
+
+	ColorSequenceKeypoint.new(
+		0.35,
+		YELLOW
+	),
+
+	ColorSequenceKeypoint.new(
+		0.7,
+		GOLD
+	),
+
+	ColorSequenceKeypoint.new(
+		1,
+		Color3.fromRGB(255,150,0)
+	)
+
+})
+
+
+-- ==========================================================
+-- VFX CLEAN CREATION
+-- ==========================================================
+
+local function CreateBurst(root,size)
+
+	local part = Instance.new("Part")
+
+	part.Anchored = true
+	part.CanCollide = false
+	part.Material = Enum.Material.Neon
+	part.Shape = Enum.PartType.Ball
+
+	part.Color = GOLD
+	part.Transparency = 0.15
+
+	part.Size = Vector3.new(
 		1,
 		1,
 		1
 	)
 
+	part.CFrame = root.CFrame
 
-	burst.Position =
-	Root.Position
-
-
-	burst.Parent =
-	VFXFolder
+	part.Parent = VFXFolder
 
 
+	local light = Instance.new("PointLight")
 
-	local light =
-	Instance.new("PointLight")
+	light.Color = GOLD
+	light.Brightness = 8
+	light.Range = 18
 
-
-	light.Color =
-	ULT_COLORS.Main
-
-
-	light.Brightness =
-	12
+	light.Parent = part
 
 
-	light.Range =
-	30
+	local tween = TweenService:Create(
 
-
-	light.Parent =
-	burst
-
-
-
-	TweenService:Create(
-
-		burst,
+		part,
 
 		TweenInfo.new(
-			0.8,
+			0.45,
 			Enum.EasingStyle.Quint,
 			Enum.EasingDirection.Out
 		),
 
 		{
 
-			Size =
-			Vector3.new(
+			Size = Vector3.new(
 				size,
+				size,
+				size
+			),
+
+			Transparency = 1
+
+		}
+
+	)
+
+
+	tween:Play()
+
+
+	TweenService:Create(
+
+		light,
+
+		TweenInfo.new(
+			0.45
+		),
+
+		{
+			Brightness = 0
+		}
+
+	):Play()
+
+
+	Debris:AddItem(
+		part,
+		0.6
+	)
+
+end
+
+
+
+local function CreateRing(root,size)
+
+	local ring = Instance.new("Part")
+
+	ring.Anchored = true
+	ring.CanCollide = false
+
+	ring.Shape = Enum.PartType.Cylinder
+
+	ring.Material = Enum.Material.Neon
+
+	ring.Color = GOLD
+
+	ring.Transparency = 0.2
+
+	ring.Size = Vector3.new(
+		0.2,
+		5,
+		5
+	)
+
+
+	ring.CFrame =
+		root.CFrame *
+		CFrame.Angles(
+			0,
+			0,
+			math.rad(90)
+		)
+
+
+	ring.Parent = VFXFolder
+
+
+
+	TweenService:Create(
+
+		ring,
+
+		TweenInfo.new(
+			0.5,
+			Enum.EasingStyle.Quint,
+			Enum.EasingDirection.Out
+		),
+
+		{
+
+			Size = Vector3.new(
+				0.2,
 				size,
 				size
 			),
@@ -1495,212 +1530,84 @@ local function UltimateBurst(size)
 	):Play()
 
 
-
-	TweenService:Create(
-
-		light,
-
-		TweenInfo.new(
-			0.8
-		),
-
-		{
-
-			Brightness=0
-
-		}
-
-	):Play()
-
-
-
 	Debris:AddItem(
-		burst,
-		1
+		ring,
+		0.7
 	)
 
 end
 
 
 
--- ================================================================
--- ULTIMATE RING
--- ================================================================
+local function CreateParticles(root)
+
+	local attachment = Instance.new("Attachment")
+
+	attachment.Parent = root
 
 
-local function UltimateRing(size)
+	local particles = Instance.new("ParticleEmitter")
 
 
-	local ring =
-	Instance.new("Part")
+	particles.Texture =
+		"rbxasset://textures/particles/sparkles_main.dds"
 
 
-	ring.Shape =
-	Enum.PartType.Cylinder
+	particles.Color =
+		YellowSequence
 
 
-	ring.Material =
-	Enum.Material.Neon
+	particles.LightEmission = 1
 
 
-	ring.Color =
-	ULT_COLORS.Light
-
-
-	ring.Transparency =
-	0.2
-
-
-	ring.Anchored =
-	true
-
-
-	ring.CanCollide =
-	false
-
-
-	ring.Size =
-	Vector3.new(
-		0.2,
-		3,
-		3
-	)
-
-
-	ring.CFrame =
-	CFrame.new(
-		Root.Position
-	)
-	*
-	CFrame.Angles(
-		0,
-		0,
-		math.rad(90)
-	)
-
-
-
-	ring.Parent =
-	VFXFolder
-
-
-
-	TweenService:Create(
-
-		ring,
-
-		TweenInfo.new(
-			0.7,
-			Enum.EasingStyle.Quint,
-			Enum.EasingDirection.Out
-		),
-
-		{
-
-			Size =
-			Vector3.new(
-				0.2,
-				size,
-				size
-			),
-
-			Transparency=1
-
-		}
-
-	):Play()
-
-
-
-	Debris:AddItem(
-		ring,
-		1
-	)
-
-end
-
-
-
--- ================================================================
--- CYBER PARTICLE EXPLOSION
--- ================================================================
-
-
-local function UltimateParticles(amount)
-
-
-	local attachment =
-	Instance.new("Attachment")
-
-
-	attachment.Parent =
-	Root
-
-
-
-	local emitter =
-	Instance.new("ParticleEmitter")
-
-
-	emitter.Texture =
-	"rbxasset://textures/particles/sparkles_main.dds"
-
-
-	emitter.Color =
-	ColorSequence.new({
-
-		ColorSequenceKeypoint.new(
-			0,
-			ULT_COLORS.Light
-		),
-
-		ColorSequenceKeypoint.new(
+	particles.Lifetime =
+		NumberRange.new(
 			0.5,
-			ULT_COLORS.Main
-		),
-
-		ColorSequenceKeypoint.new(
-			1,
-			ULT_COLORS.Orange
+			1
 		)
 
-	})
+
+	particles.Speed =
+		NumberRange.new(
+			15,
+			30
+		)
 
 
-	emitter.LightEmission =
-	1
+	particles.SpreadAngle =
+		Vector2.new(
+			360,
+			360
+		)
 
 
-	emitter.Speed =
-	NumberRange.new(
-		25,
-		50
-	)
+	particles.Rotation =
+		NumberRange.new(
+			0,
+			360
+		)
 
 
-	emitter.Lifetime =
-	NumberRange.new(
-		0.5,
-		1
-	)
+	particles.Size =
+		NumberSequence.new({
+
+			NumberSequenceKeypoint.new(
+				0,
+				1
+			),
+
+			NumberSequenceKeypoint.new(
+				1,
+				0
+			)
+
+		})
 
 
-	emitter.SpreadAngle =
-	Vector2.new(
-		360,
-		360
-	)
+	particles.Parent = attachment
 
 
-	emitter.Parent =
-	attachment
-
-
-
-	emitter:Emit(
-		amount
-	)
-
+	particles:Emit(100)
 
 
 	Debris:AddItem(
@@ -1712,267 +1619,129 @@ end
 
 
 
--- ================================================================
--- FULL ULTIMATE EFFECT
--- ================================================================
+-- ==========================================================
+-- COMPLETE ULTIMATE EFFECT
+-- ==========================================================
+
+local function UltimateEffect()
+
+	local char =
+		Player.Character
+
+	if not char then return end
 
 
-local function IchikaUltimateEffect()
+	local root =
+		char:FindFirstChild(
+			"HumanoidRootPart"
+		)
+
+	if not root then return end
+
+
+
+	CreateBurst(
+		root,
+		30
+	)
+
+
+	CreateRing(
+		root,
+		70
+	)
+
+
+	CreateParticles(
+		root
+	)
+
 
 
 	for i = 1,4 do
 
-
 		task.delay(
-			i * 0.12,
-
+			i * 0.08,
 			function()
 
-
-				UltimateBurst(
-					25 + i*8
+				CreateBurst(
+					root,
+					15 + i*5
 				)
 
 
-				UltimateRing(
-					50 + i*12
+				CreateRing(
+					root,
+					30 + i*10
 				)
-
-
-				UltimateParticles(
-					60
-				)
-
 
 			end
 		)
 
-
 	end
 
 
+
+	local light =
+		Instance.new(
+			"PointLight"
+		)
+
+
+	light.Color =
+		GOLD
+
+
+	light.Brightness =
+		15
+
+
+	light.Range =
+		35
+
+
+	light.Parent =
+		root
+
+
+
+	TweenService:Create(
+
+		light,
+
+		TweenInfo.new(
+			1
+		),
+
+		{
+
+			Brightness = 0,
+			Range = 0
+
+		}
+
+	):Play()
+
+
+
+	Debris:AddItem(
+		light,
+		1.2
+	)
 
 end
 
 
 
--- ================================================================
--- HOTBAR SYSTEM
--- ================================================================
-
-
-local function ChangeHotbar()
-
-
-	local gui =
-	Player.PlayerGui
-
-
-	local hotbar =
-	gui:FindFirstChild(
-		"Hotbar"
-	)
-
-
-	if not hotbar then
-		return
-	end
-
-
-	local backpack =
-	hotbar:FindFirstChild(
-		"Backpack"
-	)
-
-
-	if not backpack then
-		return
-	end
-
-
-	local frame =
-	backpack:FindFirstChild(
-		"Hotbar"
-	)
-
-
-	if not frame then
-		return
-	end
-
-
-
-	local names
-
-
-	if IsUlted then
-
-
-		names = {
-
-			"Cyber Heart Overload",
-
-			"Nano Love Cannon",
-
-			"Ichika Reality Break",
-
-			"Ultimate Actress"
-
-		}
-
-
-	else
-
-
-		names = {
-
-			"Phantom Engine",
-
-			"Love Drive",
-
-			"Cyber Rush",
-
-			"Ichika's Charm"
-
-		}
-
-
-	end
-
-
-
-	for i,name in ipairs(names) do
-
-
-		local slot =
-		frame:FindFirstChild(
-			tostring(i)
-		)
-
-
-		if slot then
-
-
-			local base =
-			slot:FindFirstChild(
-				"Base"
-			)
-
-
-			if base then
-
-
-				local text =
-				base:FindFirstChild(
-					"ToolName"
-				)
-
-
-				if text then
-
-					text.Text =
-					name
-
-				end
-
-
-			end
-
-
-		end
-
-
-	end
-
-
-end
-
-
-
--- ================================================================
--- ULT BAR CHANGE
--- ================================================================
-
-
-task.spawn(function()
-
-
-	while task.wait(0.5) do
-
-
-		pcall(function()
-
-
-			local gui =
-			Player.PlayerGui
-
-
-			local screen =
-			gui:FindFirstChild(
-				"ScreenGui"
-			)
-
-
-			if screen then
-
-
-				local magic =
-				screen:FindFirstChild(
-					"MagicHealth"
-				)
-
-
-				if magic then
-
-
-					local label =
-					magic:FindFirstChild(
-						"TextLabel"
-					)
-
-
-					if label then
-
-
-						label.Text =
-						UltimateName
-
-
-						label.TextColor3 =
-						ULT_COLORS.Main
-
-
-					end
-
-
-				end
-
-
-			end
-
-
-		end)
-
-
-	end
-
-
-end)
-
-
-
--- ================================================================
--- ULTIMATE TRIGGER
--- ================================================================
-
+-- ==========================================================
+-- ULTIMATE TRIGGER DETECTION
+-- ==========================================================
 
 local UltimateTriggers = {
 
-	"12467789963",
-
-	"13630786846",
-
-	"14057231976"
+	["rbxassetid://12467789963"] = true,
+	["rbxassetid://13630786846"] = true,
+	["rbxassetid://14057231976"] = true
 
 }
 
@@ -1980,63 +1749,20 @@ local UltimateTriggers = {
 
 Humanoid.AnimationPlayed:Connect(function(track)
 
-
 	local id =
-	track.Animation.AnimationId
+		track.Animation.AnimationId
 
 
-	for _,trigger in ipairs(UltimateTriggers) do
+	if UltimateTriggers[id] then
 
 
-		if string.find(
-			id,
-			trigger
-		) then
+		track:Stop()
 
 
-
-			track:Stop()
-
+		IsUlted = true
 
 
-			IsUlted =
-			true
-
-
-
-			PlayAnimation(
-				"98181799656366",
-				1
-			)
-
-
-
-			IchikaUltimateEffect()
-
-
-
-			ChangeHotbar()
-
-
-
-			task.delay(
-				35,
-
-				function()
-
-
-					IsUlted =
-					false
-
-
-					ChangeHotbar()
-
-
-				end
-			)
-
-
-		end
+		UltimateEffect()
 
 
 	end
@@ -2046,6 +1772,118 @@ end)
 
 
 
+-- ==========================================================
+-- CHARACTER ONLY YELLOW TRAIL OVERRIDE
+-- DOES NOT CHANGE OTHER PLAYERS
+-- ==========================================================
+
+
+local function ChangeLocalVFX(object)
+
+	if not object then
+		return
+	end
+
+
+	pcall(function()
+
+
+		if object:IsA("Trail") then
+
+			object.Color =
+				YellowSequence
+
+
+			object.LightEmission =
+				1
+
+
+		elseif object:IsA("ParticleEmitter") then
+
+			object.Color =
+				YellowSequence
+
+
+			object.LightEmission =
+				1
+
+
+		elseif object:IsA("Beam") then
+
+			object.Color =
+				YellowSequence
+
+
+			object.LightEmission =
+				1
+
+
+		elseif object:IsA("Highlight") then
+
+			object.FillColor =
+				GOLD
+
+
+			object.OutlineColor =
+				YELLOW
+
+		end
+
+
+	end)
+
+end
+
+
+
+local function ScanCharacter()
+
+	local char =
+		Player.Character
+
+
+	if not char then
+		return
+	end
+
+
+	for _,obj in ipairs(
+		char:GetDescendants()
+	) do
+
+		ChangeLocalVFX(obj)
+
+	end
+
+end
+
+
+
+ScanCharacter()
+
+
+Player.CharacterAdded:Connect(function(char)
+
+	Character = char
+
+	task.wait(1)
+
+	ScanCharacter()
+
+end)
+
+
+
+Character.DescendantAdded:Connect(function(obj)
+
+	task.wait()
+
+	ChangeLocalVFX(obj)
+
+end)
+
+
+
 print(
-"[R4FIX] Ichika Cyborg Ultimate System Loaded 💛"
+"[R4FIX] Ultimate + Local Yellow VFX Loaded"
 )
