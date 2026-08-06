@@ -1,122 +1,719 @@
--- ================================================================
--- R4FIX // AETHER CLIENT VFX SYSTEM
--- PART 1/2
--- ================================================================
+--==============================================================
+-- AETHER // CELESTIAL GLITCH FORM
+-- R4FIX STYLE SYSTEM
+-- PART 1: CORE + VFX ENGINE
+--==============================================================
 
 local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
+local Debris = game:GetService("Debris")
+local RunService = game:GetService("RunService")
 
 local Player = Players.LocalPlayer
-local PlayerGui = Player:WaitForChild("PlayerGui")
-
-local AETHER_NAME = "Aether"
-local DECAL_ID = "rbxthumb://type=Asset&id=13394302362&w=150&h=150"
-
-local M1_VFX_ID = "rbxassetid://133060042063817"
-
-local VFX_FOLDER_NAME = "Aether_Local_VFX"
-
-local Purple =
-	Color3.fromRGB(170,80,255)
 
 
-local VFXFolder =
-	workspace:FindFirstChild(VFX_FOLDER_NAME)
+--==============================================================
+-- CONFIG
+--==============================================================
 
-if not VFXFolder then
+local AETHER_DECAL = "rbxassetid://9387143810"
 
-	VFXFolder = Instance.new("Folder")
-	VFXFolder.Name = VFX_FOLDER_NAME
-	VFXFolder.Parent = workspace
 
-end
+local VFX_MODELS = {
 
+	FireImpact = "rbxassetid://107157303748652",
+
+	ThunderSlash = "rbxassetid://17698488773",
+
+	MoonThunder = "rbxassetid://85889779196357",
+
+	BlueThunder = "rbxassetid://73250611544859",
+
+	ThunderBlade = "rbxassetid://129287147968372",
+
+}
+
+
+local COLORS = {
+
+	Red =
+	Color3.fromRGB(
+		255,
+		35,
+		45
+	),
+
+	Blue =
+	Color3.fromRGB(
+		30,
+		130,
+		255
+	),
+
+	Purple =
+	Color3.fromRGB(
+		170,
+		50,
+		255
+	),
+
+	White =
+	Color3.fromRGB(
+		255,
+		255,
+		255
+	)
+
+}
+
+
+
+--==============================================================
+-- CHARACTER
+--==============================================================
 
 local function GetCharacter()
 
-	return Player.Character
-		or Player.CharacterAdded:Wait()
+	local char = Player.Character
+	if not char then
+		return
+	end
+
+	local hum =
+		char:FindFirstChildOfClass(
+			"Humanoid"
+		)
+
+	local root =
+		char:FindFirstChild(
+			"HumanoidRootPart"
+		)
+
+	if not hum or not root then
+		return
+	end
+
+	return char,hum,root
 
 end
 
 
 
--- ================================================================
--- CHARACTER UI
--- ================================================================
+--==============================================================
+-- VFX FOLDER
+--==============================================================
 
-local function UpdateAetherUI()
+local function GetFolder()
 
+	local folder =
+	workspace:FindFirstChild(
+		"AETHER_VFX"
+	)
+
+	if not folder then
+
+		folder =
+		Instance.new(
+			"Folder"
+		)
+
+		folder.Name =
+		"AETHER_VFX"
+
+		folder.Parent =
+		workspace
+
+	end
+
+
+	return folder
+
+end
+
+
+
+--==============================================================
+-- LOAD MODEL
+--==============================================================
+
+local function SpawnVFX(
+	id,
+	cframe,
+	scale,
+	lifetime
+)
+
+
+	local objects
+
+	local success =
 	pcall(function()
 
-		for _,obj in ipairs(
-			PlayerGui:GetDescendants()
-		) do
+		objects =
+		game:GetObjects(id)
+
+	end)
 
 
-			if obj:IsA("TextLabel") then
+	if not success then
+		return
+	end
 
-				if obj.Text == "Hunter"
-				or obj.Text == "Hero Hunter" then
 
-					obj.Text = AETHER_NAME
+	for _,obj in ipairs(objects) do
 
-				end
+
+		obj.Parent =
+		GetFolder()
+
+
+
+		if obj:IsA("Model") then
+
+
+			local primary =
+			obj.PrimaryPart
+
+
+			if not primary then
+
+				primary =
+				obj:FindFirstChildWhichIsA(
+					"BasePart",
+					true
+				)
 
 			end
 
 
-			if obj:IsA("ImageLabel")
-			or obj:IsA("ImageButton") then
 
-				if obj.Name:lower():find("icon")
-				or obj.Name:lower():find("image") then
+			if primary then
 
-					obj.Image = DECAL_ID
+				obj.PrimaryPart =
+				primary
+
+
+				obj:PivotTo(
+					cframe
+				)
+
+
+				for _,p in ipairs(
+					obj:GetDescendants()
+				) do
+
+					if p:IsA(
+						"BasePart"
+					) then
+
+						p.Transparency =
+						1
+
+
+						p.Size =
+						p.Size *
+						0.2
+
+
+						TweenService:Create(
+							p,
+							TweenInfo.new(
+								0.12,
+								Enum.EasingStyle.Back
+							),
+							{
+
+								Transparency = 0,
+
+								Size =
+								p.Size /
+								0.2 *
+								scale
+
+							}
+						):Play()
+
+					end
+
 
 				end
+
+
+
+				task.delay(
+					lifetime - 0.25,
+					function()
+
+
+						for _,p in ipairs(
+							obj:GetDescendants()
+						) do
+
+
+							if p:IsA(
+								"BasePart"
+							) then
+
+
+								TweenService:Create(
+									p,
+									TweenInfo.new(
+										0.25
+									),
+									{
+										Transparency = 1
+									}
+								):Play()
+
+
+							end
+
+						end
+
+
+					end
+				)
+
 
 			end
 
 		end
 
-	end)
+
+
+		Debris:AddItem(
+			obj,
+			lifetime
+		)
+
+
+	end
+
 
 end
 
 
 
-task.spawn(function()
+--==============================================================
+-- DIRECTION ALIGNMENT
+--==============================================================
 
-	while task.wait(0.5) do
+local function ForwardCFrame(
+	offset
+)
 
-		UpdateAetherUI()
+	local char,hum,root =
+	GetCharacter()
+
+	if not root then
+		return
+	end
+
+
+	return
+	root.CFrame *
+	CFrame.new(
+		0,
+		offset or 0,
+		-5
+	)
+
+
+end
+
+
+
+--==============================================================
+-- RANDOM AETHER THUNDER
+--==============================================================
+
+local function SpawnRandomThunder()
+
+	local char,hum,root =
+	GetCharacter()
+
+	if not root then
+		return
+	end
+
+
+	local choices =
+	{
+
+		VFX_MODELS.MoonThunder,
+
+		VFX_MODELS.BlueThunder,
+
+		VFX_MODELS.ThunderBlade
+
+	}
+
+
+	local chosen =
+	choices[
+		math.random(
+			1,
+			#choices
+		)
+	]
+
+
+	local cf =
+	root.CFrame *
+	CFrame.new(
+		0,
+		1,
+		-6
+	)
+
+
+	SpawnVFX(
+		chosen,
+		cf *
+		CFrame.Angles(
+			0,
+			math.rad(
+				math.random(
+					0,
+					360
+				)
+			),
+			0
+		),
+		1.4,
+		0.8
+	)
+
+end
+
+
+
+--==============================================================
+-- FIRE IMPACT
+--==============================================================
+
+local function FireImpact()
+
+	local char,hum,root =
+	GetCharacter()
+
+	if not root then
+		return
+	end
+
+
+	SpawnVFX(
+		VFX_MODELS.FireImpact,
+
+		root.CFrame *
+		CFrame.new(
+			0,
+			0,
+			-4
+		),
+
+		1.5,
+
+		0.7
+	)
+
+
+end
+
+
+
+--==============================================================
+-- SLASH
+--==============================================================
+
+local function ThunderSlash()
+
+	local char,hum,root =
+	GetCharacter()
+
+	if not root then
+		return
+	end
+
+
+	SpawnVFX(
+		VFX_MODELS.ThunderSlash,
+
+		root.CFrame *
+		CFrame.new(
+			0,
+			1,
+			-5
+		)
+		*
+		CFrame.Angles(
+			0,
+			math.rad(90),
+			0
+		),
+
+		1.3,
+
+		0.6
+	)
+
+end
+
+
+
+--==============================================================
+-- AETHER AURA
+--==============================================================
+
+local function CreateAura()
+
+	local char =
+	Player.Character
+
+	if not char then
+		return
+	end
+
+
+
+	local old =
+	char:FindFirstChild(
+		"AETHER_AURA"
+	)
+
+	if old then
+		old:Destroy()
+	end
+
+
+
+	local highlight =
+	Instance.new(
+		"Highlight"
+	)
+
+	highlight.Name =
+	"AETHER_AURA"
+
+	highlight.FillColor =
+	COLORS.Blue
+
+	highlight.OutlineColor =
+	COLORS.Red
+
+	highlight.FillTransparency =
+	0.75
+
+	highlight.Parent =
+	char
+
+
+
+	local root =
+	char:FindFirstChild(
+		"HumanoidRootPart"
+	)
+
+
+	if root then
+
+
+		local fire =
+		Instance.new(
+			"ParticleEmitter"
+		)
+
+
+		fire.Name =
+		"AetherParticles"
+
+
+		fire.Color =
+		ColorSequence.new(
+		{
+			ColorSequenceKeypoint.new(
+				0,
+				COLORS.Red
+			),
+
+			ColorSequenceKeypoint.new(
+				1,
+				COLORS.Blue
+			)
+		})
+
+
+		fire.Rate =
+		25
+
+		fire.Lifetime =
+		NumberRange.new(
+			0.4,
+			0.8
+		)
+
+
+		fire.Speed =
+		NumberRange.new(
+			2,
+			6
+		)
+
+
+		fire.Parent =
+		root
+
 
 	end
 
-end)
+end
 
 
 
--- ================================================================
--- AETHER M1 VFX SPAWNER
--- ================================================================
+CreateAura()
 
-local function FadeRemove(effect)
+
+print(
+"[AETHER] CORE ONLINE"
+)
+--==============================================================
+-- AETHER // COMBAT SYSTEM
+-- PART 2
+--==============================================================
+
+
+local UIS = game:GetService("UserInputService")
+
+
+local Cooldowns = {}
+
+local function Cooldown(name,time)
+
+	if Cooldowns[name] then
+		return false
+	end
+
+
+	Cooldowns[name] = true
+
+
+	task.delay(
+		time,
+		function()
+			Cooldowns[name] = nil
+		end
+	)
+
+
+	return true
+
+end
+
+
+
+--==============================================================
+-- AFTERIMAGE
+--==============================================================
+
+local function AfterImage()
+
+	local char =
+	Player.Character
+
+	if not char then
+		return
+	end
+
+
+	local clone =
+	char:Clone()
+
+
+	clone.Name =
+	"AetherAfterimage"
+
 
 	for _,v in ipairs(
-		effect:GetDescendants()
+		clone:GetDescendants()
 	) do
 
 
-		if v:IsA("BasePart") then
+		if v:IsA(
+			"BasePart"
+		) then
+
+			v.Anchored =
+			true
+
+			v.CanCollide =
+			false
+
+			v.Material =
+			Enum.Material.Neon
+
+
+			v.Color =
+			Color3.fromRGB(
+				80,
+				120,
+				255
+			)
+
+
+			v.Transparency =
+			0.45
+
+
+		elseif v:IsA(
+			"Humanoid"
+		) then
+
+			v:Destroy()
+
+		end
+
+	end
+
+
+	clone.Parent =
+	workspace
+
+
+
+	local root =
+	clone:FindFirstChild(
+		"HumanoidRootPart"
+	)
+
+
+	local original =
+	char:FindFirstChild(
+		"HumanoidRootPart"
+	)
+
+
+	if root and original then
+
+		root.CFrame =
+		original.CFrame
+
+	end
+
+
+
+	for _,v in ipairs(
+		clone:GetDescendants()
+	) do
+
+		if v:IsA(
+			"BasePart"
+		) then
+
 
 			TweenService:Create(
 				v,
 				TweenInfo.new(
-					0.25,
-					Enum.EasingStyle.Quad
+					0.35
 				),
 				{
 					Transparency = 1
@@ -124,241 +721,983 @@ local function FadeRemove(effect)
 			):Play()
 
 
-		elseif v:IsA("ParticleEmitter") then
-
-			v.Enabled = false
-
-
-		elseif v:IsA("Trail")
-		or v:IsA("Beam") then
-
-			v.Enabled = false
-
 		end
 
 	end
 
 
-	task.delay(0.3,function()
 
-		if effect then
-			effect:Destroy()
-		end
-
-	end)
+	Debris:AddItem(
+		clone,
+		0.5
+	)
 
 end
 
 
 
-local function SpawnAetherM1()
+--==============================================================
+-- M1
+-- AETHER BREAKER
+--==============================================================
 
-	local character =
-		GetCharacter()
 
-	local root =
-		character:FindFirstChild(
-			"HumanoidRootPart"
-		)
+local function M1()
+
+
+	if not Cooldown(
+		"M1",
+		1
+	) then
+		return
+	end
+
+
+	local char,hum,root =
+	GetCharacter()
 
 	if not root then
 		return
 	end
 
 
-	local success,objects =
-		pcall(function()
 
-			return game:GetObjects(
-				M1_VFX_ID
-			)
-
-		end)
+	FireImpact()
 
 
-	if not success
-	or not objects
-	or not objects[1]
-	then
 
-		warn(
-			"Aether M1 VFX failed"
-		)
+	task.wait(
+		0.15
+	)
 
+
+	ThunderSlash()
+
+
+
+	task.wait(
+		0.1
+	)
+
+
+	SpawnRandomThunder()
+
+
+
+end
+
+
+
+
+--==============================================================
+-- M2
+-- PHANTOM SHIFT
+--==============================================================
+
+
+local function PhantomShift()
+
+
+	if not Cooldown(
+		"M2",
+		3
+	) then
 		return
+	end
+
+
+
+	local char,hum,root =
+	GetCharacter()
+
+
+	if not root then
+		return
+	end
+
+
+
+	FireImpact()
+
+
+
+	local bv =
+	Instance.new(
+		BodyVelocity
+	)
+
+
+	bv.MaxForce =
+	Vector3.new(
+		500000,
+		0,
+		500000
+	)
+
+
+	bv.Velocity =
+	root.CFrame.LookVector *
+	180
+
+
+	bv.Parent =
+	root
+
+
+
+	local start =
+	os.clock()
+
+
+	while os.clock()-start < 0.45 do
+
+
+		AfterImage()
+
+
+		if math.random(
+			1,
+			3
+		)==1 then
+
+			SpawnRandomThunder()
+
+		end
+
+
+		task.wait(
+			0.08
+		)
 
 	end
 
 
-	local effect =
-		objects[1]
+
+	bv:Destroy()
 
 
-	effect.Name =
-		"Aether_M1"
+
+	ThunderSlash()
 
 
-	effect.Parent =
-		VFXFolder
+	SpawnVFX(
+		VFX_MODELS.FireImpact,
 
-
-	local position =
 		root.CFrame *
 		CFrame.new(
 			0,
 			0,
-			-3
-		)
+			-4
+		),
 
+		2,
 
-	if effect:IsA("Model") then
-
-		effect:PivotTo(
-			position
-		)
-
-	elseif effect:IsA("BasePart") then
-
-		effect.CFrame =
-			position
-
-	end
-
-
-	for _,v in ipairs(
-		effect:GetDescendants()
-	) do
-
-		if v:IsA("ParticleEmitter") then
-
-			v.Color =
-				ColorSequence.new(
-					Purple
-				)
-
-			v:Emit(25)
-
-		elseif v:IsA("Trail")
-		or v:IsA("Beam") then
-
-			v.Color =
-				ColorSequence.new(
-					Purple
-				)
-
-		end
-
-	end
-
-
-	task.delay(
-		0.45,
-		function()
-
-			FadeRemove(effect)
-
-		end
+		0.8
 	)
 
-end
 
--- ================================================================
--- R4FIX // AETHER CLIENT VFX SYSTEM
--- PART 2/2
--- ================================================================
-
-
-local function SetupCharacter()
-
-	local character =
-		Player.Character
-
-	if not character then
-		return
-	end
-
-
-	task.wait(0.5)
-
-	UpdateAetherUI()
 
 end
 
 
 
--- ================================================================
--- OPTIONAL LOCAL TEST KEY
--- Remove this when connecting your own combat system
--- ================================================================
 
-local UserInputService =
-	game:GetService("UserInputService")
+--==============================================================
+-- M3
+-- CELESTIAL OVERLOAD
+--==============================================================
 
 
-UserInputService.InputBegan:Connect(function(
-	input,
-	gameProcessed
-)
+local function CelestialOverload()
 
-	if gameProcessed then
+
+	if not Cooldown(
+		"M3",
+		8
+	) then
 		return
 	end
 
 
-	if input.KeyCode == Enum.KeyCode.G then
 
-		SpawnAetherM1()
+	local char,hum,root =
+	GetCharacter()
 
-	end
-
-end)
-
-
-
--- ================================================================
--- CHARACTER RESET CLEANUP
--- ================================================================
-
-Player.CharacterAdded:Connect(function()
-
-	for _,v in ipairs(
-		VFXFolder:GetChildren()
-	) do
-
-		v:Destroy()
-
+	if not root then
+		return
 	end
 
 
-	task.wait(1)
 
-	SetupCharacter()
+	SpawnVFX(
+		VFX_MODELS.MoonThunder,
 
-end)
+		root.CFrame,
 
+		2,
 
-
--- ================================================================
--- INITIAL START
--- ================================================================
-
-SetupCharacter()
+		1
+	)
 
 
-task.spawn(function()
 
-	while Player.Parent do
+	for i=1,5 do
 
-		UpdateAetherUI()
 
-		task.wait(2)
+		task.wait(
+			0.12
+		)
+
+
+		SpawnRandomThunder()
+
+
 
 	end
+
+
+
+	FireImpact()
+
+
+
+end
+
+
+
+
+--==============================================================
+-- M4
+-- REALITY FRACTURE
+--==============================================================
+
+
+local function RealityFracture()
+
+
+	if not Cooldown(
+		"M4",
+		15
+	) then
+		return
+	end
+
+
+
+	local char,hum,root =
+	GetCharacter()
+
+	if not root then
+		return
+	end
+
+
+
+	for i=1,8 do
+
+
+		AfterImage()
+
+
+
+		SpawnRandomThunder()
+
+
+
+		task.wait(
+			0.08
+		)
+
+	end
+
+
+
+	SpawnVFX(
+		VFX_MODELS.ThunderBlade,
+
+		root.CFrame *
+		CFrame.new(
+			0,
+			2,
+			-8
+		),
+
+		3,
+
+		1.2
+	)
+
+
+
+	FireImpact()
+
+
+
+end
+
+
+
+--==============================================================
+-- KEYBINDS
+--==============================================================
+
+UIS.InputBegan:Connect(
+function(input,gp)
+
+	if gp then
+		return
+	end
+
+
+	if input.KeyCode ==
+	Enum.KeyCode.One then
+
+		M1()
+
+	elseif input.KeyCode ==
+	Enum.KeyCode.Two then
+
+		PhantomShift()
+
+
+	elseif input.KeyCode ==
+	Enum.KeyCode.Three then
+
+		CelestialOverload()
+
+
+	elseif input.KeyCode ==
+	Enum.KeyCode.Four then
+
+		RealityFracture()
+
+	end
+
 
 end)
 
 
 
 print(
-	"[R4FIX] Aether Client VFX System loaded."
+"[AETHER] COMBAT ONLINE"
+)
+--==============================================================
+-- AETHER // FINAL SYSTEM
+-- PART 3
+--==============================================================
+
+
+local RunService =
+game:GetService("RunService")
+
+local StarterGui =
+game:GetService("StarterGui")
+
+
+
+--==============================================================
+-- AETHER IDENTITY
+--==============================================================
+
+
+local MOVESET_NAME =
+"AETHER"
+
+
+local DECAL =
+"rbxassetid://9387143810"
+
+
+
+--==============================================================
+-- ULTIMATE COLORS
+--==============================================================
+
+
+local ULT_BLACK =
+Color3.fromRGB(
+0,
+5,
+0
+)
+
+
+local ULT_GREEN =
+Color3.fromRGB(
+30,
+255,
+90
+)
+
+
+local ULT_DARK =
+Color3.fromRGB(
+0,
+80,
+25
+)
+
+
+
+--==============================================================
+-- GLITCH TEXT
+--==============================================================
+
+
+local GlitchWords =
+{
+
+"AETHER // ASCENDED",
+
+"A3THER // ASC3NDED",
+
+"AETHER // OVERRIDE",
+
+"AE_THER // GOD MODE",
+
+"AETHER // REALITY BREAK"
+
+
+}
+
+
+
+local function GlitchText(label)
+
+
+	if not label then
+		return
+	end
+
+
+	task.spawn(
+	function()
+
+		while label.Parent do
+
+
+			label.Text =
+			GlitchWords[
+				math.random(
+					1,
+					#GlitchWords
+				)
+			]
+
+
+			task.wait(
+				0.15
+			)
+
+
+		end
+
+
+	end)
+
+
+end
+
+
+
+
+--==============================================================
+-- ULT BAR STYLE
+--==============================================================
+
+
+local function SetupUltBar()
+
+
+	local gui =
+	Player:FindFirstChild(
+		"PlayerGui"
+	)
+
+
+	if not gui then
+		return
+	end
+
+
+
+	local bar =
+	gui:FindFirstChild(
+		"Bar",
+		true
+	)
+
+
+
+	if not bar then
+		return
+	end
+
+
+
+	for _,v in ipairs(
+		bar:GetDescendants()
+	) do
+
+
+
+		if v:IsA(
+			"TextLabel"
+		) then
+
+
+			v.TextColor3 =
+			ULT_GREEN
+
+
+			if string.find(
+				string.lower(v.Name),
+				"text"
+			) then
+
+				GlitchText(v)
+
+			end
+
+
+		end
+
+
+
+		if v:IsA(
+			"Frame"
+		) then
+
+
+			v.BackgroundColor3 =
+			ULT_BLACK
+
+
+		end
+
+
+
+		if v:IsA(
+			"ImageLabel"
+		) then
+
+
+			v.ImageColor3 =
+			ULT_GREEN
+
+
+		end
+
+
+
+	end
+
+
+end
+
+
+
+
+--==============================================================
+-- ASCENDED FORM
+--==============================================================
+
+
+local Ascended = false
+
+
+
+local function ActivateAscended()
+
+
+	if Ascended then
+		return
+	end
+
+
+	Ascended = true
+
+
+
+	CreateAura()
+
+
+
+	local char,hum,root =
+	GetCharacter()
+
+
+
+	if not root then
+		return
+	end
+
+
+
+	SpawnVFX(
+		VFX_MODELS.BlueThunder,
+
+		root.CFrame,
+
+		3,
+
+		1
+	)
+
+
+
+	SpawnVFX(
+		VFX_MODELS.MoonThunder,
+
+		root.CFrame,
+
+		3,
+
+		1
+	)
+
+
+
+	FireImpact()
+
+
+
+	task.spawn(
+	function()
+
+
+		while Ascended
+		and char.Parent
+		do
+
+
+			if math.random(
+				1,
+				4
+			)==1 then
+
+
+				SpawnRandomThunder()
+
+
+			end
+
+
+
+			task.wait(
+				0.5
+			)
+
+
+		end
+
+
+	end)
+
+
+
+end
+
+
+
+local function DisableAscended()
+
+	Ascended =
+	false
+
+
+end
+
+
+
+
+--==============================================================
+-- CHARACTER TAB
+--==============================================================
+
+
+local function UpdateCharacterTab()
+
+
+	local gui =
+	Player:FindFirstChild(
+		"PlayerGui"
+	)
+
+
+	if not gui then
+		return
+	end
+
+
+
+	for _,obj in ipairs(
+		gui:GetDescendants()
+	) do
+
+
+		if obj:IsA(
+			"TextLabel"
+		) then
+
+
+			if obj.Text ==
+			"Garou"
+			or obj.Text ==
+			"Hero Hunter"
+			then
+
+
+				obj.Text =
+				MOVESET_NAME
+
+
+			end
+
+
+		end
+
+
+
+		if obj:IsA(
+			"ImageLabel"
+		)
+		or obj:IsA(
+			"ImageButton"
+		)
+		then
+
+
+			if obj.Name:
+			lower():find(
+				"icon"
+			)
+			then
+
+
+				obj.Image =
+				DECAL
+
+
+			end
+
+
+		end
+
+
+	end
+
+
+end
+
+
+
+
+--==============================================================
+-- MOBILE BUTTONS
+--==============================================================
+
+
+local function MakeButton(name,key)
+
+
+	local gui =
+	Player.PlayerGui
+
+
+
+	local screen =
+	gui:FindFirstChild(
+		"AetherMobile"
+	)
+
+
+
+	if not screen then
+
+
+		screen =
+		Instance.new(
+			"ScreenGui"
+		)
+
+
+		screen.Name =
+		"AetherMobile"
+
+
+		screen.Parent =
+		gui
+
+
+	end
+
+
+
+
+	local button =
+	Instance.new(
+		"TextButton"
+	)
+
+
+
+	button.Name =
+	name
+
+
+	button.Size =
+	UDim2.new(
+		0,
+		100,
+		0,
+		55
+	)
+
+
+	button.Position =
+	UDim2.new(
+		1,
+		-120,
+		0.6,
+		0
+	)
+
+
+	button.BackgroundColor3 =
+	ULT_DARK
+
+
+	button.TextColor3 =
+	ULT_GREEN
+
+
+	button.Text =
+	name
+
+
+	button.Parent =
+	screen
+
+
+
+
+	button.Activated:Connect(
+	function()
+
+
+		if key == 1 then
+
+			M1()
+
+		elseif key == 2 then
+
+			PhantomShift()
+
+
+		elseif key == 3 then
+
+			CelestialOverload()
+
+
+		elseif key == 4 then
+
+			RealityFracture()
+
+
+		end
+
+
+	end)
+
+
+
+end
+
+
+
+
+--==============================================================
+-- STARTUP
+--==============================================================
+
+
+task.spawn(
+function()
+
+
+	while Player.Parent do
+
+
+		pcall(
+		function()
+
+			UpdateCharacterTab()
+
+			SetupUltBar()
+
+
+		end)
+
+
+		task.wait(
+			1
+		)
+
+
+	end
+
+
+end)
+
+
+
+MakeButton(
+"AETHER 1",
+1
+)
+
+
+MakeButton(
+"AETHER 2",
+2
+)
+
+
+MakeButton(
+"AETHER 3",
+3
+)
+
+
+MakeButton(
+"AETHER 4",
+4
+)
+
+
+
+StarterGui:SetCore(
+"SendNotification",
+{
+
+Title =
+"AETHER",
+
+Text =
+"ASCENDED SYSTEM ONLINE",
+
+Icon =
+DECAL,
+
+Duration =
+3
+
+}
+)
+
+
+
+print(
+"[AETHER] FULL SYSTEM LOADED"
 )
