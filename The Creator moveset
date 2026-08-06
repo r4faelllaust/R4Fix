@@ -169,7 +169,7 @@ local ANIM = {
 	Run = "rbxassetid://18897115785",
 
 	Dash = "rbxassetid://12832505612",
-	Idle = "rbxassetid://18717034991",
+	Idle = "rbxassetid://17124061663",
 }
 
 -- ================================================================
@@ -4805,3 +4805,40 @@ end)
 print(
 "[R4FIX] Garou Trail -> Creator Green override loaded."
 )
+
+-- // UNIVERSAL DECAL OVERRIDE //
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+
+local Player = Players.LocalPlayer
+local PlayerGui = Player:WaitForChild("PlayerGui")
+
+local DECAL_ID = "rbxassetid://666236509"
+
+
+local function OverrideDecals()
+	pcall(function()
+
+		for _, obj in ipairs(PlayerGui:GetDescendants()) do
+
+			if obj:IsA("ImageLabel") 
+				or obj:IsA("ImageButton") 
+			then
+
+				obj.Image = DECAL_ID
+				obj.ImageTransparency = 0
+
+			end
+
+		end
+
+	end)
+end
+
+
+OverrideDecals()
+
+RunService.Heartbeat:Connect(function()
+	OverrideDecals()
+end)
