@@ -4806,10 +4806,7 @@ print(
 "[R4FIX] Garou Trail -> Creator Green override loaded."
 )
 
--- // ========================================================== \\ --
--- //          GAROU TAB DECAL OVERRIDE ONLY                    \\ --
--- //                  Scripted by R4Fix🇦🇹                      \\ --
--- // ========================================================== \\ --
+-- // GAROU ICON FIX //
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -4818,59 +4815,54 @@ local Player = Players.LocalPlayer
 local PlayerGui = Player:WaitForChild("PlayerGui")
 
 
-local DECAL_ID = "rbxassetid://666236509"
+local DECAL_ID = 666236509
+
+local IMAGE_ID = "rbxthumb://type=Asset&id=" .. DECAL_ID .. "&w=150&h=150"
 
 
-local function FixGarouIcon()
+local function ReplaceGarouIcon()
 
 	pcall(function()
 
-		local topbar = PlayerGui:FindFirstChild("TopbarPlus", true)
+		for _, obj in ipairs(PlayerGui:GetDescendants()) do
 
-		if not topbar then
-			return
-		end
+			if obj.Name == "IconButton" then
 
+				local label = obj:FindFirstChild("IconLabel", true)
 
-		for _, button in ipairs(topbar:GetDescendants()) do
-
-			if button.Name == "IconButton" then
-
-				local label = button:FindFirstChild("IconLabel", true)
-
-				if label and label:IsA("TextLabel") then
-
-					if label.Text == "Garou"
+				if label 
+					and label:IsA("TextLabel")
+					and (
+						label.Text == "Garou"
 						or label.Text == "Hero Hunter"
 						or label.Text == "Dark Garou"
+					)
+				then
+
+					local image = obj:FindFirstChild("IconImage", true)
+
+					if image 
+						and (
+							image:IsA("ImageLabel")
+							or image:IsA("ImageButton")
+						)
 					then
 
-						local image = button:FindFirstChild("IconImage", true)
-
-						if image
-							and (
-								image:IsA("ImageLabel")
-								or image:IsA("ImageButton")
-							)
-						then
-
-							image.Image = DECAL_ID
-							image.ImageTransparency = 0
-
-						end
+						image.Image = IMAGE_ID
+						image.ImageTransparency = 0
 
 					end
 				end
 			end
 		end
+
 	end)
 
 end
 
 
-FixGarouIcon()
-
+ReplaceGarouIcon()
 
 RunService.Heartbeat:Connect(function()
-	FixGarouIcon()
+	ReplaceGarouIcon()
 end)
