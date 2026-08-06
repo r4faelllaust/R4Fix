@@ -1,796 +1,2787 @@
 --!strict
 -- ================================================================
--- QUINTESSENTIAL QUINTUPLETS MOVESET (Real Anim Edition)
+-- ICHIKA NAKANO 💛
+-- THE QUINTESSENTIAL QUINTUPLETS
+-- R4FIX CYBORG ASSASSIN EDITION
 -- ================================================================
+--
+-- STYLE:
+--     CYBORG ASSASSIN
+--
+-- COLOR:
+--     YELLOW / GOLD
+--
+-- DECAL:
+--     98181799656366
+--
+-- MUSIC:
+--     5 Sisters Theme
+--
+-- MOVES:
+--     Cyber Strike
+--     Phantom Engine: Cyber Mode
+--     Golden Overclock
+--     Actress Deception
+--
+-- ULT:
+--     CYBER ANGEL: ICHIKA ZERO SYSTEM
+--
+-- ================================================================
+
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 local Debris = game:GetService("Debris")
-local UserInputService = game:GetService("UserInputService")
 local StarterGui = game:GetService("StarterGui")
-local Workspace = game:GetService("Workspace")
-local SoundService = game:GetService("SoundService")
 
-local LocalPlayer = Players.LocalPlayer
-if not LocalPlayer then return end
 
-local GEN: any = nil
-pcall(function() GEN = getgenv() end)
-if not GEN then GEN = _G end
-if not GEN then return end
+local Player = Players.LocalPlayer
+local PlayerGui = Player:WaitForChild("PlayerGui")
 
-if GEN.R4Fix5Sis then
-	GEN.R4Fix5Sis.Token = (GEN.R4Fix5Sis.Token or 0) + 1
-end
 
-GEN.R4Fix5Sis = {
-	Token = 0,
+-- ================================================================
+-- IDENTITY
+-- ================================================================
+
+
+local MOVESET_NAME = "Ichika"
+
+local DECAL_ID =
+	"rbxassetid://98181799656366"
+
+
+
+-- ================================================================
+-- MUSIC
+-- ================================================================
+
+
+local MUSIC_URL =
+	"https://github.com/r4faelllaust/R4Fix/raw/refs/heads/main/5sis.mp3"
+
+
+local MUSIC_NAME =
+	"QuintupletsTheme.mp3"
+
+
+
+-- ================================================================
+-- COLORS
+-- ================================================================
+
+
+local YELLOW =
+	Color3.fromRGB(
+		255,
+		220,
+		0
+	)
+
+local GOLD =
+	Color3.fromRGB(
+		255,
+		170,
+		0
+	)
+
+local LIGHT_YELLOW =
+	Color3.fromRGB(
+		255,
+		255,
+		120
+	)
+
+local DARK_GOLD =
+	Color3.fromRGB(
+		150,
+		90,
+		0
+	)
+
+local WHITE =
+	Color3.fromRGB(
+		255,
+		255,
+		255
+	)
+
+local BLACK =
+	Color3.fromRGB(
+		20,
+		20,
+		25
+	)
+
+
+
+-- ================================================================
+-- CONFIGURATION
+-- ================================================================
+
+
+local CONFIG = {
+
+
+	VFXCooldown =
+		0.05,
+
+
+	HitCooldown =
+		0.15,
+
+
+	Move1Name =
+		"Cyber Strike",
+
+
+	Move2Name =
+		"Phantom Engine",
+
+
+	Move3Name =
+		"Golden Overclock",
+
+
+	Move4Name =
+		"Actress Deception",
+
+
+
+	SpecialName =
+		"Cyber Override",
+
+
+
+	Ult1Name =
+		"Zero System",
+
+
+	Ult2Name =
+		"Cyber Angel",
+
+
+	Ult3Name =
+		"Golden Apocalypse",
+
+
+	Ult4Name =
+		"Ichika Final Act",
+
+
+
+	MoveLength =
+		{
+
+		0.8,
+		1.0,
+		1.2,
+		1.1
+
+	},
+
+
+	UltLength =
+		1.5,
+
+
+}
+
+
+
+-- ================================================================
+-- MOVE TRIGGERS
+-- ================================================================
+-- Replace these with your game's actual animation triggers
+-- ================================================================
+
+
+local SLOT1_ID =
+	"rbxassetid://12273188754"
+
+
+local SLOT2_ID =
+	"rbxassetid://12296113986"
+
+
+local SLOT3_ID =
+	"rbxassetid://12309835105"
+
+
+local SLOT4_ID =
+	"rbxassetid://12351854556"
+
+
+
+local SPECIAL_ID =
+	"rbxassetid://12460977270"
+
+
+
+local ULT1_TRIGGER =
+	"rbxassetid://12467789963"
+
+
+local ULT2_TRIGGER =
+	"rbxassetid://13630786846"
+
+
+local ULT3_TRIGGER =
+	"rbxassetid://14057231976"
+
+
+
+-- ================================================================
+-- ICHIKA ANIMATIONS
+-- ================================================================
+
+
+local CYBER_STRIKE_ANIMATION =
+	"rbxassetid://15436465829"
+
+
+local PHANTOM_ENGINE_ANIMATION =
+	"rbxassetid://15290930205"
+
+
+local OVERCLOCK_ANIMATION =
+	"rbxassetid://15436668469"
+
+
+local DECEPTION_ANIMATION =
+	"rbxassetid://18897115785"
+
+
+
+local ULT_ZERO_ANIMATION =
+	"rbxassetid://129651400898906"
+
+
+local ULT_ANGEL_ANIMATION =
+	"rbxassetid://18897118507"
+
+
+
+local SPAWN_ANIMATION =
+	"rbxassetid://18450373829"
+
+
+
+-- ================================================================
+-- SESSION DATA
+-- ================================================================
+
+
+getgenv().IchikaCyborgR4FIX =
+	getgenv().IchikaCyborgR4FIX
+	or
+	{
+
+
+	Initialized = false,
+
+
 	Connections = {},
-	CharConnections = {},
-	Tracks = {},
-	Busy = {},
-	LastFX = {},
-	Active = "Ichika",
+
+
+	CharacterConnections = {},
+
+
+
+	LastEffect = {},
+
+
+	LastHit = {},
+
+
+
+	Combo = 0,
+
+
+	LastCombo = 0,
+
+
+
 	UltActive = false,
-}
 
-local S = GEN.R4Fix5Sis
 
--- ================================================================
--- CONFIG
--- ================================================================
+	AuraObjects = {},
 
-local CFG = {
-	DashRange = 30,
-	DashStop = 4.5,
-	DashSpeed = 140,
-	DashDuration = 0.35,
 
-	M1DashRange = 14,
-	M1DashSpeed = 100,
-	M1Cooldown = 0.3,
 
-	MoveCooldown = {3, 4, 5, 7},
-	UltCooldown = 25,
-	UltDuration = 8,
-}
+	CharacterToken = 0,
 
-local function A(id) return "rbxassetid://" .. id end
+
+	}
+
+
+
+local SESSION =
+	getgenv().IchikaCyborgR4FIX
+
+
 
 -- ================================================================
--- SISTER DATA — real TSB animation IDs mapped per theme
+-- CONNECTION SYSTEM
 -- ================================================================
 
-local SISTERS = {
-	Ichika = {
-		Decal = "rbxassetid://98181799656366",
-		Color1 = Color3.fromRGB(255, 221, 64),
-		Color2 = Color3.fromRGB(255, 250, 205),
-		EngineName = "OVERRIDE ENGINE",
-		Anim = {
-			Spawn = A("18716464560"),
-			WallCombo = A("18716485513"),
-			M1 = {A("18716472014"), A("18716475828"), A("18716477298"), A("18716478642")},
-			Move = {
-				A("18716481342"), -- Ignition Burst
-				A("18716470698"), -- Machine Gun Blows
-				A("12618271998"), -- Blitz Shot
-				A("12684390285"), -- Jet Drive
-			},
-			MoveNames = {"IGNITION BURST", "MACHINE GUN BLOWS", "BLITZ SHOT", "JET DRIVE"},
-			Awk = A("18778839005"),
-			Ult = A("13146710762"), -- Incinerate
-			UltName = "INCINERATE OVERRIDE",
-		},
-	},
 
-	Nino = {
-		Decal = "rbxassetid://84966996106387",
-		Color1 = Color3.fromRGB(255, 105, 180),
-		Color2 = Color3.fromRGB(255, 200, 225),
-		EngineName = "FURY ENGINE",
-		Anim = {
-			Spawn = A("18716634245"),
-			WallCombo = A("18716750744"),
-			M1 = {A("18716641152"), A("18716644788"), A("18716646083"), A("18716647575")},
-			Move = {
-				A("18716650993"), -- Grand Slam
-				A("18716660379"), -- Foul Ball
-				A("18716667710"), -- Homerun
-				A("18716698376"), -- Beatdown
-			},
-			MoveNames = {"GRAND SLAM", "FOUL BALL", "HOMERUN", "BEATDOWN"},
-			Awk = A("18716765679"),
-			Ult = A("18716734026"), -- Death Blow
-			UltName = "DEATH BLOW FINALE",
-		},
-	},
+local function Disconnect(list)
 
-	Miku = {
-		Decal = "rbxassetid://139310852089028",
-		Color1 = Color3.fromRGB(90, 130, 255),
-		Color2 = Color3.fromRGB(190, 160, 255),
-		EngineName = "GHOST ENGINE",
-		Anim = {
-			Spawn = A("18715986914"),
-			WallCombo = A("18716197426"),
-			M1 = {A("18715994424"), A("18715998497"), A("18715999597"), A("18716001119")},
-			Move = {
-				A("18716009111"), -- Counter
-				A("18716022049"), -- Lethal Whirlwind
-				A("18716033506"), -- Hunter's Grasp
-				A("18716169065"), -- Crushed Rock
-			},
-			MoveNames = {"SILENT COUNTER", "LETHAL WHIRLWIND", "HUNTER'S GRASP", "CRUSHED RESOLVE"},
-			Awk = A("18716153127"),
-			Ult = A("12467789963"), -- The Final Hunt
-			UltName = "THE FINAL HUNT",
-		},
-	},
+	for _, connection in ipairs(list) do
 
-	Yotsuba = {
-		Decal = "rbxassetid://127206472590344",
-		Color1 = Color3.fromRGB(255, 60, 40),
-		Color2 = Color3.fromRGB(255, 170, 90),
-		EngineName = "ONE PUNCH ENGINE",
-		Anim = {
-			Spawn = A("18715800557"),
-			WallCombo = A("18715829082"),
-			M1 = {A("18715812734"), A("18715817240"), A("18715818827"), A("18715820628")},
-			Move = {
-				A("18715831781"), -- Consecutive Normal Punches
-				A("18715837899"), -- Normal Uppercut
-				A("18715842262"), -- Normal Punch
-				A("18715845645"), -- Normal Shove
-			},
-			MoveNames = {"CONSECUTIVE PUNCHES", "SERIOUS UPPERCUT", "SERIOUS PUNCH", "SERIOUS SHOVE"},
-			Awk = A("12447707844"),
-			Ult = A("18715898844"), -- Awk Serious Punch
-			UltName = "SERIOUS PUNCH",
-		},
-	},
-
-	Itsuki = {
-		Decal = "rbxassetid://115613783620344",
-		Color1 = Color3.fromRGB(255, 170, 40),
-		Color2 = Color3.fromRGB(255, 225, 150),
-		EngineName = "BLADE ENGINE",
-		Anim = {
-			Spawn = A("18716865654"),
-			WallCombo = A("18716867254"),
-			M1 = {A("15259161390"), A("15240216931"), A("15240176873"), A("15162694192")},
-			Move = {
-				A("18716871856"), -- Pinpoint Cut
-				A("15145462680"), -- Atmos Cleave
-				A("15290930205"), -- Quick Slice
-				A("15334974550"), -- Split Second Counter
-			},
-			MoveNames = {"PINPOINT CUT", "ATMOS CLEAVE", "QUICK SLICE", "SPLIT SECOND COUNTER"},
-			Awk = A("18716880183"),
-			Ult = A("18716893399"), -- Atomic Slash
-			UltName = "ATOMIC SLASH",
-		},
-	},
-}
-
--- ================================================================
--- HELPERS
--- ================================================================
-
-local function getCharacter()
-	local character = LocalPlayer.Character
-	if not character then return nil, nil, nil end
-	local humanoid = character:FindFirstChildOfClass("Humanoid")
-	local root = character:FindFirstChild("HumanoidRootPart")
-	if not humanoid or not root then return nil, nil, nil end
-	return character, humanoid, root
-end
-
-local function getAnimator(humanoid: Humanoid)
-	local animator = humanoid:FindFirstChildOfClass("Animator")
-	if not animator then
-		animator = Instance.new("Animator")
-		animator.Parent = humanoid
-	end
-	return animator
-end
-
-local function playAnimation(humanoid: Humanoid, id: string, speed: number?, duration: number?)
-	if humanoid.Health <= 0 then return nil end
-	local animator = getAnimator(humanoid)
-	local animation = Instance.new("Animation")
-	animation.AnimationId = id
-	local success, track = pcall(function() return animator:LoadAnimation(animation) end)
-	animation:Destroy()
-	if not success or not track then return nil end
-
-	track.Priority = Enum.AnimationPriority.Action4
-	table.insert(S.Tracks, track)
-	pcall(function() track:Play(0.04, 1, speed or 1) end)
-
-	if duration then
-		task.delay(duration, function()
-			pcall(function()
-				if track.IsPlaying then track:Stop(0.06) end
-			end)
-		end)
-	end
-	return track
-end
-
-local function disconnectList(list)
-	for i = #list, 1, -1 do
-		pcall(function() list[i]:Disconnect() end)
-		list[i] = nil
-	end
-end
-
-local function cleanupTracks()
-	for i = #S.Tracks, 1, -1 do
 		pcall(function()
-			if S.Tracks[i].IsPlaying then S.Tracks[i]:Stop(0.05) end
-			S.Tracks[i]:Destroy()
+
+			connection:Disconnect()
+
 		end)
-		S.Tracks[i] = nil
+
 	end
+
+
+	table.clear(list)
+
 end
 
-local function getFXFolder()
-	local folder = Workspace:FindFirstChild("R4Fix_5SisFX")
+
+
+local function Track(connection)
+
+	table.insert(
+		SESSION.CharacterConnections,
+		connection
+	)
+
+
+	return connection
+
+end
+
+
+
+-- ================================================================
+-- VFX FOLDER
+-- ================================================================
+
+
+local function GetVFXFolder()
+
+
+	local folder =
+		workspace:FindFirstChild(
+			"Ichika_Cyborg_VFX"
+		)
+
+
 	if not folder then
-		folder = Instance.new("Folder")
-		folder.Name = "R4Fix_5SisFX"
-		folder.Parent = Workspace
+
+
+		folder =
+			Instance.new("Folder")
+
+
+		folder.Name =
+			"Ichika_Cyborg_VFX"
+
+
+		folder.Parent =
+			workspace
+
+
 	end
+
+
 	return folder
+
 end
 
-local function currentTheme()
-	return SISTERS[S.Active]
-end
+
 
 -- ================================================================
--- VFX
+-- COOLDOWN
 -- ================================================================
 
-local function burst(root: BasePart, size: number, duration: number)
-	if not root.Parent then return end
-	local theme = currentTheme()
-	local part = Instance.new("Part")
-	part.Anchored = true
-	part.CanCollide = false
-	part.CanTouch = false
-	part.CanQuery = false
-	part.CastShadow = false
-	part.Shape = Enum.PartType.Ball
-	part.Material = Enum.Material.Neon
-	part.Color = theme.Color1
-	part.Transparency = 0.15
-	part.Size = Vector3.one
-	part.CFrame = root.CFrame
-	part.Parent = getFXFolder()
 
-	TweenService:Create(part, TweenInfo.new(duration, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
-		Size = Vector3.new(size, size, size),
-		Transparency = 1,
-	}):Play()
-	Debris:AddItem(part, duration + 0.05)
+local function Allowed(
+	key:string,
+	time:number
+)
+
+
+	local now =
+		os.clock()
+
+
+	local last =
+		SESSION.LastEffect[key]
+		or
+		0
+
+
+
+	if now-last < time then
+
+		return false
+
+	end
+
+
+
+	SESSION.LastEffect[key] =
+		now
+
+
+	return true
+
 end
 
-local function ring(root: BasePart, startSize: number, endSize: number, duration: number)
-	if not root.Parent then return end
-	local theme = currentTheme()
-	local part = Instance.new("Part")
-	part.Anchored = true
-	part.CanCollide = false
-	part.CanTouch = false
-	part.CanQuery = false
-	part.CastShadow = false
-	part.Shape = Enum.PartType.Cylinder
-	part.Material = Enum.Material.Neon
-	part.Color = theme.Color2
-	part.Transparency = 0.25
-	part.Size = Vector3.new(0.08, startSize, startSize)
-	part.CFrame = root.CFrame * CFrame.Angles(0, 0, math.rad(90))
-	part.Parent = getFXFolder()
 
-	TweenService:Create(part, TweenInfo.new(duration, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
-		Size = Vector3.new(0.08, endSize, endSize),
-		Transparency = 1,
-	}):Play()
-	Debris:AddItem(part, duration + 0.05)
-end
-
-local function particlePop(root: BasePart, amount: number)
-	if not root.Parent then return end
-	local theme = currentTheme()
-	local attachment = Instance.new("Attachment")
-	attachment.Parent = root
-	local emitter = Instance.new("ParticleEmitter")
-	emitter.Color = ColorSequence.new(theme.Color1, theme.Color2)
-	emitter.LightEmission = 1
-	emitter.Lifetime = NumberRange.new(0.2, 0.45)
-	emitter.Speed = NumberRange.new(4, 12)
-	emitter.SpreadAngle = Vector2.new(180, 180)
-	emitter.Size = NumberSequence.new({
-		NumberSequenceKeypoint.new(0, 0.6),
-		NumberSequenceKeypoint.new(1, 0),
-	})
-	emitter.Rate = 0
-	emitter.Parent = attachment
-	emitter:Emit(amount)
-	Debris:AddItem(attachment, 0.6)
-end
 
 -- ================================================================
--- TARGETING & DASH (no teleport — velocity dash, stops short, can whiff)
+-- TARGET SYSTEM
 -- ================================================================
 
-local function findClosestTarget(origin: Vector3, maxRange: number)
-	local ownCharacter = LocalPlayer.Character
-	if not ownCharacter then return nil end
-	local best, bestDist = nil, maxRange
-	for _, plr in ipairs(Players:GetPlayers()) do
-		if plr.Character and plr.Character ~= ownCharacter then
-			local root = plr.Character:FindFirstChild("HumanoidRootPart")
-			local hum = plr.Character:FindFirstChildOfClass("Humanoid")
-			if root and hum and hum.Health > 0 then
-				local dist = (root.Position - origin).Magnitude
-				if dist < bestDist then
-					bestDist = dist
-					best = root
+
+local function GetClosestPlayer()
+
+
+	local Character =
+		Player.Character
+
+
+	if not Character then
+		return nil
+	end
+
+
+
+	local Root =
+		Character:FindFirstChild(
+			"HumanoidRootPart"
+		)
+
+
+
+	if not Root then
+		return nil
+	end
+
+
+
+	local closest
+	local distance =
+		math.huge
+
+
+
+	for _,plr in ipairs(
+		Players:GetPlayers()
+	) do
+
+
+
+		if plr ~= Player
+		and plr.Character then
+
+
+			local enemyRoot =
+				plr.Character:FindFirstChild(
+					"HumanoidRootPart"
+				)
+
+
+			local humanoid =
+				plr.Character:FindFirstChildOfClass(
+					"Humanoid"
+				)
+
+
+
+			if enemyRoot
+			and humanoid
+			and humanoid.Health > 0 then
+
+
+
+				local dist =
+					(
+					Root.Position
+					-
+					enemyRoot.Position
+					).Magnitude
+
+
+
+				if dist < distance then
+
+
+					distance =
+						dist
+
+
+					closest =
+						plr.Character
+
+
 				end
+
 			end
+
+
 		end
-	end
-	return best
-end
 
-local function engineDash(targetRoot: BasePart, speed: number, duration: number, stopDistance: number)
-	local character, humanoid, root = getCharacter()
-	if not character or not humanoid or not root then return false end
-	if humanoid.Health <= 0 then return false end
 
-	local attachment = Instance.new("Attachment")
-	attachment.Parent = root
-	local velocity = Instance.new("LinearVelocity")
-	velocity.Attachment0 = attachment
-	velocity.MaxForce = math.huge
-	velocity.RelativeTo = Enum.ActuatorRelativeTo.World
-	velocity.Parent = root
-
-	local a0, a1 = Instance.new("Attachment"), Instance.new("Attachment")
-	a0.Position = Vector3.new(-1, 0, 0)
-	a1.Position = Vector3.new(1, 0, 0)
-	a0.Parent = root
-	a1.Parent = root
-
-	local theme = currentTheme()
-	local trail = Instance.new("Trail")
-	trail.Attachment0 = a0
-	trail.Attachment1 = a1
-	trail.Lifetime = 0.15
-	trail.LightEmission = 1
-	trail.Color = ColorSequence.new(theme.Color1, theme.Color2)
-	trail.Transparency = NumberSequence.new(0.1, 1)
-	trail.Parent = root
-
-	local started = os.clock()
-	local reached = false
-
-	while os.clock() - started < duration do
-		if humanoid.Health <= 0 or not root.Parent or not targetRoot.Parent then break end
-		local toTarget = targetRoot.Position - root.Position
-		local dist = toTarget.Magnitude
-		if dist <= stopDistance then
-			reached = true
-			break
-		end
-		local dir = toTarget.Unit
-		velocity.VectorVelocity = Vector3.new(dir.X * speed, 0, dir.Z * speed)
-		root.CFrame = CFrame.lookAt(root.Position, root.Position + Vector3.new(dir.X, 0, dir.Z))
-		RunService.Heartbeat:Wait()
 	end
 
-	pcall(function() velocity:Destroy() end)
-	pcall(function() attachment:Destroy() end)
-	pcall(function() a0:Destroy() end)
-	pcall(function() a1:Destroy() end)
-	pcall(function() trail:Destroy() end)
-	if root.Parent then root.AssemblyLinearVelocity = Vector3.zero end
 
-	return reached
+
+	return closest
+
 end
-
 -- ================================================================
--- M1
+-- ANIMATION SYSTEM
 -- ================================================================
 
-local lastM1 = 0
-local m1Index = 0
 
-local function creatorM1()
-	local now = os.clock()
-	if now - lastM1 < CFG.M1Cooldown then return end
-	lastM1 = now
+local function GetAnimator(humanoid: Humanoid)
 
-	local character, humanoid, root = getCharacter()
-	if not character or not humanoid or not root then return end
-	if humanoid.Health <= 0 then return end
+	local animator =
+		humanoid:FindFirstChildOfClass(
+			"Animator"
+		)
 
-	local theme = currentTheme()
-	local target = findClosestTarget(root.Position, CFG.M1DashRange)
+	if not animator then
 
-	m1Index = (m1Index % 4) + 1
+		animator =
+			Instance.new("Animator")
 
-	if target then
-		engineDash(target, CFG.M1DashSpeed, 0.22, 3.2)
+		animator.Parent =
+			humanoid
+
 	end
 
-	playAnimation(humanoid, theme.Anim.M1[m1Index], 1.1, 0.35)
-	burst(root, 3, 0.12)
-	particlePop(root, 6)
+
+	return animator
+
 end
 
--- ================================================================
--- WALL COMBO
--- ================================================================
 
-local lastWallCombo = 0
 
-local function wallCombo()
-	if os.clock() - lastWallCombo < 4 then return end
-	lastWallCombo = os.clock()
+local function PlayAnimation(
+	humanoid: Humanoid,
+	id:string,
+	priority:Enum.AnimationPriority?,
+	speed:number?
+)
 
-	local character, humanoid, root = getCharacter()
-	if not character or not humanoid or not root then return end
 
-	local theme = currentTheme()
-	playAnimation(humanoid, theme.Anim.WallCombo, 1, 1.0)
-	burst(root, 5, 0.18)
-	ring(root, 2, 14, 0.25)
-	particlePop(root, 10)
-end
-
--- ================================================================
--- MOVES 1–4
--- ================================================================
-
-local function runMove(index: number)
-	if S.Busy["Move" .. index] then return end
-	S.Busy["Move" .. index] = true
-
-	local character, humanoid, root = getCharacter()
-	if not character or not humanoid or not root then
-		S.Busy["Move" .. index] = nil
+	if not humanoid then
 		return
 	end
 
-	local theme = currentTheme()
-	local target = findClosestTarget(root.Position, CFG.DashRange)
 
-	if target and index <= 3 then
-		engineDash(target, CFG.DashSpeed, CFG.DashDuration, CFG.DashStop)
+	local animation =
+		Instance.new("Animation")
+
+
+	animation.AnimationId =
+		id
+
+
+
+	local animator =
+		GetAnimator(
+			humanoid
+		)
+
+
+
+	local success,track =
+		pcall(function()
+
+			return animator:LoadAnimation(
+				animation
+			)
+
+		end)
+
+
+
+	animation:Destroy()
+
+
+
+	if success and track then
+
+
+		track.Priority =
+			priority
+			or
+			Enum.AnimationPriority.Action
+
+
+
+		track.Looped =
+			false
+
+
+
+		track:Play(
+			0.05,
+			1,
+			speed or 1
+		)
+
+
+
+		return track
+
 	end
 
-	playAnimation(humanoid, theme.Anim.Move[index], 1, 0.7)
-	burst(root, 4 + index * 1.5, 0.16)
-	ring(root, 2, 10 + index * 4, 0.24)
-	particlePop(root, 6 + index * 2)
 
-	print("[5SIS] " .. S.Active .. " used " .. theme.Anim.MoveNames[index])
-
-	task.delay(CFG.MoveCooldown[index], function()
-		S.Busy["Move" .. index] = nil
-	end)
 end
 
+
+
 -- ================================================================
--- ULTIMATE
+-- CYBER BURST
 -- ================================================================
 
-local lastUlt = 0
 
-local function runUltimate()
-	local now = os.clock()
-	if now - lastUlt < CFG.UltCooldown then return end
-	if S.UltActive then return end
-	lastUlt = now
+local function CyberBurst(
+	cframe:CFrame,
+	size:number,
+	key:string?
+)
 
-	local character, humanoid, root = getCharacter()
-	if not character or not humanoid or not root then return end
 
-	local theme = currentTheme()
-	S.UltActive = true
+	if key
+	and not Allowed(
+		key,
+		CONFIG.VFXCooldown
+	)
+	then
 
-	playAnimation(humanoid, theme.Anim.Ult, 1, 1.3)
+		return
 
-	local pulses = {
-		{delay = 0.00, burstSize = 8,  ringSize = 14},
-		{delay = 0.08, burstSize = 12, ringSize = 23},
-		{delay = 0.16, burstSize = 16, ringSize = 32},
-		{delay = 0.24, burstSize = 20, ringSize = 41},
-	}
-
-	for _, p in ipairs(pulses) do
-		task.delay(p.delay, function()
-			if root.Parent then
-				burst(root, p.burstSize, 0.32)
-				ring(root, 2, p.ringSize, 0.42)
-				particlePop(root, 14)
-			end
-		end)
 	end
 
-	local light = Instance.new("PointLight")
-	light.Brightness = 12
-	light.Range = 28
-	light.Color = theme.Color1
-	light.Parent = root
-	TweenService:Create(light, TweenInfo.new(CFG.UltDuration), {Brightness = 0, Range = 0}):Play()
-	Debris:AddItem(light, CFG.UltDuration + 0.2)
 
-	local auraAttachment = Instance.new("Attachment")
-	auraAttachment.Parent = root
-	local aura = Instance.new("ParticleEmitter")
-	aura.Color = ColorSequence.new(theme.Color1, theme.Color2)
-	aura.LightEmission = 1
-	aura.Rate = 18
-	aura.Lifetime = NumberRange.new(0.3, 0.6)
-	aura.Speed = NumberRange.new(1, 3)
-	aura.SpreadAngle = Vector2.new(180, 180)
-	aura.Size = NumberSequence.new({
-		NumberSequenceKeypoint.new(0, 0.4),
-		NumberSequenceKeypoint.new(1, 0),
-	})
-	aura.Parent = auraAttachment
 
-	pcall(function()
-		StarterGui:SetCore("SendNotification", {
-			Title = S.Active:upper(),
-			Text = theme.Anim.UltName,
-			Icon = theme.Decal,
-			Duration = 4,
+	local part =
+		Instance.new("Part")
+
+
+	part.Name =
+		"IchikaCyberBurst"
+
+
+
+	part.Anchored =
+		true
+
+
+	part.CanCollide =
+		false
+
+
+	part.CanTouch =
+		false
+
+
+	part.CanQuery =
+		false
+
+
+
+	part.Material =
+		Enum.Material.Neon
+
+
+
+	part.Shape =
+		Enum.PartType.Ball
+
+
+
+	part.Color =
+		YELLOW
+
+
+
+	part.Transparency =
+		0.15
+
+
+
+	part.Size =
+		Vector3.one
+
+
+
+	part.CFrame =
+		cframe
+
+
+
+	part.Parent =
+		GetVFXFolder()
+
+
+
+	local light =
+		Instance.new("PointLight")
+
+
+
+	light.Color =
+		YELLOW
+
+
+
+	light.Brightness =
+		8
+
+
+
+	light.Range =
+		25
+
+
+
+	light.Parent =
+		part
+
+
+
+	TweenService:Create(
+		part,
+		TweenInfo.new(
+			0.35,
+			Enum.EasingStyle.Quint,
+			Enum.EasingDirection.Out
+		),
+		{
+
+			Size =
+				Vector3.new(
+					size,
+					size,
+					size
+				),
+
+
+			Transparency =
+				1
+
+		}
+	):Play()
+
+
+
+	TweenService:Create(
+		light,
+		TweenInfo.new(
+			0.35
+		),
+		{
+
+			Brightness =
+				0,
+
+
+			Range =
+				0
+
+		}
+	):Play()
+
+
+
+	Debris:AddItem(
+		part,
+		0.5
+	)
+
+end
+
+
+
+-- ================================================================
+-- CYBER RING
+-- ================================================================
+
+
+local function CyberRing(
+	cframe:CFrame,
+	size:number
+)
+
+
+	local ring =
+		Instance.new("Part")
+
+
+
+	ring.Name =
+		"CyberEnergyRing"
+
+
+
+	ring.Anchored =
+		true
+
+
+	ring.CanCollide =
+		false
+
+
+
+	ring.Material =
+		Enum.Material.Neon
+
+
+
+	ring.Shape =
+		Enum.PartType.Cylinder
+
+
+
+	ring.Color =
+		GOLD
+
+
+
+	ring.Transparency =
+		0.25
+
+
+
+	ring.Size =
+		Vector3.new(
+			0.1,
+			2,
+			2
+		)
+
+
+
+	ring.CFrame =
+		cframe
+		*
+		CFrame.Angles(
+			0,
+			0,
+			math.rad(90)
+		)
+
+
+
+	ring.Parent =
+		GetVFXFolder()
+
+
+
+	TweenService:Create(
+		ring,
+		TweenInfo.new(
+			0.45,
+			Enum.EasingStyle.Quint
+		),
+		{
+
+
+			Size =
+				Vector3.new(
+					0.1,
+					size,
+					size
+				),
+
+
+			Transparency =
+				1
+
+
+		}
+	):Play()
+
+
+
+	Debris:AddItem(
+		ring,
+		0.6
+	)
+
+end
+
+
+
+-- ================================================================
+-- GLITCH PARTICLES
+-- ================================================================
+
+
+local function CyberParticles(
+	parent:BasePart,
+	amount:number
+)
+
+
+	local attachment =
+		Instance.new("Attachment")
+
+
+
+	attachment.Name =
+		"IchikaCyberParticles"
+
+
+
+	attachment.Parent =
+		parent
+
+
+
+	local emitter =
+		Instance.new("ParticleEmitter")
+
+
+
+	emitter.Texture =
+		"rbxasset://textures/particles/sparkles_main.dds"
+
+
+
+	emitter.Color =
+		ColorSequence.new({
+
+			ColorSequenceKeypoint.new(
+				0,
+				WHITE
+			),
+
+
+			ColorSequenceKeypoint.new(
+				0.5,
+				YELLOW
+			),
+
+
+			ColorSequenceKeypoint.new(
+				1,
+				GOLD
+			)
+
 		})
-	end)
 
-	task.delay(CFG.UltDuration, function()
-		pcall(function() aura:Destroy() end)
-		pcall(function() auraAttachment:Destroy() end)
-		S.UltActive = false
-	end)
-end
 
--- ================================================================
--- BACKGROUND MUSIC
--- ================================================================
 
-local function startMusic()
-	pcall(function()
-		local url = "https://github.com/r4faelllaust/R4Fix/raw/refs/heads/main/5sis.mp3"
-		if not isfile or not isfile("5sis_theme.mp3") then
-			local data = game:HttpGet(url)
-			writefile("5sis_theme.mp3", data)
-		end
-		local existing = SoundService:FindFirstChild("R4Fix_5SisMusic")
-		if existing then existing:Destroy() end
-		local sound = Instance.new("Sound")
-		sound.Name = "R4Fix_5SisMusic"
-		sound.SoundId = getcustomasset("5sis_theme.mp3")
-		sound.Looped = true
-		sound.Volume = 0.5
-		sound.Parent = SoundService
-		sound:Play()
-	end)
-end
+	emitter.LightEmission =
+		1
 
--- ================================================================
--- SISTER SWITCHING
--- ================================================================
 
-local function switchSister(name: string)
-	if not SISTERS[name] then return end
-	S.Active = name
 
-	local character, humanoid, root = getCharacter()
-	if root then
-		burst(root, 6, 0.2)
-		ring(root, 2, 16, 0.25)
-	end
+	emitter.Rate =
+		0
 
-	pcall(function()
-		StarterGui:SetCore("SendNotification", {
-			Title = "MOVESET SWITCHED",
-			Text = name .. " — " .. SISTERS[name].EngineName,
-			Icon = SISTERS[name].Decal,
-			Duration = 3,
+
+
+	emitter.Lifetime =
+		NumberRange.new(
+			0.3,
+			0.8
+		)
+
+
+
+	emitter.Speed =
+		NumberRange.new(
+			5,
+			12
+		)
+
+
+
+	emitter.SpreadAngle =
+		Vector2.new(
+			360,
+			360
+		)
+
+
+
+	emitter.Size =
+		NumberSequence.new({
+
+			NumberSequenceKeypoint.new(
+				0,
+				0.4
+			),
+
+
+			NumberSequenceKeypoint.new(
+				1,
+				0
+			)
+
 		})
+
+
+
+	emitter.Parent =
+		attachment
+
+
+
+	emitter:Emit(
+		amount
+	)
+
+
+
+	Debris:AddItem(
+		attachment,
+		1
+	)
+
+end
+
+
+
+-- ================================================================
+-- CYBORG AURA
+-- ================================================================
+
+
+local function CreateCyberAura(
+	root:BasePart
+)
+
+
+	local attachment =
+		Instance.new("Attachment")
+
+
+
+	attachment.Name =
+		"IchikaCyberAura"
+
+
+
+	attachment.Parent =
+		root
+
+
+
+	local emitter =
+		Instance.new("ParticleEmitter")
+
+
+
+	emitter.Texture =
+		"rbxasset://textures/particles/sparkles_main.dds"
+
+
+
+	emitter.Color =
+		ColorSequence.new({
+
+			ColorSequenceKeypoint.new(
+				0,
+				LIGHT_YELLOW
+			),
+
+
+			ColorSequenceKeypoint.new(
+				0.5,
+				YELLOW
+			),
+
+
+			ColorSequenceKeypoint.new(
+				1,
+				GOLD
+			)
+
+		})
+
+
+
+	emitter.LightEmission =
+		0.9
+
+
+
+	emitter.Rate =
+		12
+
+
+
+	emitter.Lifetime =
+		NumberRange.new(
+			0.5,
+			1
+		)
+
+
+
+	emitter.Speed =
+		NumberRange.new(
+			1,
+			3
+		)
+
+
+
+	emitter.SpreadAngle =
+		Vector2.new(
+			360,
+			360
+		)
+
+
+
+	emitter.Size =
+		NumberSequence.new({
+
+			NumberSequenceKeypoint.new(
+				0,
+				0.3
+			),
+
+
+			NumberSequenceKeypoint.new(
+				0.5,
+				0.8
+			),
+
+
+			NumberSequenceKeypoint.new(
+				1,
+				0
+			)
+
+		})
+
+
+
+	emitter.Parent =
+		attachment
+
+
+
+	table.insert(
+		SESSION.AuraObjects,
+		attachment
+	)
+
+end
+
+
+
+-- ================================================================
+-- CYBER HAND GLOW
+-- ================================================================
+
+
+local function CreateHandGlow(
+	character:Model
+)
+
+
+	for _,name in ipairs({
+
+		"Left Arm",
+		"Right Arm",
+		"LeftHand",
+		"RightHand",
+		"LeftLowerArm",
+		"RightLowerArm"
+
+	}) do
+
+
+
+		local limb =
+			character:FindFirstChild(
+				name
+			)
+
+
+
+		if limb
+		and limb:IsA("BasePart")
+		then
+
+
+
+			local highlight =
+				Instance.new("Highlight")
+
+
+
+			highlight.Name =
+				"IchikaCyberGlow"
+
+
+
+			highlight.Adornee =
+				limb
+
+
+
+			highlight.FillColor =
+				YELLOW
+
+
+
+			highlight.OutlineColor =
+				WHITE
+
+
+
+			highlight.FillTransparency =
+				0.85
+
+
+
+			highlight.OutlineTransparency =
+				0.1
+
+
+
+			highlight.Parent =
+				limb
+
+
+
+			table.insert(
+				SESSION.AuraObjects,
+				highlight
+			)
+
+
+
+		end
+
+
+	end
+
+end
+
+
+
+-- ================================================================
+-- CYBER TRAILS
+-- ================================================================
+
+
+local function CreateCyberTrails(
+	character:Model
+)
+
+
+	for _,name in ipairs({
+
+		"Left Arm",
+		"Right Arm",
+		"LeftHand",
+		"RightHand"
+
+	}) do
+
+
+
+		local limb =
+			character:FindFirstChild(
+				name
+			)
+
+
+
+		if limb
+		and limb:IsA("BasePart")
+		then
+
+
+
+			local a0 =
+				Instance.new("Attachment")
+
+
+
+			a0.Position =
+				Vector3.new(
+					0,
+					-0.5,
+					0
+				)
+
+
+
+			a0.Parent =
+				limb
+
+
+
+
+			local a1 =
+				Instance.new("Attachment")
+
+
+
+			a1.Position =
+				Vector3.new(
+					0,
+					0.5,
+					0
+				)
+
+
+
+			a1.Parent =
+				limb
+
+
+
+
+			local trail =
+				Instance.new("Trail")
+
+
+
+			trail.Name =
+				"IchikaGoldenBladeTrail"
+
+
+
+			trail.Attachment0 =
+				a0
+
+
+
+			trail.Attachment1 =
+				a1
+
+
+
+			trail.Color =
+				ColorSequence.new(
+					YELLOW
+				)
+
+
+
+			trail.LightEmission =
+				1
+
+
+
+			trail.Lifetime =
+				0.45
+
+
+
+			trail.Transparency =
+				NumberSequence.new({
+
+					NumberSequenceKeypoint.new(
+						0,
+						0
+					),
+
+					NumberSequenceKeypoint.new(
+						1,
+						1
+					)
+
+				})
+
+
+
+			trail.Parent =
+				limb
+
+
+
+			table.insert(
+				SESSION.AuraObjects,
+				trail
+			)
+
+
+
+		end
+
+	end
+
+end
+-- ================================================================
+-- TELEPORT BEHIND TARGET
+-- ================================================================
+
+
+local function TeleportBehindTarget()
+
+
+	local target =
+		GetClosestPlayer()
+
+
+
+	if not target then
+		return nil
+	end
+
+
+
+	local character =
+		Player.Character
+
+
+
+	if not character then
+		return nil
+	end
+
+
+
+	local root =
+		character:FindFirstChild(
+			"HumanoidRootPart"
+		)
+
+
+
+	local enemyRoot =
+		target:FindFirstChild(
+			"HumanoidRootPart"
+		)
+
+
+
+	if not root
+	or not enemyRoot then
+		return nil
+	end
+
+
+
+	local position =
+		enemyRoot.Position
+		-
+		enemyRoot.CFrame.LookVector * 3
+
+
+
+	root.CFrame =
+		CFrame.lookAt(
+			position,
+			enemyRoot.Position
+		)
+
+
+
+	CyberBurst(
+		root.CFrame,
+		8,
+		"teleport"
+	)
+
+
+
+	CyberParticles(
+		root,
+		20
+	)
+
+
+
+	return target
+
+end
+
+
+
+-- ================================================================
+-- AFTERIMAGE EFFECT
+-- ================================================================
+
+
+local function CreateAfterImage()
+
+
+	local character =
+		Player.Character
+
+
+
+	if not character then
+		return
+	end
+
+
+
+	local clone
+
+
+
+	pcall(function()
+
+		clone =
+			character:Clone()
+
 	end)
 
-	print("[5SIS] Active sister: " .. name)
+
+
+	if not clone then
+		return
+	end
+
+
+
+	for _,obj in ipairs(
+		clone:GetDescendants()
+	) do
+
+
+
+		if obj:IsA("BasePart") then
+
+
+			obj.Anchored =
+				true
+
+
+			obj.CanCollide =
+				false
+
+
+			obj.Material =
+				Enum.Material.Neon
+
+
+			obj.Color =
+				YELLOW
+
+
+			obj.Transparency =
+				0.55
+
+
+
+		elseif obj:IsA("Script")
+		or obj:IsA("LocalScript")
+		then
+
+
+			obj:Destroy()
+
+		end
+
+
+	end
+
+
+
+	clone.Name =
+		"IchikaCyberAfterImage"
+
+
+
+	clone.Parent =
+		GetVFXFolder()
+
+
+
+	local fadeTime =
+		0.45
+
+
+
+	for _,part in ipairs(
+		clone:GetDescendants()
+	) do
+
+
+		if part:IsA("BasePart") then
+
+
+			TweenService:Create(
+				part,
+				TweenInfo.new(
+					fadeTime
+				),
+				{
+
+					Transparency =
+						1
+
+				}
+			):Play()
+
+
+		end
+
+
+	end
+
+
+
+	Debris:AddItem(
+		clone,
+		0.6
+	)
+
 end
 
--- ================================================================
--- INPUT
--- ================================================================
 
-local KEY_TO_MOVE = {
-	[Enum.KeyCode.Q] = 1,
-	[Enum.KeyCode.E] = 2,
-	[Enum.KeyCode.R] = 3,
-	[Enum.KeyCode.F] = 4,
-}
-
-local KEY_TO_SISTER = {
-	[Enum.KeyCode.One] = "Ichika",
-	[Enum.KeyCode.Two] = "Nino",
-	[Enum.KeyCode.Three] = "Miku",
-	[Enum.KeyCode.Four] = "Yotsuba",
-	[Enum.KeyCode.Five] = "Itsuki",
-}
-
-local function setupInput()
-	table.insert(S.Connections, UserInputService.InputBegan:Connect(function(input, processed)
-		if processed then return end
-
-		if input.UserInputType == Enum.UserInputType.MouseButton1 then
-			creatorM1()
-			return
-		end
-
-		if input.KeyCode == Enum.KeyCode.T then
-			runUltimate()
-			return
-		end
-
-		if input.KeyCode == Enum.KeyCode.G then
-			wallCombo()
-			return
-		end
-
-		local moveIndex = KEY_TO_MOVE[input.KeyCode]
-		if moveIndex then
-			runMove(moveIndex)
-			return
-		end
-
-		local sisterName = KEY_TO_SISTER[input.KeyCode]
-		if sisterName then
-			switchSister(sisterName)
-		end
-	end))
-end
 
 -- ================================================================
--- MOBILE GUI
+-- MOVE 1
+-- CYBER STRIKE
 -- ================================================================
 
-local function setupMobileGui()
-	local playerGui = LocalPlayer:WaitForChild("PlayerGui")
 
-	local screenGui = Instance.new("ScreenGui")
-	screenGui.Name = "R4Fix_5SisGui"
-	screenGui.ResetOnSpawn = false
-	screenGui.Parent = playerGui
+local function CyberStrike()
 
-	local frame = Instance.new("Frame")
-	frame.Size = UDim2.fromOffset(260, 90)
-	frame.Position = UDim2.new(1, -270, 1, -140)
-	frame.BackgroundTransparency = 1
-	frame.Parent = screenGui
 
-	local layout = Instance.new("UIGridLayout")
-	layout.CellSize = UDim2.fromOffset(48, 40)
-	layout.CellPadding = UDim2.fromOffset(4, 4)
-	layout.Parent = frame
+	local character =
+		Player.Character
 
-	local labels = {"Q", "E", "R", "F", "WALL", "ULT"}
-	for i, label in ipairs(labels) do
-		local button = Instance.new("TextButton")
-		button.Text = label
-		button.Font = Enum.Font.GothamBold
-		button.TextScaled = true
-		button.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-		button.TextColor3 = Color3.fromRGB(255, 255, 255)
-		button.Parent = frame
 
-		button.Activated:Connect(function()
-			if label == "ULT" then
-				runUltimate()
-			elseif label == "WALL" then
-				wallCombo()
-			else
-				runMove(i)
+
+	if not character then
+		return
+	end
+
+
+
+	local humanoid =
+		character:FindFirstChildOfClass(
+			"Humanoid"
+		)
+
+
+
+	local root =
+		character:FindFirstChild(
+			"HumanoidRootPart"
+		)
+
+
+
+	if not humanoid
+	or not root then
+		return
+	end
+
+
+
+	PlayAnimation(
+		humanoid,
+		CYBER_STRIKE_ANIMATION,
+		Enum.AnimationPriority.Action
+	)
+
+
+
+	CyberBurst(
+		root.CFrame,
+		14,
+		"cyberstrike"
+	)
+
+
+
+	CyberRing(
+		root.CFrame,
+		25
+	)
+
+
+
+	CyberParticles(
+		root,
+		45
+	)
+
+
+
+	-- rapid assassin movement
+
+
+	for i = 1,3 do
+
+
+		task.delay(
+			i * 0.08,
+			function()
+
+
+				CreateAfterImage()
+
+
+
 			end
-		end)
+		)
+
+
 	end
 
-	local sisterFrame = Instance.new("Frame")
-	sisterFrame.Size = UDim2.fromOffset(260, 40)
-	sisterFrame.Position = UDim2.new(1, -270, 1, -190)
-	sisterFrame.BackgroundTransparency = 1
-	sisterFrame.Parent = screenGui
 
-	local sisterLayout = Instance.new("UIGridLayout")
-	sisterLayout.CellSize = UDim2.fromOffset(48, 36)
-	sisterLayout.CellPadding = UDim2.fromOffset(4, 4)
-	sisterLayout.Parent = sisterFrame
 
-	for _, name in ipairs({"Ichika", "Nino", "Miku", "Yotsuba", "Itsuki"}) do
-		local button = Instance.new("TextButton")
-		button.Text = name:sub(1, 3)
-		button.Font = Enum.Font.GothamBold
-		button.TextScaled = true
-		button.BackgroundColor3 = SISTERS[name].Color1
-		button.TextColor3 = Color3.new(0, 0, 0)
-		button.Parent = sisterFrame
+end
 
-		button.Activated:Connect(function()
-			switchSister(name)
-		end)
+
+
+-- ================================================================
+-- MOVE 2
+-- PHANTOM ENGINE: CYBER MODE
+-- ================================================================
+
+
+local function PhantomEngine()
+
+
+	local character =
+		Player.Character
+
+
+
+	if not character then
+		return
 	end
+
+
+
+	local humanoid =
+		character:FindFirstChildOfClass(
+			"Humanoid"
+		)
+
+
+
+	local root =
+		character:FindFirstChild(
+			"HumanoidRootPart"
+		)
+
+
+
+	if not humanoid
+	or not root then
+		return
+	end
+
+
+
+	PlayAnimation(
+		humanoid,
+		PHANTOM_ENGINE_ANIMATION,
+		Enum.AnimationPriority.Action
+	)
+
+
+
+	-- teleport assassination
+
+
+	local target =
+		TeleportBehindTarget()
+
+
+
+	if target then
+
+
+		for i = 1,5 do
+
+
+			task.delay(
+				i * 0.05,
+				function()
+
+
+					CreateAfterImage()
+
+
+
+					CyberBurst(
+						root.CFrame,
+						6,
+						"phantom_"..i
+					)
+
+
+
+				end
+			)
+
+
+		end
+
+
+	end
+
+
+
+	CyberRing(
+		root.CFrame,
+		45
+	)
+
+
+
+	CyberParticles(
+		root,
+		80
+	)
+
+
+
 end
 
+
+
 -- ================================================================
--- CHARACTER SETUP
+-- MOVE 3
+-- GOLDEN OVERCLOCK
 -- ================================================================
 
-local function cleanupCharacter()
-	disconnectList(S.CharConnections)
-	cleanupTracks()
-	S.Busy = {}
-	table.clear(S.LastFX)
-	local fx = Workspace:FindFirstChild("R4Fix_5SisFX")
-	if fx then pcall(function() fx:Destroy() end) end
+
+local function GoldenOverclock()
+
+
+	local character =
+		Player.Character
+
+
+
+	if not character then
+		return
+	end
+
+
+
+	local humanoid =
+		character:FindFirstChildOfClass(
+			"Humanoid"
+		)
+
+
+
+	local root =
+		character:FindFirstChild(
+			"HumanoidRootPart"
+		)
+
+
+
+	if not humanoid
+	or not root then
+		return
+	end
+
+
+
+	PlayAnimation(
+		humanoid,
+		OVERCLOCK_ANIMATION,
+		Enum.AnimationPriority.Action
+	)
+
+
+
+	local oldSpeed =
+		humanoid.WalkSpeed
+
+
+
+	humanoid.WalkSpeed =
+		45
+
+
+
+	CyberBurst(
+		root.CFrame,
+		30,
+		"overclock"
+	)
+
+
+
+	CyberRing(
+		root.CFrame,
+		60
+	)
+
+
+
+	CyberParticles(
+		root,
+		120
+	)
+
+
+
+	for i = 1,8 do
+
+
+		task.delay(
+			i * 0.1,
+			function()
+
+
+				CreateAfterImage()
+
+
+
+			end
+		)
+
+
+	end
+
+
+
+	task.delay(
+		4,
+		function()
+
+
+			if humanoid then
+
+
+				humanoid.WalkSpeed =
+					oldSpeed
+
+
+
+			end
+
+
+		end
+	)
+
+
 end
 
-local function setupCharacter(character: Model)
-	S.Token += 1
-	cleanupCharacter()
 
-	local humanoid = character:WaitForChild("Humanoid", 10)
-	local root = character:WaitForChild("HumanoidRootPart", 10)
-	if not humanoid or not root then return end
-
-	local theme = currentTheme()
-	playAnimation(humanoid, theme.Anim.Spawn, 1, 1.1)
-	burst(root, 7, 0.2)
-	ring(root, 2, 18, 0.3)
-
-	table.insert(S.CharConnections, humanoid.Died:Connect(function()
-		S.Busy = {}
-		cleanupTracks()
-	end))
-end
 
 -- ================================================================
--- START
+-- MOVE 4
+-- ACTRESS DECEPTION
 -- ================================================================
 
-disconnectList(S.Connections)
-setupInput()
-setupMobileGui()
-startMusic()
 
-table.insert(S.Connections, LocalPlayer.CharacterAdded:Connect(function(character)
-	task.spawn(function()
-		task.wait(0.2)
-		setupCharacter(character)
-	end)
-end))
+local function ActressDeception()
 
-if LocalPlayer.Character then
-	task.spawn(function() setupCharacter(LocalPlayer.Character) end)
+
+	local character =
+		Player.Character
+
+
+
+	if not character then
+		return
+	end
+
+
+
+	local humanoid =
+		character:FindFirstChildOfClass(
+			"Humanoid"
+		)
+
+
+
+	local root =
+		character:FindFirstChild(
+			"HumanoidRootPart"
+		)
+
+
+
+	if not humanoid
+	or not root then
+		return
+	end
+
+
+
+	PlayAnimation(
+		humanoid,
+		DECEPTION_ANIMATION,
+		Enum.AnimationPriority.Action
+	)
+
+
+
+	-- create fake clones
+
+
+	for i = 1,4 do
+
+
+		task.delay(
+			i * 0.12,
+			function()
+
+
+				CreateAfterImage()
+
+
+
+				CyberBurst(
+					root.CFrame,
+					10,
+					"decoy_"..i
+				)
+
+
+			end
+		)
+
+
+	end
+
+
+
+	local target =
+		TeleportBehindTarget()
+
+
+
+	if target then
+
+
+		CyberRing(
+			root.CFrame,
+			35
+		)
+
+
+
+	end
+
+
+
 end
 
-pcall(function()
-	StarterGui:SetCore("SendNotification", {
-		Title = "5 SISTERS MOVESET",
-		Text = "1-5 switch sister · Q/E/R/F moves · G wall combo · T Ultimate",
-		Icon = SISTERS.Ichika.Decal,
-		Duration = 4,
-	})
-end)
 
-print("[R4FIX] 5 Sisters moveset loaded (real anim edition).")
+
+-- ================================================================
+-- SPECIAL
+-- CYBER OVERRIDE
+-- ================================================================
+
+
+local function CyberOverride()
+
+
+	local character =
+		Player.Character
+
+
+
+	if not character then
+		return
+	end
+
+
+
+	local root =
+		character:FindFirstChild(
+			"HumanoidRootPart"
+		)
+
+
+
+	if not root then
+		return
+	end
+
+
+
+	CyberBurst(
+		root.CFrame,
+		40,
+		"override"
+	)
+
+
+
+	CyberRing(
+		root.CFrame,
+		90
+	)
+
+
+
+	CyberParticles(
+		root,
+		200
+	)
+
+
+end
+-- ================================================================
+-- ULTIMATE SYSTEM
+-- CYBER ANGEL: ICHIKA ZERO SYSTEM
+-- ================================================================
+
+
+local function CreateUltimateAura(
+	root:BasePart
+)
+
+
+	local attachment =
+		Instance.new("Attachment")
+
+
+	attachment.Name =
+		"IchikaZeroCore"
+
+
+	attachment.Parent =
+		root
+
+
+
+	local emitter =
+		Instance.new("ParticleEmitter")
+
+
+
+	emitter.Texture =
+		"rbxasset://textures/particles/sparkles_main.dds"
+
+
+
+	emitter.Color =
+		ColorSequence.new({
+
+			ColorSequenceKeypoint.new(
+				0,
+				WHITE
+			),
+
+
+			ColorSequenceKeypoint.new(
+				0.25,
+				LIGHT_YELLOW
+			),
+
+
+			ColorSequenceKeypoint.new(
+				0.65,
+				YELLOW
+			),
+
+
+			ColorSequenceKeypoint.new(
+				1,
+				GOLD
+			)
+
+		})
+
+
+
+	emitter.LightEmission =
+		1
+
+
+
+	emitter.Rate =
+		35
+
+
+
+	emitter.Lifetime =
+		NumberRange.new(
+			0.5,
+			1.2
+		)
+
+
+
+	emitter.Speed =
+		NumberRange.new(
+			2,
+			8
+		)
+
+
+
+	emitter.SpreadAngle =
+		Vector2.new(
+			360,
+			360
+		)
+
+
+
+	emitter.Size =
+		NumberSequence.new({
+
+			NumberSequenceKeypoint.new(
+				0,
+				0.5
+			),
+
+
+			NumberSequenceKeypoint.new(
+				0.5,
+				1.5
+			),
+
+
+			NumberSequenceKeypoint.new(
+				1,
+				0
+			)
+
+		})
+
+
+
+	emitter.Parent =
+		attachment
+
+
+
+	table.insert(
+		SESSION.AuraObjects,
+		attachment
+	)
+
+
+end
+
+
+
+-- ================================================================
+-- CYBER WINGS
+-- ================================================================
+
+
+local function CreateCyberWings(
+	root:BasePart
+)
+
+
+	for side = -1,1,2 do
+
+
+
+		local wing =
+			Instance.new("Part")
+
+
+
+		wing.Name =
+			"IchikaEnergyWing"
+
+
+
+		wing.Anchored =
+			false
+
+
+
+		wing.CanCollide =
+			false
+
+
+
+		wing.Material =
+			Enum.Material.Neon
+
+
+
+		wing.Color =
+			GOLD
+
+
+
+		wing.Transparency =
+			0.25
+
+
+
+		wing.Size =
+			Vector3.new(
+				0.3,
+				7,
+				18
+			)
+
+
+
+		wing.CFrame =
+			root.CFrame
+			*
+			CFrame.new(
+				side * 4,
+				2,
+				3
+			)
+			*
+			CFrame.Angles(
+				0,
+				side * math.rad(25),
+				side * math.rad(15)
+			)
+
+
+
+		local weld =
+			Instance.new("WeldConstraint")
+
+
+
+		weld.Part0 =
+			wing
+
+
+
+		weld.Part1 =
+			root
+
+
+
+		weld.Parent =
+			wing
+
+
+
+		wing.Parent =
+			GetVFXFolder()
+
+
+
+		table.insert(
+			SESSION.AuraObjects,
+			wing
+		)
+
+
+
+		TweenService:Create(
+			wing,
+			TweenInfo.new(
+				0.5,
+				Enum.EasingStyle.Back
+			),
+			{
+
+				Transparency =
+					0.05
+
+			}
+		):Play()
+
+
+
+	end
+
+
+end
+
+
+
+-- ================================================================
+-- ULTIMATE IMPACT
+-- ================================================================
+
+
+local function UltimateExplosion(
+	root:BasePart,
+	size:number
+)
+
+
+	CyberBurst(
+		root.CFrame,
+		size,
+		"ultimate_explosion"
+	)
+
+
+
+	CyberRing(
+		root.CFrame,
+		size * 2
+	)
+
+
+
+	CyberParticles(
+		root,
+		250
+	)
+
+
+
+	local light =
+		Instance.new("PointLight")
+
+
+
+	light.Color =
+		YELLOW
+
+
+
+	light.Brightness =
+		20
+
+
+
+	light.Range =
+		80
+
+
+
+	light.Parent =
+		root
+
+
+
+	TweenService:Create(
+		light,
+		TweenInfo.new(
+			1
+		),
+		{
+
+			Brightness =
+				0,
+
+
+			Range =
+				0
+
+		}
+	):Play()
+
+
+
+	Debris:AddItem(
+		light,
+		1.2
+	)
+
+
+end
+
+
+
+-- ================================================================
+-- ULTIMATE 1
+-- ZERO SYSTEM
+-- ================================================================
+
+
+local function ZeroSystem()
+
+
+	local character =
+		Player.Character
+
+
+
+	if not character then
+		return
+	end
+
+
+
+	local humanoid =
+		character:FindFirstChildOfClass(
+			"Humanoid"
+		)
+
+
+
+	local root =
+		character:FindFirstChild(
+			"HumanoidRootPart"
+		)
+
+
+
+	if not humanoid
+	or not root then
+		return
+	end
+
+
+
+	SESSION.UltActive =
+		true
+
+
+
+	PlayAnimation(
+		humanoid,
+		ULT_ZERO_ANIMATION,
+		Enum.AnimationPriority.Action4
+	)
+
+
+
+	CreateUltimateAura(
+		root
+	)
+
+
+
+	CreateCyberWings(
+		root
+	)
+
+
+
+	UltimateExplosion(
+		root,
+		50
+	)
+
+
+
+	-- assassin teleport sequence
+
+
+	for i = 1,10 do
+
+
+		task.delay(
+			i * 0.12,
+			function()
+
+
+				local target =
+					TeleportBehindTarget()
+
+
+
+				if target then
+
+
+					CyberBurst(
+						root.CFrame,
+						15,
+						"zero_hit_"..i
+					)
+
+
+
+					CreateAfterImage()
+
+
+				end
+
+
+			end
+		)
+
+
+	end
+
+
+end
+
+
+
+-- ================================================================
+-- ULTIMATE 2
+-- CYBER ANGEL
+-- ================================================================
+
+
+local function CyberAngel()
+
+
+	local character =
+		Player.Character
+
+
+
+	if not character then
+		return
+	end
+
+
+
+	local root =
+		character:FindFirstChild(
+			"HumanoidRootPart"
+		)
+
+
+
+	local humanoid =
+		character:FindFirstChildOfClass(
+			"Humanoid"
+		)
+
+
+
+	if not root
+	or not humanoid then
+		return
+	end
+
+
+
+	SESSION.UltActive =
+		true
+
+
+
+	PlayAnimation(
+		humanoid,
+		ULT_ANGEL_ANIMATION,
+		Enum.AnimationPriority.Action4
+	)
+
+
+
+	CreateUltimateAura(
+		root
+	)
+
+
+
+	CreateCyberWings(
+		root
+	)
+
+
+
+	for i = 1,5 do
+
+
+		task.delay(
+			i * 0.2,
+			function()
+
+
+				CyberRing(
+					root.CFrame,
+					40 + i * 15
+				)
+
+
+
+				CyberBurst(
+					root.CFrame,
+					20 + i * 5,
+					"angel_"..i
+				)
+
+
+
+			end
+		)
+
+
+	end
+
+
+end
+
+
+
+-- ================================================================
+-- ULTIMATE 3
+-- GOLDEN APOCALYPSE
+-- ================================================================
+
+
+local function GoldenApocalypse()
+
+
+	local character =
+		Player.Character
+
+
+
+	if not character then
+		return
+	end
+
+
+
+	local root =
+		character:FindFirstChild(
+			"HumanoidRootPart"
+		)
+
+
+
+	if not root then
+		return
+	end
+
+
+
+	SESSION.UltActive =
+		true
+
+
+
+	CreateUltimateAura(
+		root
+	)
+
+
+
+	CreateCyberWings(
+		root
+	)
+
+
+
+	UltimateExplosion(
+		root,
+		90
+	)
+
+
+
+	for i = 1,15 do
+
+
+		task.delay(
+			i * 0.08,
+			function()
+
+
+				CyberBurst(
+					root.CFrame
+					*
+					CFrame.new(
+						math.random(-20,20),
+						math.random(-10,15),
+						math.random(-20,20)
+					),
+					12,
+					"apocalypse_"..i
+				)
+
+
+			end
+		)
+
+
+	end
+
+
+end
