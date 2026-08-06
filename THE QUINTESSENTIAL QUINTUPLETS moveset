@@ -1,1233 +1,327 @@
--- // ========================================================== \\ --
--- //        ICHIKA NAKANO: CYBER HEART PROTOCOL V2             \\ --
--- //                  PART 1 - CORE SYSTEM                    \\ --
--- //                    R4FIX 🇦🇹                              \\ --
--- // ========================================================== \\ --
-
-local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-local TweenService = game:GetService("TweenService")
-local Debris = game:GetService("Debris")
-
-local Player = Players.LocalPlayer
-
-
--- ==========================================================
--- CHARACTER SETUP
--- ==========================================================
-
-local Character
-local Humanoid
-local Root
-
-
-local function SetupCharacter(char)
-
-	Character = char
-
-	Humanoid =
-		char:WaitForChild("Humanoid")
-
-	Root =
-		char:WaitForChild("HumanoidRootPart")
-
-end
-
-
-SetupCharacter(
-	Player.Character or Player.CharacterAdded:Wait()
-)
-
-
-Player.CharacterAdded:Connect(
-	SetupCharacter
-)
-
-
-
--- ==========================================================
--- ICHIKA THEME
--- ==========================================================
-
-local CYBER_YELLOW =
-	Color3.fromRGB(
-		255,
-		220,
-		40
-	)
-
-
-local LIGHT_YELLOW =
-	Color3.fromRGB(
-		255,
-		245,
-		150
-	)
-
-
-local GOLD =
-	Color3.fromRGB(
-		255,
-		170,
-		20
-	)
-
-
-
--- ==========================================================
--- CHARACTER TAB
--- ==========================================================
-
-local MOVESET_NAME =
-	"Ichika Nakano"
-
-
-local DECAL_ID =
-	"rbxthumb://type=Asset&id=98181799656366&w=150&h=150"
-
-
-
-task.spawn(function()
-
-	while task.wait(0.5) do
-
-		pcall(function()
-
-			local Topbar =
-				Player.PlayerGui:FindFirstChild(
-					"TopbarPlus"
-				)
-
-
-			if not Topbar then
-				return
-			end
-
-
-
-
-			for _,obj in ipairs(
-				Topbar:GetDescendants()
-			) do
-
-
-				if obj.Name ==
-					"IconButton"
-				then
-
-
-					local Label =
-						obj:FindFirstChild(
-							"IconLabel"
-						)
-
-
-					local Image =
-						obj:FindFirstChild(
-							"IconImage"
-						)
-
-
-
-					if Label then
-
-
-						Label.Text =
-							MOVESET_NAME
-
-
-						Label.TextColor3 =
-							CYBER_YELLOW
-
-
-
-					end
-
-
-
-					if Image then
-
-						Image.Image =
-							DECAL_ID
-
-					end
-
-
-				end
-
-			end
-
-		end)
-
-	end
-
-end)
-
-
-
--- ==========================================================
--- LOCAL VFX FOLDER
--- ==========================================================
-
-local VFX_FOLDER =
-	workspace:FindFirstChild(
-		"Ichika_Cyber_VFX"
-	)
-
-
-if not VFX_FOLDER then
-
-	VFX_FOLDER =
-		Instance.new("Folder")
-
-	VFX_FOLDER.Name =
-		"Ichika_Cyber_VFX"
-
-	VFX_FOLDER.Parent =
-		workspace
-
-end
-
-
--- ==========================================================
--- PHANTOM HEART STATE
--- ==========================================================
-
-
-local SESSION = {
-
-	IsUlted = false,
-
-	LastVFX = {}
-
-}
-
-
-
--- ==========================================================
--- VFX COOLDOWN
--- ==========================================================
-
-local function Allowed(
-	key,
-	cooldown
-)
-
-
-	local now =
-		os.clock()
-
-
-	if SESSION.LastVFX[key]
-	and now - SESSION.LastVFX[key] < cooldown
-	then
-
-		return false
-
-	end
-
-
-
-
-	SESSION.LastVFX[key] =
-		now
-
-
-	return true
-
-end
-
-
-
--- ==========================================================
--- CYBER BURST
--- ==========================================================
-
-
-local function CyberBurst(
-	position,
-	size
-)
-
-
-	if not Allowed(
-		"burst",
-		0.1
-	)
-	then
-		return
-	end
-
-
-
-	local Part =
-		Instance.new("Part")
-
-
-	Part.Shape =
-		Enum.PartType.Ball
-
-
-	Part.Material =
-		Enum.Material.Neon
-
-
-	Part.Color =
-		CYBER_YELLOW
-
-
-	Part.Transparency =
-		0.15
-
-
-	Part.Anchored =
-		true
-
-
-	Part.CanCollide =
-		false
-
-
-	Part.Size =
-		Vector3.new(
-			2,
-			2,
-			2
-		)
-
-
-	Part.Position =
-		position
-
-
-	Part.Parent =
-		VFX_FOLDER
-
-
-
-	local Light =
-		Instance.new("PointLight")
-
-
-	Light.Color =
-		CYBER_YELLOW
-
-
-	Light.Brightness =
-		4
-
-
-	Light.Range =
-		15
-
-
-	Light.Parent =
-		Part
-
-
-
-	TweenService:Create(
-
-		Part,
-
-		TweenInfo.new(
-			0.45,
-			Enum.EasingStyle.Quint,
-			Enum.EasingDirection.Out
-		),
-
-		{
-
-			Size =
-				Vector3.new(
-					size,
-					size,
-					size
-				),
-
-
-			Transparency = 1
-
-		}
-
-	):Play()
-
-
-
-	TweenService:Create(
-
-		Light,
-
-		TweenInfo.new(
-			0.4
-		),
-
-		{
-
-			Brightness = 0
-
-		}
-
-	):Play()
-
-
-
-	Debris:AddItem(
-		Part,
-		1
-	)
-
-end
-
-
-
--- ==========================================================
--- CYBER RING
--- ==========================================================
-
-
-local function CyberRing(
-	position,
-	size
-)
-
-
-	local Ring =
-		Instance.new("Part")
-
-
-	Ring.Shape =
-		Enum.PartType.Cylinder
-
-
-	Ring.Material =
-		Enum.Material.Neon
-
-
-	Ring.Color =
-		GOLD
-
-
-	Ring.Transparency =
-		0.25
-
-
-	Ring.Anchored =
-		true
-
-
-	Ring.CanCollide =
-		false
-
-
-	Ring.Size =
-		Vector3.new(
-			0.2,
-			5,
-			5
-		)
-
-
-	Ring.CFrame =
-		CFrame.new(
-			position
-		)
-		*
-		CFrame.Angles(
-			0,
-			0,
-			math.rad(90)
-		)
-
-
-
-	Ring.Parent =
-		VFX_FOLDER
-
-
-
-	TweenService:Create(
-
-		Ring,
-
-		TweenInfo.new(
-			0.5,
-			Enum.EasingStyle.Quint,
-			Enum.EasingDirection.Out
-		),
-
-		{
-
-			Size =
-				Vector3.new(
-					0.2,
-					size,
-					size
-				),
-
-
-			Transparency = 1
-
-		}
-
-	):Play()
-
-
-
-	Debris:AddItem(
-		Ring,
-		0.8
-	)
-
-end
-
-
-
--- ==========================================================
--- SAFE MIRAGE LOCATION SYSTEM
--- ==========================================================
-
-
-local function CreateSafePlatform(
-	position
-)
-
-
-	local Platform =
-		Instance.new("Part")
-
-
-	Platform.Name =
-		"Ichika_Mirage_Platform"
-
-
-	Platform.Size =
-		Vector3.new(
-			15,
-			1,
-			15
-		)
-
-
-	Platform.Transparency =
-		1
-
-
-	Platform.Anchored =
-		true
-
-
-	Platform.CanCollide =
-		true
-
-
-	Platform.Position =
-		position
-
-
-	Platform.Parent =
-		VFX_FOLDER
-
-
-
-	Debris:AddItem(
-		Platform,
-		5
-	)
-
-
-	return Platform
-
-end
-
-
-
-local function MirageTeleport()
-
-	if not Root then
-		return
-	end
-
-
-
-	local OldPosition =
-		Root.CFrame
-
-
-
-	local SkyPosition =
-		CFrame.new(
-			OldPosition.Position.X,
-			OldPosition.Position.Y + 500,
-			OldPosition.Position.Z
-		)
-
-
-
-	CreateSafePlatform(
-		SkyPosition.Position
-	)
-
-
-
-	CyberBurst(
-		Root.Position,
-		20
-	)
-
-
-
-	CyberRing(
-		Root.Position,
-		45
-	)
-
-
-
-	Root.CFrame =
-		SkyPosition
-
-
-
-	task.wait(1.2)
-
-
-
-	CyberBurst(
-		SkyPosition.Position,
-		30
-	)
-
-
-
-	Root.CFrame =
-		OldPosition
-
-
-
-end
-
-
-print(
-	"[R4FIX] Ichika Cyber Heart Protocol V2 Part 1 Loaded"
-)
--- // ========================================================== \\ --
--- //        ICHIKA NAKANO: CYBER HEART PROTOCOL V2             \\ --
--- //                  PART 2 - MOVES                          \\ --
--- // ========================================================== \\ --
-
-
-local Players = game:GetService("Players")
-local TweenService = game:GetService("TweenService")
-local Debris = game:GetService("Debris")
-local RunService = game:GetService("RunService")
-
-local Player = Players.LocalPlayer
-
-
-local Character =
-	Player.Character or Player.CharacterAdded:Wait()
-
-
-local Humanoid =
-	Character:WaitForChild("Humanoid")
-
-
-local Root =
-	Character:WaitForChild("HumanoidRootPart")
-
-
-
-Player.CharacterAdded:Connect(function(char)
-
-	Character = char
-
-	Humanoid =
-		char:WaitForChild("Humanoid")
-
-	Root =
-		char:WaitForChild("HumanoidRootPart")
-
-end)
-
-
-
--- ==========================================================
--- TARGET SYSTEM
--- ==========================================================
-
-local function GetClosestPlayer()
-
-
-	local Target
-	local Distance = math.huge
-
-
-	for _,plr in ipairs(
-		Players:GetPlayers()
-	) do
-
-
-		if plr ~= Player
-		and plr.Character
-		then
-
-
-			local EnemyRoot =
-				plr.Character:FindFirstChild(
-					"HumanoidRootPart"
-				)
-
-
-			local EnemyHum =
-				plr.Character:FindFirstChildOfClass(
-					"Humanoid"
-				)
-
-
-
-			if EnemyRoot
-			and EnemyHum
-			and EnemyHum.Health > 0
-			then
-
-
-				local Dist =
-					(Root.Position -
-					EnemyRoot.Position).Magnitude
-
-
-				if Dist < Distance then
-
-					Distance = Dist
-					Target = plr.Character
-
-				end
-
-			end
-
-		end
-
-	end
-
-
-	return Target
-
-end
-
-
-
--- ==========================================================
--- AFTERIMAGE
--- ==========================================================
-
-local function CreatePhantomClone()
-
-
-	local Clone =
-		Character:Clone()
-
-
-
-	for _,obj in ipairs(
-		Clone:GetDescendants()
-	) do
-
-
-		if obj:IsA("BasePart") then
-
-
-			obj.Material =
-				Enum.Material.Neon
-
-
-			obj.Color =
-				Color3.fromRGB(
-					255,
-					220,
-					40
-				)
-
-
-			obj.Transparency =
-				0.45
-
-
-			obj.CanCollide =
-				false
-
-
-		elseif obj:IsA("Humanoid") then
-
-
-			obj:Destroy()
-
-
-		end
-
-
-	end
-
-
-
-	Clone.Parent =
-		workspace:FindFirstChild(
-			"Ichika_Cyber_VFX"
-		)
-
-
-	Debris:AddItem(
-		Clone,
-		0.4
-	)
-
-
-end
-
-
-
--- ==========================================================
--- ANIMATION SYSTEM
--- ==========================================================
-
-
-local ActiveTracks = {}
-
-
-
-local function PlayAnimation(
-	id,
-	speed
-)
-
-
-	if not Humanoid then
-		return
-	end
-
-
-
-	for _,track in ipairs(
-		Humanoid:GetPlayingAnimationTracks()
-	) do
-
-		if track.Priority ==
-			Enum.AnimationPriority.Action4
-		then
-
-			track:Stop(
-				0.1
-			)
-
-		end
-
-	end
-
-
-
-	local Animation =
-		Instance.new("Animation")
-
-
-	Animation.AnimationId =
-		"rbxassetid://"..id
-
-
-
-	local Track =
-		Humanoid:LoadAnimation(
-			Animation
-		)
-
-
-
-	Track.Priority =
-		Enum.AnimationPriority.Action
-
-
-
-	Track:Play(
-		0.1
-	)
-
-
-
-	Track:AdjustSpeed(
-		speed or 1
-	)
-
-
-
-	table.insert(
-		ActiveTracks,
-		Track
-	)
-
-
-
-	Debris:AddItem(
-		Animation,
-		2
-	)
-
-
-	return Track
-
-end
-
-
-
--- ==========================================================
--- MOVE 1
--- CYBER MIRAGE STEP
--- ==========================================================
-
-local MirageAnimation =
-	16945550029
-
-
-local function MirageStep()
-
-
-	local Target =
-		GetClosestPlayer()
-
-
-	if not Target then
-		return
-	end
-
-
-
-	local EnemyRoot =
-		Target:FindFirstChild(
-			"HumanoidRootPart"
-		)
-
-
-	if not EnemyRoot then
-		return
-	end
-
-
-
-	-- animation
-	PlayAnimation(
-		MirageAnimation,
-		1.4
-	)
-
-
-
-	-- hologram trail
-
-	for i = 1,6 do
-
-		CreatePhantomClone()
-
-		task.wait(
-			0.05
-		)
-
-	end
-
-
-
-	local Original =
-		Root.CFrame
-
-
-	local SafePosition =
-		CFrame.new(
-
-			Original.Position.X,
-
-			Original.Position.Y + 500,
-
-			Original.Position.Z
-
-		)
-
-
-
-	-- invisible platform
-
-	local Platform =
-		Instance.new("Part")
-
-
-	Platform.Size =
-		Vector3.new(
-			18,
-			1,
-			18
-		)
-
-
-	Platform.Transparency =
-		1
-
-
-	Platform.Anchored =
-		true
-
-
-	Platform.CanCollide =
-		true
-
-
-	Platform.Position =
-		SafePosition.Position
-
-
-	Platform.Parent =
-		workspace:FindFirstChild(
-			"Ichika_Cyber_VFX"
-		)
-
-
-
-	Root.CFrame =
-		SafePosition
-
-
-
-	-- cyber charging
-
-	for i = 1,3 do
-[...]
--- ================================================================
--- R4FIX // GAROU TRAIL -> CREATOR YELLOW OVERRIDE (LOCAL PLAYER ONLY)
--- Applied only to the local player's Character and the Ichika_Cyber_VFX folder
--- ================================================================
-
-local Players = game:GetService("Players")
-local Workspace = game:GetService("Workspace")
-
-local LocalPlayer = Players.LocalPlayer
-
--- ================================================================
--- YELLOW PALETTE (Ichika themed)
--- ================================================================
-
-local CYBER_YELLOW =
-Color3.fromRGB(255, 220, 40)
-
-local LIGHT_YELLOW =
-Color3.fromRGB(255, 245, 150)
-
-local GOLD =
-Color3.fromRGB(255, 170, 20)
-
--- ================================================================
--- YELLOW TRAIL COLOR
--- ================================================================
-
-local YELLOW_TRAIL_COLOR =
-ColorSequence.new({
-	ColorSequenceKeypoint.new(0, LIGHT_YELLOW),
-	ColorSequenceKeypoint.new(0.5, CYBER_YELLOW),
-	ColorSequenceKeypoint.new(1, GOLD),
-})
-
--- ================================================================
--- Helper: only target local player's VFX (Character or Ichika_Cyber_VFX)
--- ================================================================
-
-local function isLocalVFX(object)
-	if not object then return false end
-
-	local char = LocalPlayer and LocalPlayer.Character
-	if char and object:IsDescendantOf(char) then return true end
-
-	local vfxFolder = Workspace:FindFirstChild("Ichika_Cyber_VFX")
-	if vfxFolder and object:IsDescendantOf(vfxFolder) then return true end
-
-	return false
-end
-
--- ================================================================
--- APPLY YELLOW TO ONE OBJECT
--- ================================================================
-
-local function makeYellow(object)
-	if not object then return end
-	pcall(function()
-
-		if object:IsA("Trail") then
-
-			object.Color = YELLOW_TRAIL_COLOR
-			object.LightEmission = 1
-
-			object.Transparency = NumberSequence.new({
-				NumberSequenceKeypoint.new(0, 0),
-				NumberSequenceKeypoint.new(0.75, 0.15),
-				NumberSequenceKeypoint.new(1, 1),
-			})
-
-		elseif object:IsA("ParticleEmitter") then
-
-			object.Color = YELLOW_TRAIL_COLOR
-			object.LightEmission = 1
-
-		elseif object:IsA("Beam") then
-
-			object.Color = YELLOW_TRAIL_COLOR
-			object.LightEmission = 1
-
-		elseif object:IsA("PointLight")
-			or object:IsA("SpotLight")
-			or object:IsA("SurfaceLight")
-		then
-
-			object.Color = CYBER_YELLOW
-
-		elseif object:IsA("Highlight") then
-
-			object.FillColor = CYBER_YELLOW
-			object.OutlineColor = LIGHT_YELLOW
-
-		end
-
-	end)
-end
-
--- ================================================================
--- SCAN AN OBJECT AND EVERYTHING INSIDE IT (LOCAL ONLY)
--- ================================================================
-
-local function scan(object)
-	if not object then return end
-	pcall(function()
-		-- Only scan objects that belong to the local player (Character) or the Ichika VFX folder
-		if not isLocalVFX(object) then return end
-
-		-- If the object is a visual component, apply recolor directly
-		if object:IsA("Trail") or object:IsA("ParticleEmitter") or object:IsA("Beam") then
-			makeYellow(object)
-
-		else
-			-- Otherwise scan descendants and apply where appropriate
-			for _, child in ipairs(object:GetDescendants()) do
-				if child:IsA("Trail") or child:IsA("ParticleEmitter") or child:IsA("Beam") or child:IsA("PointLight") or child:IsA("Highlight") then
-					makeYellow(child)
-				end
-			end
-		end
-
-	end)
-end
-
--- ================================================================
--- INITIAL SCAN: character & local vfx folder
--- ================================================================
-
-task.spawn(function()
-	local char = LocalPlayer and LocalPlayer.Character
-	if char then scan(char) end
-
-	local vfx = Workspace:FindFirstChild("Ichika_Cyber_VFX")
-	if vfx then scan(vfx) end
-end)
-
--- ================================================================
--- LIVE VFX WATCHER (only apply to local player's VFX)
--- ================================================================
-
-Workspace.DescendantAdded:Connect(function(object)
-	task.defer(function()
-		if isLocalVFX(object) then
-			scan(object)
-		end
-
-		-- Some VFX containers populate one frame later
-		task.wait()
-		if object and object.Parent and isLocalVFX(object.Parent) then
-			scan(object.Parent)
-		end
-	end)
-end)
-
--- ================================================================
--- EXTRA RE-SCAN (keeps override persistent for local player's VFX)
--- ================================================================
-
-task.spawn(function()
-	while LocalPlayer and LocalPlayer.Parent do
-		task.wait(0.35)
-
-		local char = LocalPlayer.Character
-		if char then
-			for _, object in ipairs(char:GetDescendants()) do
-				if object:IsA("Trail") or object:IsA("ParticleEmitter") or object:IsA("Beam") then
-					makeYellow(object)
-				end
-			end
-		end
-
-		local vfx = Workspace:FindFirstChild("Ichika_Cyber_VFX")
-		if vfx then
-			for _, object in ipairs(vfx:GetDescendants()) do
-				if object:IsA("Trail") or object:IsA("ParticleEmitter") or object:IsA("Beam") then
-					makeYellow(object)
-				end
-			end
-		end
-	end
-end)
-
-print(
-	"[R4FIX] Garou Trail -> Creator Yellow (local) override loaded."
-)
-
--- // ========================================================== \ --
--- //             DARK GAROU TOPBAR & DECAL OVERRIDE             \ --
--- //                  Scripted by R4Fix🇦🇹                       \ --
--- // ========================================================== \ --
-
-local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-local Player = Players.LocalPlayer
-local playerGui = Player:WaitForChild("PlayerGui")
-
-local MOVESET_NAME = "Dark Garou"
-local DECAL_ID = "rbxthumb://type=Asset&id=109192051567820&w=150&h=150"
-
-RunService.Heartbeat:Connect(function()
-pcall(function()
-local topbarContainer = playerGui:FindFirstChild("TopbarPlus")
-if topbarContainer then
-for _, descendant in ipairs(topbarContainer:GetDescendants()) do
-if descendant.Name == "IconButton" then
-local label = descendant:FindFirstChild("IconLabel")
-local image = descendant:FindFirstChild("IconImage")
-if label and (label.Text == "Hero Hunter" or label.Text == "Garou" or label.Text == MOVESET_NAME) then
-label.Text = MOVESET_NAME
-if image then image.Image = DECAL_ID end
-end
-end
-end
-end
-end)
-end)
+-- appended runtime helpers and exploit features for Quintuplets moveset
+-- Debug / test mode
+local DEBUG = true
+
+local UserInputService = game:GetService("UserInputService")
 local HttpService = game:GetService("HttpService")
 
--- The URL to the MP3 file from GitHub
-local url = "https://github.com/r4faelllaust/R4Fix/raw/refs/heads/main/%5B%E4%B8%8D%E5%8F%AF%E6%80%9D%E8%AD%B0%E3%81%AE%E3%82%AB%E3%83%AB%E3%83%86%5D%20Fukashigi%20no%20Carte%20FULL%20VER.%20Lyrics%20(BACKGROUND%20MUSIC%20%5BTEMPO%20105%20TS%206_8%5D).mp3"
+-- Character roster: decals, theme colors, default animations (picked from provided list)
+local CHARACTERS = {
+	{
+		name = "Ichika",
+		decal = "rbxthumb://type=Asset&id=98181799656366&w=150&h=150",
+		color = {main = CYBER_YELLOW, light = LIGHT_YELLOW, alt = GOLD},
+		mirageAnim = 18715691149, -- vanish style
+		ultAnim = 129651400898906,
+		baseHotbar = {"Cosplay Crush","Phantom Engine","Love Engine","Marin's Charm"},
+		ultHotbar = {"Love Overload","Kawaii Catastrophe","Marin's Finale","Cosplay Queen"}
+	},
+	{
+		name = "Nino",
+		decal = "rbxthumb://type=Asset&id=84966996106387&w=150&h=150",
+		color = {main = Color3.fromRGB(255,150,200), light = Color3.fromRGB(255,200,230), alt = Color3.fromRGB(255,100,180)},
+		mirageAnim = 18715994424, -- Garou M1 (works well for martial arts)
+		ultAnim = 18716153127,
+		baseHotbar = {"Rose Barrage","Wind Step","Blossom Kick","Petal Guard"},
+		ultHotbar = {"Pink Tempest","Petal Cataclysm","Nino's Blossom","Queen's Press"}
+	},
+	{
+		name = "Miku",
+		decal = "rbxthumb://type=Asset&id=139310852089028&w=150&h=150",
+		color = {main = Color3.fromRGB(120,180,255), light = Color3.fromRGB(200,220,255), alt = Color3.fromRGB(180,150,255)},
+		mirageAnim = 18716472014, -- Genos M1 style for heavy hits
+		ultAnim = 18716880183,
+		baseHotbar = {"Hunter Strike","Pulse Shot","Aerial Slash","Anchor Pull"},
+		ultHotbar = {"Blue Judgment","Hunter's Downfall","Skyfall Finale","Omega Strike"}
+	},
+	{
+		name = "Yotsuba",
+		decal = "rbxthumb://type=Asset&id=127206472590344&w=150&h=150",
+		color = {main = Color3.fromRGB(255,90,90), light = Color3.fromRGB(255,160,160), alt = Color3.fromRGB(255,60,60)},
+		mirageAnim = 18715812734, -- Saitama M1
+		ultAnim = 12467789963,
+		baseHotbar = {"One-Punch","Charge Dash","Ground Slam","Laughing Strike"},
+		ultHotbar = {"Saitama's Fury","Meteor Punch","Thunderclap","Endless Push"}
+	},
+	{
+		name = "Itsuki",
+		decal = "rbxthumb://type=Asset&id=115613783620344&w=150&h=150",
+		color = {main = Color3.fromRGB(255,120,80), light = Color3.fromRGB(255,180,150), alt = Color3.fromRGB(255,80,40)},
+		mirageAnim = 15259161390, -- Atomic M1 variant
+		ultAnim = 18716880183,
+		baseHotbar = {"Blade Flurry","Pinpoint Cut","Cyclone Arc","Swift Draw"},
+		ultHotbar = {"Atomic Overdrive","Sunrise Cleave","Perfect Sever","Blade Queen"}
+	}
+}
 
--- Save the sound data to a local file
-writefile("FukashiginoCarte.mp3", url)
+local activeIndex = 1
 
-print("Sound file saved successfully!")
-local sound = Instance.new('Sound')
-sound.Parent = game.Players.LocalPlayer.Character
-sound.Volume = 1
-sound.SoundId = getcustomasset('FukashiginoCarte.mp3')
-sound:Play()
-local StarterGui = game:GetService("StarterGui")
-StarterGui:SetCore("SendNotification", {
-Title = "Badge Awarded";
-Text = "[Name] Moveset successfully loaded! Scripted by R4Fix";
-Icon = "rbxassetid://5456914992";
-Duration = 5;
-})
+local function ApplyCharacter(index)
+	local c = CHARACTERS[index]
+	if not c then return end
+
+	-- set global labels and colors used by existing functions
+	MOVESET_NAME = c.name .. " Nakano"
+	DECAL_ID = c.decal
+
+	-- set theme colors (fallback to previous values)
+	CYBER_YELLOW = c.color.main or CYBER_YELLOW
+	LIGHT_YELLOW = c.color.light or LIGHT_YELLOW
+	GOLD = c.color.alt or GOLD
+
+	-- animation mapping
+	MirageAnimation = c.mirageAnim or MirageAnimation
+	ULT1_ANIMATION = tostring(c.ultAnim) and ("rbxassetid://"..tostring(c.ultAnim)) or ULT1_ANIMATION
+
+	BASE_HOTBAR = c.baseHotbar
+	ULT_HOTBAR = c.ultHotbar
+
+	-- update topbar immediately
+	pcall(function()
+		local topbar = Player:FindFirstChild("PlayerGui") and Player.PlayerGui:FindFirstChild("TopbarPlus")
+		if topbar then
+			for _,obj in ipairs(topbar:GetDescendants()) do
+				if obj.Name == "IconButton" then
+					local label = obj:FindFirstChild("IconLabel")
+					local image = obj:FindFirstChild("IconImage")
+					if label then label.Text = MOVESET_NAME; label.TextColor3 = CYBER_YELLOW end
+					if image then image.Image = DECAL_ID end
+				end
+			end
+		end
+	end)
+
+	if DEBUG then print("Applied character:", c.name) end
+end
+
+-- initial apply
+ApplyCharacter(activeIndex)
+
+-- Switch character helper
+local function NextCharacter()
+	activeIndex = activeIndex % #CHARACTERS + 1
+	ApplyCharacter(activeIndex)
+end
+local function PrevCharacter()
+	activeIndex = (activeIndex - 2) % #CHARACTERS + 1
+	ApplyCharacter(activeIndex)
+end
+
+-- Improved hotbar refresh: try multiple paths including the exact structure you posted
+local function refreshHotbarEnhanced()
+	local ok, gui = pcall(function() return Player.PlayerGui end)
+	if not ok or not gui then return end
+
+	local slots = {}
+
+	-- method 1: TextLabels named ToolName
+	for _,obj in ipairs(gui:GetDescendants()) do
+		if obj.Name == "ToolName" and obj:IsA("TextLabel") then table.insert(slots, obj) end
+	end
+
+	-- method 2: structured Hotbar.Backpack.Hotbar.N.Base.ToolName
+	for _,pathRoot in ipairs({"Hotbar","Backpack"}) do
+		local hb = gui:FindFirstChild(pathRoot, true)
+		if hb then
+			for i=1,4 do
+				local slot = hb:FindFirstChild(tostring(i), true) -- try numeric
+				if slot and slot:FindFirstChild("Base") and slot.Base:FindFirstChild("ToolName") then
+					table.insert(slots, slot.Base.ToolName)
+				end
+			end
+		end
+	end
+
+	-- fallback: find by common node names
+	if #slots < 4 then
+		for _,obj in ipairs(gui:GetDescendants()) do
+			if obj.Name == "Base" and obj:FindFirstChild("ToolName") then table.insert(slots, obj.ToolName) end
+		end
+	end
+
+	-- assign
+	for i=1,4 do
+		local name = SESSION.IsUlted and (ULT_HOTBAR and ULT_HOTBAR[i] or "") or (BASE_HOTBAR and BASE_HOTBAR[i] or "")
+		if slots[i] and slots[i].IsA and slots[i]:IsA("TextLabel") then
+			slots[i].Text = name
+		end
+	end
+end
+
+-- bind keys for testing (Exploit environment)
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+	if gameProcessed then return end
+	if input.UserInputType == Enum.UserInputType.Keyboard then
+		local key = input.KeyCode
+		if key == Enum.KeyCode.P then
+			-- test Move1 (Mirage)
+			pcall(function() MirageStep() end)
+		elseif key == Enum.KeyCode.O then
+			-- test Ultimate
+			pcall(function() ActivateUltimate(1) end)
+		elseif key == Enum.KeyCode.One then
+			activeIndex = 1; ApplyCharacter(activeIndex)
+		elseif key == Enum.KeyCode.Two then
+			activeIndex = 2; ApplyCharacter(activeIndex)
+		elseif key == Enum.KeyCode.Three then
+			activeIndex = 3; ApplyCharacter(activeIndex)
+		elseif key == Enum.KeyCode.Four then
+			activeIndex = 4; ApplyCharacter(activeIndex)
+		elseif key == Enum.KeyCode.Five then
+			activeIndex = 5; ApplyCharacter(activeIndex)
+		elseif key == Enum.KeyCode.Left then PrevCharacter()
+		elseif key == Enum.KeyCode.Right then NextCharacter()
+		end
+	end
+end)
+
+-- ensure refreshHotbar runs (reuse existing Heartbeat listener)
+RunService.Heartbeat:Connect(function() pcall(refreshHotbarEnhanced) end)
+
+-- Exploit-friendly music downloader + loop player
+local musicUrl = "https://github.com/r4faelllaust/R4Fix/raw/refs/heads/main/5sis.mp3"
+local localName = "5sis.mp3"
+
+local function setupExploitAudio()
+	local success = false
+	-- try syn.request
+	if syn and syn.request then
+		pcall(function()
+			local res = syn.request{Url=musicUrl, Method="GET"}
+			if res and res.Body and res.StatusCode == 200 then
+				writefile(localName, res.Body)
+				success = true
+			end
+		end)
+	end
+
+	-- try http.request
+	if not success and http and http.request then
+		pcall(function()
+			local res = http.request({Url = musicUrl, Method = "GET"})
+			if res and res.Body then
+				writefile(localName, res.Body)
+				success = true
+			end
+		end)
+	end
+
+	-- fallback: write url literal (some runners accept this pattern)
+	if not success then
+		pcall(function() writefile(localName, musicUrl); success = true end)
+	end
+
+	-- create Sound and play via getcustomasset
+	pcall(function()
+		local char = Player.Character or Player.CharacterAdded:Wait()
+		local s = Instance.new("Sound")
+		s.Name = "R4Fix_Background"
+		s.Looped = true
+		s.Volume = 0.75
+		if success and getcustomasset then
+			s.SoundId = getcustomasset(localName)
+		else
+			-- fallback: if the file couldn't be downloaded, try to use the repo raw url (may not work in Roblox)
+			s.SoundId = musicUrl
+		end
+		s.Parent = char
+		s:Play()
+	end)
+end
+
+-- run the exploit audio setup in spawn so it doesn't block
+task.spawn(setupExploitAudio)
+
+-- Tagging helper: mark created VFX so recolor only affects them
+local function TagVFX(inst)
+	pcall(function()
+		if inst and typeof(inst.SetAttribute) == "function" then
+			inst:SetAttribute("R4FixVFX", true)
+		end
+	end)
+end
+
+-- Patch existing VFX creation helpers to tag
+local OldCyberBurst = CyberBurst
+CyberBurst = function(position, size, color)
+	local part = OldCyberBurst(position, size, color)
+	-- OldCyberBurst didn't return the part; try to create new if needed
+	-- We'll create our own burst to ensure tagging and return
+	if part == nil then
+		local p = Instance.new("Part")
+		p.Shape = Enum.PartType.Ball
+		p.Material = Enum.Material.Neon
+		p.Color = color or CYBER_YELLOW
+		p.Transparency = 0.15
+		p.Anchored = true
+		p.CanCollide = false
+		p.Size = Vector3.new(2,2,2)
+		p.CFrame = CFrame.new(position)
+		p.Parent = VFX_FOLDER
+		local light = Instance.new("PointLight")
+		light.Color = p.Color; light.Brightness = 4; light.Range = 15; light.Parent = p
+		TweenService:Create(p, TweenInfo.new(0.45, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {Size = Vector3.new(size,size,size), Transparency = 1}):Play()
+		Debris:AddItem(p, 1)
+		TagVFX(p)
+		return p
+	else
+		-- If original returned something, try to tag
+		pcall(function() TagVFX(part) end)
+		return part
+	end
+end
+
+local OldCyberRing = CyberRing
+CyberRing = function(position, size, color)
+	local ring = OldCyberRing(position, size, color)
+	if not ring then
+		local r = Instance.new("Part")
+		r.Shape = Enum.PartType.Cylinder
+		r.Material = Enum.Material.Neon
+		r.Color = color or GOLD
+		r.Transparency = 0.25
+		r.Anchored = true
+		r.CanCollide = false
+		r.Size = Vector3.new(0.2,5,5)
+		r.CFrame = CFrame.new(position) * CFrame.Angles(0,0,math.rad(90))
+		r.Parent = VFX_FOLDER
+		TweenService:Create(r, TweenInfo.new(0.5, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {Size = Vector3.new(0.2, size, size), Transparency = 1}):Play()
+		Debris:AddItem(r, 0.9)
+		TagVFX(r)
+		return r
+	else
+		pcall(function() TagVFX(ring) end)
+		return ring
+	end
+end
+
+-- Make recolor watcher only recolor tagged objects or local character/VFX folder descendants
+-- override existing scan/makeYellow by checking the attribute
+local OrigScan = scan
+local function TaggedScan(object)
+	if not object then return end
+	pcall(function()
+		if object:GetAttribute and object:GetAttribute("R4FixVFX") then
+			makeYellow(object)
+		elseif isLocalVFX(object) then
+			makeYellow(object)
+		else
+			for _,child in ipairs(object:GetDescendants()) do
+				if child:GetAttribute and child:GetAttribute("R4FixVFX") then makeYellow(child) end
+				if isLocalVFX(child) then makeYellow(child) end
+			end
+		end
+	end)
+end
+
+-- Replace watchers
+Workspace.DescendantAdded:Connect(function(obj)
+	task.defer(function()
+		TaggedScan(obj)
+		task.wait()
+		if obj and obj.Parent then TaggedScan(obj.Parent) end
+	end)
+end)
+
+-- final print
+print("[R4FIX] Quintuplets exploit helpers injected. DEBUG="..tostring(DEBUG))
