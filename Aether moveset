@@ -1,171 +1,241 @@
--- ============================================================
--- AETHER ULTIMATE BAR OVERRIDE
--- Uses the game's existing Ultimate bar
--- Blue Flame + Red Flame theme
--- ============================================================
+-- // ========================================================== \\ --
+-- //                 AETHER HUNTER OVERRIDE                    \\ --
+-- //                 Scripted by R4Fix🇦🇹                      \\ --
+-- // ========================================================== \\ --
 
-local function styleUltimateBar()
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
 
-	local gui = Player:FindFirstChild("PlayerGui")
+local Player = Players.LocalPlayer
+local PlayerGui = Player:WaitForChild("PlayerGui")
 
-	if not gui then
-		return
+local MOVESET_NAME = "Aether"
+
+local DECAL_ID = "rbxthumb://type=Asset&id=13394302362&w=150&h=150"
+
+local VFX_ASSET = "rbxassetid://95183267034317"
+
+local Ultimate = false
+local UltCharge = 0
+local UltMax = 100
+
+local Aura
+
+--------------------------------------------------
+-- CHARACTER TAB OVERRIDE
+--------------------------------------------------
+
+RunService.Heartbeat:Connect(function()
+
+	pcall(function()
+
+		local topbar = PlayerGui:FindFirstChild("TopbarPlus")
+
+		if topbar then
+
+			for _,v in ipairs(topbar:GetDescendants()) do
+
+				if v.Name == "IconButton" then
+
+					local label = v:FindFirstChild("IconLabel")
+					local image = v:FindFirstChild("IconImage")
+
+					if label then
+
+						if label.Text == "Hero Hunter"
+						or label.Text == "Hunter"
+						or label.Text == MOVESET_NAME then
+
+							label.Text = MOVESET_NAME
+
+							if image then
+								image.Image = DECAL_ID
+							end
+
+						end
+					end
+				end
+			end
+		end
+
+	end)
+
+end)
+
+
+--------------------------------------------------
+-- ULTIMATE BAR
+--------------------------------------------------
+
+local gui = Instance.new("ScreenGui")
+gui.Name = "AetherUltimateGui"
+gui.ResetOnSpawn = false
+gui.Parent = PlayerGui
+
+
+local frame = Instance.new("Frame")
+frame.Size = UDim2.new(0,400,0,30)
+frame.Position = UDim2.new(.5,-200,.85,0)
+frame.BackgroundColor3 = Color3.fromRGB(20,20,20)
+frame.BorderSizePixel = 0
+frame.Parent = gui
+
+
+local bar = Instance.new("Frame")
+bar.Size = UDim2.new(0,0,1,0)
+bar.BackgroundColor3 = Color3.fromRGB(120,0,255)
+bar.BorderSizePixel = 0
+bar.Parent = frame
+
+
+local text = Instance.new("TextLabel")
+text.Size = UDim2.new(1,0,1,0)
+text.BackgroundTransparency = 1
+text.TextColor3 = Color3.new(1,1,1)
+text.Text = "AETHER ULTIMATE 0%"
+text.Parent = frame
+
+
+--------------------------------------------------
+-- AURA VFX
+--------------------------------------------------
+
+local function RemoveAura()
+
+	if Aura then
+		Aura:Destroy()
+		Aura = nil
 	end
 
-
-	local bar = gui:FindFirstChild("Bar")
-
-	if not bar then
-		return
-	end
+end
 
 
-	local magicHealth = bar:FindFirstChild("MagicHealth")
+local function LoadAura()
 
-	if not magicHealth then
-		return
-	end
+	RemoveAura()
 
+	local objects = game:GetObjects(VFX_ASSET)
 
-	--============================================================
-	-- TITLE
-	--============================================================
+	if #objects > 0 then
 
-	local textLabel = magicHealth:FindFirstChild("TextLabel")
+		local m = objects[1]
+		m.Name = "AetherAura"
+		m.Parent = workspace
 
-	if textLabel and textLabel:IsA("TextLabel") then
+		local character = Player.Character
+			or Player.CharacterAdded:Wait()
 
-		textLabel.Text = "AETHER'S ASCENSION"
-		textLabel.TextColor3 = Color3.fromRGB(170,220,255)
-		textLabel.TextStrokeColor3 = Color3.fromRGB(255,60,30)
-		textLabel.TextStrokeTransparency = 0
-		textLabel.TextSize = 26
+		local root = character:WaitForChild("HumanoidRootPart")
 
-	end
-
-
-	-- Some versions have another nested label
-
-	local nested = textLabel and textLabel:FindFirstChild("TextLabel")
-
-	if nested and nested:IsA("TextLabel") then
-
-		nested.Text = "AETHER'S ASCENSION"
-		nested.TextColor3 = Color3.fromRGB(170,220,255)
-		nested.TextStrokeColor3 = Color3.fromRGB(255,60,30)
-		nested.TextStrokeTransparency = 0
-
-	end
-
-
-
-	--============================================================
-	-- BAR COLORS
-	--============================================================
-
-	local health = magicHealth:FindFirstChild("Health")
-
-	if not health then
-		return
-	end
-
-
-	local holder = health:FindFirstChild("Bar")
-
-	if not holder then
-		return
-	end
-
-
-	local fill = holder:FindFirstChild("Bar")
-
-
-	if fill then
-
-
-		-- Image based bar
-
-		if fill:IsA("ImageLabel") 
-		or fill:IsA("ImageButton") then
-
-
-			fill.ImageColor3 =
-				Color3.fromRGB(60,180,255)
-
-
-			fill.ImageTransparency = 0
-
-
-		-- Frame based bar
-
-		elseif fill:IsA("Frame") then
-
-
-			fill.BackgroundColor3 =
-				Color3.fromRGB(60,180,255)
-
-
-			fill.BackgroundTransparency = 0
-
+		if m.PrimaryPart then
+			m:SetPrimaryPartCFrame(root.CFrame)
+		else
+			m:PivotTo(root.CFrame)
 		end
 
 
-
-		-- Dual flame gradient
-
-		local gradient =
-			fill:FindFirstChildOfClass("UIGradient")
+		Aura = m
 
 
-		if gradient then
+		RunService.RenderStepped:Connect(function()
 
-			gradient.Color =
-				ColorSequence.new({
+			if Aura and root then
 
-					ColorSequenceKeypoint.new(
-						0,
-						Color3.fromRGB(30,120,255)
-					),
+				if Aura.PrimaryPart then
+					Aura:SetPrimaryPartCFrame(root.CFrame)
+				else
+					Aura:PivotTo(root.CFrame)
+				end
 
+			end
 
-					ColorSequenceKeypoint.new(
-						0.5,
-						Color3.fromRGB(255,60,35)
-					),
-
-
-					ColorSequenceKeypoint.new(
-						1,
-						Color3.fromRGB(120,40,255)
-					)
-
-				})
-
-		end
-
-	end
-
-
-
-	--============================================================
-	-- GLOW
-	--============================================================
-
-	local glow =
-		health:FindFirstChild("Glow")
-
-
-	if glow and
-		(glow:IsA("ImageLabel")
-		or glow:IsA("ImageButton")) then
-
-
-		glow.ImageColor3 =
-			Color3.fromRGB(255,80,40)
-
-
-		glow.ImageTransparency = 0.15
+		end)
 
 	end
 
 end
+
+
+--------------------------------------------------
+-- ULTIMATE SYSTEM
+--------------------------------------------------
+
+local function ActivateUltimate()
+
+	if Ultimate then return end
+
+	Ultimate = true
+	UltCharge = 0
+
+	text.Text = "AETHER AWAKENED"
+
+	LoadAura()
+
+	task.delay(30,function()
+
+		Ultimate = false
+
+		text.Text = "AETHER ULTIMATE READY"
+
+		RemoveAura()
+
+	end)
+
+end
+
+
+
+--------------------------------------------------
+-- CHARGE SYSTEM
+--------------------------------------------------
+
+RunService.Heartbeat:Connect(function()
+
+	if not Ultimate then
+
+		UltCharge += .15
+
+		if UltCharge >= UltMax then
+
+			UltCharge = UltMax
+
+			ActivateUltimate()
+
+		end
+
+	end
+
+
+	bar.Size = UDim2.new(
+		UltCharge/UltMax,
+		0,
+		1,
+		0
+	)
+
+
+	if not Ultimate then
+
+		text.Text =
+			"AETHER ULTIMATE "
+			..math.floor(UltCharge)
+			.."%"
+
+	end
+
+end)
+
+
+--------------------------------------------------
+-- RESPAWN CLEANUP
+--------------------------------------------------
+
+Player.CharacterAdded:Connect(function()
+
+	RemoveAura()
+
+	UltCharge = 0
+	Ultimate = false
+
+end)
