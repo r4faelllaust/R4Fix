@@ -1,296 +1,171 @@
---========================================================--
--- AETHER ULTIMATE BAR SYSTEM
--- Blue Flame + Crimson Fire
--- Standalone UI Controller
---========================================================--
+-- ============================================================
+-- AETHER ULTIMATE BAR OVERRIDE
+-- Uses the game's existing Ultimate bar
+-- Blue Flame + Red Flame theme
+-- ============================================================
 
-local Players = game:GetService("Players")
-local TweenService = game:GetService("TweenService")
-local RunService = game:GetService("RunService")
+local function styleUltimateBar()
 
-local Player = Players.LocalPlayer
-local PlayerGui = Player:WaitForChild("PlayerGui")
+	local gui = Player:FindFirstChild("PlayerGui")
 
---========================================================--
--- SETTINGS
---========================================================--
+	if not gui then
+		return
+	end
 
-local CONFIG = {
 
-	BarName = "AETHER'S ASCENSION",
+	local bar = gui:FindFirstChild("Bar")
 
-	ActivateText = "[G]",
+	if not bar then
+		return
+	end
 
-	Colors = {
-		Blue = Color3.fromRGB(40,180,255),
-		Red = Color3.fromRGB(255,60,40),
-		White = Color3.fromRGB(255,255,255),
-		Black = Color3.fromRGB(0,0,0)
-	},
 
-	FullChargeTime = 20,
+	local magicHealth = bar:FindFirstChild("MagicHealth")
 
-}
+	if not magicHealth then
+		return
+	end
 
---========================================================--
--- STATE
---========================================================--
 
-local Ultimate = {
+	--============================================================
+	-- TITLE
+	--============================================================
 
-	Charge = 0,
+	local textLabel = magicHealth:FindFirstChild("TextLabel")
 
-	MaxCharge = 100,
+	if textLabel and textLabel:IsA("TextLabel") then
 
-	IsUlted = false
-
-}
-
-
---========================================================--
--- GUI CREATION
---========================================================--
-
-local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "AetherUltimateBar"
-ScreenGui.ResetOnSpawn = false
-ScreenGui.Parent = PlayerGui
-
-
-local Main = Instance.new("Frame")
-Main.Name = "UltimateContainer"
-Main.AnchorPoint = Vector2.new(0.5,1)
-Main.Position = UDim2.new(0.5,0,0.93,0)
-Main.Size = UDim2.new(0,420,0,80)
-Main.BackgroundTransparency = 1
-Main.Parent = ScreenGui
-
-
-
--- TITLE
-
-local Title = Instance.new("TextLabel")
-Title.Name = "UltimateName"
-Title.Size = UDim2.new(1,0,0,30)
-Title.Position = UDim2.new(0,0,0,0)
-Title.BackgroundTransparency = 1
-Title.Text = CONFIG.BarName
-Title.Font = Enum.Font.GothamBold
-Title.TextSize = 26
-Title.TextColor3 = CONFIG.Colors.White
-Title.TextStrokeTransparency = 0
-Title.Parent = Main
-
-
-
--- G BUTTON
-
-local Activate = Instance.new("TextLabel")
-Activate.Name = "Activate"
-Activate.Size = UDim2.new(0,70,0,30)
-Activate.Position = UDim2.new(0.5,-35,-0.35,0)
-Activate.BackgroundTransparency = 1
-Activate.Text = CONFIG.ActivateText
-Activate.Font = Enum.Font.GothamBold
-Activate.TextSize = 22
-Activate.TextColor3 = CONFIG.Colors.White
-Activate.TextStrokeTransparency = 0
-Activate.Parent = Main
-
-
-
--- BAR BACKGROUND
-
-local Background = Instance.new("Frame")
-Background.Name = "BarBackground"
-Background.Position = UDim2.new(0,0,0.45,0)
-Background.Size = UDim2.new(1,0,0,25)
-Background.BackgroundColor3 = Color3.fromRGB(15,15,20)
-Background.BorderSizePixel = 0
-Background.Parent = Main
-
-
-local Corner = Instance.new("UICorner")
-Corner.CornerRadius = UDim.new(0,12)
-Corner.Parent = Background
-
-
-
--- GLOW
-
-local Glow = Instance.new("UIStroke")
-Glow.Thickness = 3
-Glow.Color = CONFIG.Colors.Blue
-Glow.Transparency = 0.2
-Glow.Parent = Background
-
-
-
--- FILL
-
-local Fill = Instance.new("Frame")
-Fill.Name = "UltimateFill"
-Fill.Size = UDim2.new(0,0,1,0)
-Fill.BackgroundColor3 = CONFIG.Colors.Blue
-Fill.BorderSizePixel = 0
-Fill.Parent = Background
-
-
-local FillCorner = Instance.new("UICorner")
-FillCorner.CornerRadius = UDim.new(0,12)
-FillCorner.Parent = Fill
-
-
-
--- GRADIENT
-
-local Gradient = Instance.new("UIGradient")
-Gradient.Color = ColorSequence.new({
-
-	ColorSequenceKeypoint.new(
-		0,
-		CONFIG.Colors.Blue
-	),
-
-	ColorSequenceKeypoint.new(
-		0.5,
-		Color3.fromRGB(170,40,255)
-	),
-
-	ColorSequenceKeypoint.new(
-		1,
-		CONFIG.Colors.Red
-	)
-
-})
-
-Gradient.Parent = Fill
-
-
-
---========================================================--
--- BAR UPDATE
---========================================================--
-
-local function UpdateBar()
-
-	local Percent = math.clamp(
-		Ultimate.Charge / Ultimate.MaxCharge,
-		0,
-		1
-	)
-
-
-	TweenService:Create(
-		Fill,
-		TweenInfo.new(
-			0.25,
-			Enum.EasingStyle.Quint
-		),
-		{
-			Size = UDim2.new(
-				Percent,
-				0,
-				1,
-				0
-			)
-		}
-	):Play()
-
-
-
-	if Percent >= 1 then
-
-		Activate.Text = "[G] READY"
-
-		Glow.Color = CONFIG.Colors.Red
-
-	else
-
-		Activate.Text = CONFIG.ActivateText
-
-		Glow.Color = CONFIG.Colors.Blue
+		textLabel.Text = "AETHER'S ASCENSION"
+		textLabel.TextColor3 = Color3.fromRGB(170,220,255)
+		textLabel.TextStrokeColor3 = Color3.fromRGB(255,60,30)
+		textLabel.TextStrokeTransparency = 0
+		textLabel.TextSize = 26
 
 	end
 
-end
 
+	-- Some versions have another nested label
 
+	local nested = textLabel and textLabel:FindFirstChild("TextLabel")
 
---========================================================--
--- CHARGE API
---========================================================--
+	if nested and nested:IsA("TextLabel") then
 
-function Ultimate:Add(amount)
-
-	Ultimate.Charge = math.clamp(
-		Ultimate.Charge + amount,
-		0,
-		Ultimate.MaxCharge
-	)
-
-	UpdateBar()
-
-end
-
-
-
-function Ultimate:Reset()
-
-	Ultimate.Charge = 0
-	UpdateBar()
-
-end
-
-
-
-function Ultimate:SetState(state)
-
-	Ultimate.IsUlted = state
-
-
-	if state then
-
-		Title.Text = "AETHER'S ASCENSION"
-
-		Glow.Color = CONFIG.Colors.Red
-
-	else
-
-		Title.Text = CONFIG.BarName
-
-		Glow.Color = CONFIG.Colors.Blue
+		nested.Text = "AETHER'S ASCENSION"
+		nested.TextColor3 = Color3.fromRGB(170,220,255)
+		nested.TextStrokeColor3 = Color3.fromRGB(255,60,30)
+		nested.TextStrokeTransparency = 0
 
 	end
 
-end
+
+
+	--============================================================
+	-- BAR COLORS
+	--============================================================
+
+	local health = magicHealth:FindFirstChild("Health")
+
+	if not health then
+		return
+	end
+
+
+	local holder = health:FindFirstChild("Bar")
+
+	if not holder then
+		return
+	end
+
+
+	local fill = holder:FindFirstChild("Bar")
+
+
+	if fill then
+
+
+		-- Image based bar
+
+		if fill:IsA("ImageLabel") 
+		or fill:IsA("ImageButton") then
+
+
+			fill.ImageColor3 =
+				Color3.fromRGB(60,180,255)
+
+
+			fill.ImageTransparency = 0
+
+
+		-- Frame based bar
+
+		elseif fill:IsA("Frame") then
+
+
+			fill.BackgroundColor3 =
+				Color3.fromRGB(60,180,255)
+
+
+			fill.BackgroundTransparency = 0
+
+		end
 
 
 
---========================================================--
--- DEMO RECHARGE SYSTEM
--- REMOVE WHEN CONNECTING TO REAL ULT METER
---========================================================--
+		-- Dual flame gradient
 
-task.spawn(function()
+		local gradient =
+			fill:FindFirstChildOfClass("UIGradient")
 
-	while true do
 
-		task.wait(0.2)
+		if gradient then
 
-		if not Ultimate.IsUlted then
+			gradient.Color =
+				ColorSequence.new({
 
-			Ultimate:Add(
-				0.5
-			)
+					ColorSequenceKeypoint.new(
+						0,
+						Color3.fromRGB(30,120,255)
+					),
+
+
+					ColorSequenceKeypoint.new(
+						0.5,
+						Color3.fromRGB(255,60,35)
+					),
+
+
+					ColorSequenceKeypoint.new(
+						1,
+						Color3.fromRGB(120,40,255)
+					)
+
+				})
 
 		end
 
 	end
 
-end)
 
 
+	--============================================================
+	-- GLOW
+	--============================================================
 
--- Export
-getgenv().AetherUltimate = Ultimate
+	local glow =
+		health:FindFirstChild("Glow")
+
+
+	if glow and
+		(glow:IsA("ImageLabel")
+		or glow:IsA("ImageButton")) then
+
+
+		glow.ImageColor3 =
+			Color3.fromRGB(255,80,40)
+
+
+		glow.ImageTransparency = 0.15
+
+	end
+
+end
