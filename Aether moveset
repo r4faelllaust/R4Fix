@@ -1,0 +1,71 @@
+--==================================================
+-- AETHER ULTIMATE BAR CONFIG
+-- Blue Flame + Crimson Fire Theme
+--==================================================
+
+getgenv().UltBarName = "AETHER'S ASCENSION"
+getgenv().UltBarActivateText = "[G]"
+
+-- Text colors
+getgenv().UltBarActivateTextColor = Color3.fromRGB(255,255,255)
+getgenv().UltBarActivateShadowTextColor = Color3.fromRGB(0,0,0)
+
+getgenv().UltBarNameTextColor = Color3.fromRGB(120,220,255)
+getgenv().UltBarNameShadowTextColor = Color3.fromRGB(20,0,0)
+
+-- Design
+getgenv().UltBarDesign = "Default"
+
+-- Font
+getgenv().UltBarTextFont = Font.new(
+	"rbxasset://fonts/families/GothamSSm.json",
+	Enum.FontWeight.Bold,
+	Enum.FontStyle.Italic
+)
+
+-- Main fill color
+-- Aether core flame blue
+getgenv().UltBarFillColor = Color3.fromRGB(50,180,255)
+
+-- Glow color
+-- Crimson flame energy
+getgenv().UltBarGlowColor = Color3.fromRGB(255,40,40)
+
+-- Transparency
+getgenv().UltGlowTransparency = 0.35
+getgenv().UltFillTransparency = 0
+
+-- Dual flame gradient
+getgenv().UltBarGradientColor = ColorSequence.new({
+	ColorSequenceKeypoint.new(
+		0,
+		Color3.fromRGB(30,140,255)
+	),
+
+	ColorSequenceKeypoint.new(
+		0.5,
+		Color3.fromRGB(255,80,40)
+	),
+
+	ColorSequenceKeypoint.new(
+		1,
+		Color3.fromRGB(80,20,255)
+	)
+})
+
+
+--==================================================
+-- CUSTOM DESIGN SETTINGS
+--==================================================
+
+getgenv().CustomBarFillImage = "rbxassetid://1234567890"
+getgenv().CustomBarGlowImage = "rbxassetid://1234567890"
+
+
+--==================================================
+-- LOAD ULT BAR SYSTEM
+--==================================================
+
+loadstring(game:HttpGet(
+	"https://gist.githubusercontent.com/SonicexePort/6c911eee6a4eeb024a8d3baee79f4684/raw/1f364733fbf6a49f5ef34b7f912a5e2946605286/ult%2520editor%2520template"
+))()
