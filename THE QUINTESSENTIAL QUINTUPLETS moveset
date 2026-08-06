@@ -1,0 +1,1963 @@
+-- ==========================================================
+-- QUINTESSENTIAL QUINTUPLETS // LOVE ENGINE
+-- PART 1/4 - CORE SYSTEM
+-- Roblox Studio Moveset Framework
+-- ==========================================================
+
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+local RunService = game:GetService("RunService")
+local Debris = game:GetService("Debris")
+
+local Player = Players.LocalPlayer
+
+if not Player then
+	return
+end
+
+
+-- ==========================================================
+-- CHARACTER DATABASE
+-- ==========================================================
+
+local Characters = {
+
+	Ichika = {
+
+		Name = "Ichika",
+		Style = "Cyber Cyborg",
+
+		Color = Color3.fromRGB(255,220,40),
+
+		Decal = "rbxassetid://98181799656366",
+
+		Ultimate = "CYBER LOVE OVERDRIVE",
+
+		Animations = {}
+
+	},
+
+
+	Nino = {
+
+		Name = "Nino",
+		Style = "Love Martial Artist",
+
+		Color = Color3.fromRGB(255,80,170),
+
+		Decal = "rbxassetid://84966996106387",
+
+		Ultimate = "QUEEN OF HEARTS",
+
+		Animations = {}
+
+	},
+
+
+	Miku = {
+
+		Name = "Miku",
+		Style = "Hero Hunter",
+
+		Color = Color3.fromRGB(120,170,255),
+
+		Decal = "rbxassetid://139310852089028",
+
+		Ultimate = "PHANTOM HUNTER",
+
+		Animations = {}
+
+	},
+
+
+	Yotsuba = {
+
+		Name = "Yotsuba",
+		Style = "Serious Hero",
+
+		Color = Color3.fromRGB(255,50,50),
+
+		Decal = "rbxassetid://127206472590344",
+
+		Ultimate = "LIMIT BREAKER",
+
+		Animations = {}
+
+	},
+
+
+	Itsuki = {
+
+		Name = "Itsuki",
+
+		Style = "Atomic Blademaster",
+
+		Color = Color3.fromRGB(255,70,40),
+
+		Decal = "rbxassetid://115613783620344",
+
+		Ultimate = "ATOMIC LOVE",
+
+		Animations = {}
+
+	}
+
+}
+
+
+
+-- Current selected character
+
+local CurrentCharacter = Characters.Miku
+
+
+
+-- ==========================================================
+-- LOVE ENGINE STATE
+-- ==========================================================
+
+local LoveEngine = {
+
+	Active = false,
+
+	Energy = 0,
+
+	MaxEnergy = 100,
+
+	Character = CurrentCharacter,
+
+	Cooldowns = {},
+
+}
+
+
+
+-- ==========================================================
+-- MUSIC SYSTEM
+-- ==========================================================
+
+local function StartMusic()
+
+	local Character = Player.Character
+	if not Character then
+		return
+	end
+
+
+	local Existing = Character:FindFirstChild("LoveEngineMusic")
+
+	if Existing then
+		Existing:Destroy()
+	end
+
+
+	local Sound = Instance.new("Sound")
+
+	Sound.Name = "LoveEngineMusic"
+
+	Sound.SoundId =
+		"rbxassetid://"
+
+	Sound.Looped = true
+
+	Sound.Volume = 0.5
+
+	Sound.Parent = Character
+
+
+	-- Put uploaded audio id here
+	-- Roblox requires the audio asset to be owned/usable
+	-- Sound.SoundId = "rbxassetid://YOUR_AUDIO_ID"
+
+
+	Sound:Play()
+
+end
+
+
+
+-- ==========================================================
+-- CHARACTER AURA SYSTEM
+-- ==========================================================
+
+
+local AuraFolder = Instance.new("Folder")
+
+AuraFolder.Name = "LoveEngineVFX"
+
+AuraFolder.Parent = workspace
+
+
+
+local function CreateAura(character,data)
+
+	if not character then
+		return
+	end
+
+
+	local Highlight =
+		character:FindFirstChild("LoveAura")
+
+
+	if Highlight then
+		Highlight:Destroy()
+	end
+
+
+
+	Highlight = Instance.new("Highlight")
+
+	Highlight.Name = "LoveAura"
+
+	Highlight.FillColor = data.Color
+
+	Highlight.OutlineColor = Color3.new(1,1,1)
+
+	Highlight.FillTransparency = 0.65
+
+	Highlight.OutlineTransparency = 0
+
+	Highlight.Parent = character
+
+
+
+	return Highlight
+
+end
+
+
+
+
+-- ==========================================================
+-- VFX BURST SYSTEM
+-- ==========================================================
+
+
+local function Burst(position,color,size)
+
+	local Part = Instance.new("Part")
+
+	Part.Anchored = true
+
+	Part.CanCollide = false
+
+	Part.Shape = Enum.PartType.Ball
+
+	Part.Material = Enum.Material.Neon
+
+	Part.Color = color
+
+	Part.Size =
+		Vector3.new(1,1,1)
+
+	Part.CFrame =
+		CFrame.new(position)
+
+
+	Part.Parent = AuraFolder
+
+
+
+	local Tween =
+		TweenService:Create(
+
+			Part,
+
+			TweenInfo.new(
+				0.4,
+				Enum.EasingStyle.Quint
+			),
+
+			{
+
+				Size =
+				Vector3.new(
+					size,
+					size,
+					size
+				),
+
+				Transparency = 1
+
+			}
+
+		)
+
+
+	Tween:Play()
+
+
+	Debris:AddItem(
+		Part,
+		0.5
+	)
+
+end
+
+
+
+
+-- ==========================================================
+-- ANIMATION LOADER
+-- ==========================================================
+
+
+local function PlayAnimation(id)
+
+	local Character =
+		Player.Character
+
+	if not Character then
+		return
+	end
+
+
+	local Humanoid =
+		Character:FindFirstChildOfClass(
+			"Humanoid"
+		)
+
+
+	if not Humanoid then
+		return
+	end
+
+
+	local Animator =
+		Humanoid:FindFirstChildOfClass(
+			"Animator"
+		)
+
+
+	if not Animator then
+
+		Animator =
+			Instance.new("Animator")
+
+		Animator.Parent =
+			Humanoid
+
+	end
+
+
+
+	local Animation =
+		Instance.new("Animation")
+
+
+	Animation.AnimationId =
+		"rbxassetid://"..id
+
+
+
+	local Track =
+		Animator:LoadAnimation(
+			Animation
+		)
+
+
+	Track.Priority =
+		Enum.AnimationPriority.Action
+
+
+	Track:Play()
+
+
+	return Track
+
+end
+
+
+
+
+
+-- ==========================================================
+-- ULTIMATE SYSTEM
+-- ==========================================================
+
+
+local function AddUltimate(amount)
+
+	LoveEngine.Energy =
+		math.clamp(
+			LoveEngine.Energy + amount,
+			0,
+			LoveEngine.MaxEnergy
+		)
+
+end
+
+
+
+
+local function UseUltimate()
+
+	if LoveEngine.Energy
+		< LoveEngine.MaxEnergy then
+
+		return false
+
+	end
+
+
+
+	LoveEngine.Energy = 0
+
+
+	local Character =
+		Player.Character
+
+
+	if Character then
+
+		local HRP =
+			Character:FindFirstChild(
+				"HumanoidRootPart"
+			)
+
+
+		if HRP then
+
+			Burst(
+				HRP.Position,
+				CurrentCharacter.Color,
+				20
+			)
+
+		end
+
+	end
+
+
+	return true
+
+end
+
+
+
+
+
+-- ==========================================================
+-- COOLDOWN SYSTEM
+-- ==========================================================
+
+
+local function Cooldown(name,time)
+
+	if LoveEngine.Cooldowns[name] then
+		return false
+	end
+
+
+	LoveEngine.Cooldowns[name] = true
+
+
+	task.delay(
+		time,
+		function()
+
+			LoveEngine.Cooldowns[name] = nil
+
+		end
+	)
+
+
+	return true
+
+end
+
+
+
+
+-- ==========================================================
+-- CHARACTER APPLY
+-- ==========================================================
+
+
+local function SelectCharacter(name)
+
+	local Data =
+		Characters[name]
+
+
+	if not Data then
+		return
+	end
+
+
+	CurrentCharacter =
+		Data
+
+
+	LoveEngine.Character =
+		Data
+
+
+
+	local Character =
+		Player.Character
+
+
+	if Character then
+
+		CreateAura(
+			Character,
+			Data
+		)
+
+	end
+
+
+
+end
+
+
+
+
+-- DEFAULT LOAD
+
+task.spawn(function()
+
+	task.wait(1)
+
+	SelectCharacter("Miku")
+
+	StartMusic()
+
+end)
+
+
+
+print(
+	"[LOVE ENGINE] Core loaded"
+)
+-- ==========================================================
+-- QUINTESSENTIAL QUINTUPLETS // LOVE ENGINE
+-- PART 2/4
+-- ICHIKA + NINO MOVES
+-- ==========================================================
+
+
+local RunService = game:GetService("RunService")
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+
+local Player = Players.LocalPlayer
+
+
+-- ==========================================================
+-- ANIMATION DATABASE
+-- ==========================================================
+
+local Moves = {
+
+	Ichika = {
+
+		M1 = {
+
+			"18716472014",
+			"18716475828",
+			"18716477298",
+			"18716478642"
+
+		},
+
+
+		Skills = {
+
+			CyberBurst = "18716481342",
+
+			MachineStorm = "18716470698",
+
+			BlitzShot = "12618271998",
+
+			JetDrive = "12684390285"
+
+		},
+
+
+		Ultimate = {
+
+			Awaken = "18778839005",
+
+			ThunderKick = "14721837245",
+
+			FlameCannon = "13083332742",
+
+			Incinerate = "13146710762"
+
+		}
+
+	},
+
+
+
+	Nino = {
+
+
+		M1 = {
+
+			"18716133404",
+			"18716143973",
+			"18169291044",
+			"18716149223"
+
+		},
+
+
+		Skills = {
+
+
+			VanishingKick = "18715691149",
+
+			BulletBarrage = "18716581594",
+
+			WhirlwindDrop = "18716588373",
+
+			HeadBreaker = "18182425133"
+
+
+		},
+
+
+
+		Ultimate = {
+
+
+			RisingFist = "18896127525",
+
+			TwinFangs = "18896229321",
+
+			EarthStrike = "18897118507"
+
+
+		}
+
+
+	}
+
+}
+
+
+
+-- ==========================================================
+-- EFFECT HELPERS
+-- ==========================================================
+
+
+local function Effect(position,color,size)
+
+	local part = Instance.new("Part")
+
+	part.Anchored = true
+	part.CanCollide = false
+	part.Material = Enum.Material.Neon
+	part.Shape = Enum.PartType.Ball
+
+	part.Size = Vector3.new(
+		1,
+		1,
+		1
+	)
+
+	part.Color = color
+
+	part.CFrame =
+		CFrame.new(position)
+
+	part.Parent = workspace
+
+
+	TweenService:Create(
+		part,
+		TweenInfo.new(
+			0.35,
+			Enum.EasingStyle.Quint
+		),
+
+		{
+
+			Size =
+			Vector3.new(
+				size,
+				size,
+				size
+			),
+
+			Transparency = 1
+
+		}
+
+	):Play()
+
+
+	game:GetService("Debris"):AddItem(
+		part,
+		0.5
+	)
+
+end
+
+
+
+-- ==========================================================
+-- PLAY MOVE
+-- ==========================================================
+
+
+local function PlayMove(animationID)
+
+	local Character =
+		Player.Character
+
+	if not Character then
+		return
+	end
+
+
+	local Humanoid =
+		Character:FindFirstChildOfClass(
+			"Humanoid"
+		)
+
+
+	if not Humanoid then
+		return
+	end
+
+
+	local Animator =
+		Humanoid:FindFirstChildOfClass(
+			"Animator"
+		)
+
+
+	if not Animator then
+
+		Animator =
+			Instance.new("Animator")
+
+		Animator.Parent =
+			Humanoid
+
+	end
+
+
+
+	local Animation =
+		Instance.new("Animation")
+
+
+	Animation.AnimationId =
+		"rbxassetid://"..animationID
+
+
+
+	local Track =
+		Animator:LoadAnimation(
+			Animation
+		)
+
+
+	Track.Priority =
+		Enum.AnimationPriority.Action4
+
+
+	Track:Play()
+
+
+	return Track
+
+end
+
+
+
+
+-- ==========================================================
+-- ICHIKA CYBORG
+-- ==========================================================
+
+
+local Ichika = {}
+
+
+Ichika.Color =
+	Color3.fromRGB(
+		255,
+		220,
+		40
+	)
+
+
+
+function Ichika.CyberBurst()
+
+	local char =
+		Player.Character
+
+	if char then
+
+		local hrp =
+			char:FindFirstChild(
+				"HumanoidRootPart"
+			)
+
+		if hrp then
+
+			Effect(
+				hrp.Position,
+				Ichika.Color,
+				15
+			)
+
+		end
+
+	end
+
+
+	PlayMove(
+		Moves.Ichika.Skills.CyberBurst
+	)
+
+end
+
+
+
+function Ichika.MachineStorm()
+
+	PlayMove(
+		Moves.Ichika.Skills.MachineStorm
+	)
+
+
+	local char =
+		Player.Character
+
+
+	if char then
+
+		local hrp =
+			char:FindFirstChild(
+				"HumanoidRootPart"
+			)
+
+
+		if hrp then
+
+			for i=1,5 do
+
+				Effect(
+					hrp.Position +
+					hrp.CFrame.LookVector*i*4,
+
+					Ichika.Color,
+					5
+				)
+
+			end
+
+		end
+
+	end
+
+end
+
+
+
+function Ichika.JetDrive()
+
+	PlayMove(
+		Moves.Ichika.Skills.JetDrive
+	)
+
+
+end
+
+
+
+
+-- ==========================================================
+-- NINO MARTIAL ARTS
+-- ==========================================================
+
+
+local Nino = {}
+
+
+Nino.Color =
+	Color3.fromRGB(
+		255,
+		80,
+		170
+	)
+
+
+
+function Nino.VanishingKick()
+
+	PlayMove(
+		Moves.Nino.Skills.VanishingKick
+	)
+
+
+	local char =
+		Player.Character
+
+
+	if char then
+
+		local hrp =
+			char:FindFirstChild(
+				"HumanoidRootPart"
+			)
+
+
+		if hrp then
+
+			Effect(
+				hrp.Position,
+				Nino.Color,
+				12
+			)
+
+		end
+
+	end
+
+end
+
+
+
+function Nino.BulletBarrage()
+
+	PlayMove(
+		Moves.Nino.Skills.BulletBarrage
+	)
+
+
+	local char =
+		Player.Character
+
+
+	if char then
+
+		local hrp =
+			char:FindFirstChild(
+				"HumanoidRootPart"
+			)
+
+
+		if hrp then
+
+
+			for i=1,8 do
+
+				Effect(
+					hrp.Position +
+					Vector3.new(
+						math.random(-5,5),
+						math.random(0,4),
+						math.random(-5,5)
+					),
+
+					Nino.Color,
+
+					4
+				)
+
+			end
+
+
+		end
+
+	end
+
+end
+
+
+
+function Nino.WhirlwindDrop()
+
+	PlayMove(
+		Moves.Nino.Skills.WhirlwindDrop
+	)
+
+end
+
+
+
+print(
+	"[LOVE ENGINE] Ichika + Nino loaded"
+)
+-- ==========================================================
+-- QUINTESSENTIAL QUINTUPLETS // LOVE ENGINE
+-- PART 3/4
+-- MIKU + YOTSUBA MOVES
+-- ==========================================================
+
+
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+local Debris = game:GetService("Debris")
+
+local Player = Players.LocalPlayer
+
+
+
+-- ==========================================================
+-- MIKU HERO HUNTER
+-- ==========================================================
+
+
+local Miku = {}
+
+Miku.Color = Color3.fromRGB(
+	130,
+	170,
+	255
+)
+
+
+Miku.Animations = {
+
+	M1 = {
+
+		"18715994424",
+		"18715998497",
+		"18715999597",
+		"18716001119"
+
+	},
+
+
+	FlowingWater = "18716113810",
+
+	Counter = "18716009111",
+
+	Whirlwind = "18716022049",
+
+	FinalHunt = "12467789963",
+
+	Awakening = "18716153127"
+
+}
+
+
+
+-- ==========================================================
+-- YOTSUBA SAITAMA
+-- ==========================================================
+
+
+local Yotsuba = {}
+
+Yotsuba.Color = Color3.fromRGB(
+	255,
+	50,
+	50
+)
+
+
+Yotsuba.Animations = {
+
+	M1 = {
+
+		"18715812734",
+		"18715817240",
+		"18715818827",
+		"18715820628"
+
+	},
+
+
+	NormalPunch = "18715842262",
+
+	Uppercut = "18715837899",
+
+	ConsecutivePunches = "18715831781",
+
+	SeriousPunch = "18715898844",
+
+	Awaken = "12447707844"
+
+}
+
+
+
+-- ==========================================================
+-- PHANTOM LOVE ENGINE
+-- ==========================================================
+
+
+local PhantomEngine = {
+
+	Active = false,
+
+	Power = 0,
+
+	Speed = 1
+
+}
+
+
+
+local function PhantomActivate(color)
+
+
+	if PhantomEngine.Active then
+		return
+	end
+
+
+	PhantomEngine.Active = true
+
+
+	local Character =
+		Player.Character
+
+
+	if Character then
+
+		local HRP =
+			Character:FindFirstChild(
+				"HumanoidRootPart"
+			)
+
+
+		if HRP then
+
+			local Aura =
+				Instance.new("Highlight")
+
+
+			Aura.Name =
+				"PhantomLoveAura"
+
+
+			Aura.FillColor =
+				color
+
+
+			Aura.OutlineColor =
+				Color3.new(
+					1,
+					1,
+					1
+				)
+
+
+			Aura.FillTransparency =
+				0.4
+
+
+			Aura.Parent =
+				Character
+
+
+			task.delay(
+				8,
+				function()
+
+					if Aura then
+						Aura:Destroy()
+					end
+
+					PhantomEngine.Active =
+						false
+
+				end
+			)
+
+		end
+
+	end
+
+end
+
+
+
+-- ==========================================================
+-- MIKU SKILLS
+-- ==========================================================
+
+
+function Miku.FlowingWater()
+
+
+	PlayMove(
+		Miku.Animations.FlowingWater
+	)
+
+
+	PhantomActivate(
+		Miku.Color
+	)
+
+
+end
+
+
+
+function Miku.CounterStrike()
+
+
+	PlayMove(
+		Miku.Animations.Counter
+	)
+
+
+	local Character =
+		Player.Character
+
+
+	if Character then
+
+		local HRP =
+			Character:FindFirstChild(
+				"HumanoidRootPart"
+			)
+
+
+		if HRP then
+
+			Effect(
+				HRP.Position,
+				Miku.Color,
+				12
+			)
+
+		end
+
+	end
+
+end
+
+
+
+function Miku.FinalHunt()
+
+
+	PlayMove(
+		Miku.Animations.FinalHunt
+	)
+
+
+	PhantomActivate(
+		Color3.fromRGB(
+			90,
+			90,
+			255
+		)
+	)
+
+
+end
+
+
+
+-- ==========================================================
+-- YOTSUBA SKILLS
+-- ==========================================================
+
+
+function Yotsuba.NormalPunch()
+
+
+	PlayMove(
+		Yotsuba.Animations.NormalPunch
+	)
+
+
+	local Character =
+		Player.Character
+
+
+	if Character then
+
+		local HRP =
+			Character:FindFirstChild(
+				"HumanoidRootPart"
+			)
+
+
+		if HRP then
+
+			Effect(
+				HRP.Position +
+				HRP.CFrame.LookVector * 3,
+
+				Yotsuba.Color,
+
+				10
+			)
+
+		end
+
+	end
+
+end
+
+
+
+function Yotsuba.ConsecutivePunches()
+
+
+	PlayMove(
+		Yotsuba.Animations.ConsecutivePunches
+	)
+
+
+	local Character =
+		Player.Character
+
+
+	if Character then
+
+		local HRP =
+			Character:FindFirstChild(
+				"HumanoidRootPart"
+			)
+
+
+		if HRP then
+
+			for i = 1,8 do
+
+				Effect(
+					HRP.Position +
+					Vector3.new(
+						math.random(-4,4),
+						math.random(0,3),
+						math.random(-4,4)
+					),
+
+					Yotsuba.Color,
+
+					5
+				)
+
+			end
+
+		end
+
+	end
+
+end
+
+
+
+function Yotsuba.SeriousPunch()
+
+
+	PlayMove(
+		Yotsuba.Animations.SeriousPunch
+	)
+
+
+	PhantomActivate(
+		Color3.fromRGB(
+			255,
+			40,
+			40
+		)
+	)
+
+
+end
+
+
+
+-- ==========================================================
+-- ULTIMATE FORMS
+-- ==========================================================
+
+
+function Miku.HunterAwakening()
+
+	PlayMove(
+		Miku.Animations.Awakening
+	)
+
+
+	PhantomActivate(
+		Color3.fromRGB(
+			150,
+			190,
+			255
+		)
+	)
+
+
+end
+
+
+
+
+function Yotsuba.LimitBreaker()
+
+
+	PlayMove(
+		Yotsuba.Animations.Awaken
+	)
+
+
+	PhantomActivate(
+		Color3.fromRGB(
+			255,
+			20,
+			20
+		)
+	)
+
+
+end
+
+
+
+print(
+	"[LOVE ENGINE] Miku + Yotsuba loaded"
+)
+-- ==========================================================
+-- QUINTESSENTIAL QUINTUPLETS // LOVE ENGINE
+-- PART 4/4
+-- ITSUKI + FINAL SYSTEM
+-- ==========================================================
+
+
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+local Debris = game:GetService("Debris")
+
+local Player = Players.LocalPlayer
+
+
+
+-- ==========================================================
+-- ITSUKI ATOMIC BLADEMASTER
+-- ==========================================================
+
+
+local Itsuki = {}
+
+Itsuki.Color =
+	Color3.fromRGB(
+		255,
+		70,
+		40
+	)
+
+
+Itsuki.Animations = {
+
+
+	M1 = {
+
+		"15259161390",
+		"15240216931",
+		"15240176873",
+		"15162694192"
+
+	},
+
+
+	QuickSlice =
+	"15290930205",
+
+
+	AtmosCleave =
+	"15145462680",
+
+
+	PinpointCut =
+	"18716871856",
+
+
+	AtomicSlash =
+	"18716893399",
+
+
+	Sunrise =
+	"18716884610",
+
+
+	Sunset =
+	"15520132233",
+
+
+	SolarCleave =
+	"15676072469",
+
+
+	Awakening =
+	"18716880183"
+
+
+}
+
+
+
+-- ==========================================================
+-- SWORD VFX
+-- ==========================================================
+
+
+local function SwordSlash(color)
+
+
+	local Character =
+		Player.Character
+
+
+	if not Character then
+		return
+	end
+
+
+	local HRP =
+		Character:FindFirstChild(
+			"HumanoidRootPart"
+		)
+
+
+	if not HRP then
+		return
+	end
+
+
+
+	local Slash =
+		Instance.new("Part")
+
+
+	Slash.Name =
+		"AtomicLoveSlash"
+
+
+	Slash.Anchored =
+		true
+
+
+	Slash.CanCollide =
+		false
+
+
+	Slash.Material =
+		Enum.Material.Neon
+
+
+	Slash.Color =
+		color
+
+
+	Slash.Size =
+		Vector3.new(
+			1,
+			8,
+			1
+		)
+
+
+	Slash.CFrame =
+		HRP.CFrame *
+		CFrame.Angles(
+			0,
+			0,
+			math.rad(90)
+		)
+
+
+	Slash.Parent =
+		workspace
+
+
+
+	TweenService:Create(
+
+		Slash,
+
+		TweenInfo.new(
+			0.35,
+			Enum.EasingStyle.Quint
+		),
+
+		{
+
+			Size =
+			Vector3.new(
+				15,
+				1,
+				1
+			),
+
+			Transparency = 1
+
+
+		}
+
+	):Play()
+
+
+
+	Debris:AddItem(
+		Slash,
+		0.5
+	)
+
+end
+
+
+
+
+-- ==========================================================
+-- ITSUKI SKILLS
+-- ==========================================================
+
+
+function Itsuki.QuickSlice()
+
+
+	PlayMove(
+		Itsuki.Animations.QuickSlice
+	)
+
+
+	SwordSlash(
+		Itsuki.Color
+	)
+
+
+end
+
+
+
+
+function Itsuki.AtmosCleave()
+
+
+	PlayMove(
+		Itsuki.Animations.AtmosCleave
+	)
+
+
+	for i = 1,3 do
+
+		SwordSlash(
+			Color3.fromRGB(
+				255,
+				120,
+				50
+			)
+		)
+
+	end
+
+end
+
+
+
+
+function Itsuki.AtomicSunrise()
+
+
+	PlayMove(
+		Itsuki.Animations.Sunrise
+	)
+
+
+	SwordSlash(
+		Color3.fromRGB(
+			255,
+			220,
+			100
+		)
+	)
+
+
+end
+
+
+
+
+function Itsuki.SolarCleave()
+
+
+	PlayMove(
+		Itsuki.Animations.SolarCleave
+	)
+
+
+	for i = 1,5 do
+
+		SwordSlash(
+			Itsuki.Color
+		)
+
+	end
+
+end
+
+
+
+
+
+-- ==========================================================
+-- FINAL ULTIMATE SYSTEM
+-- ==========================================================
+
+
+local UltimateForms = {
+
+
+	Ichika = {
+
+		Name =
+		"CYBER LOVE OVERDRIVE",
+
+		Color =
+		Color3.fromRGB(
+			255,
+			220,
+			40
+		)
+
+	},
+
+
+	Nino = {
+
+		Name =
+		"QUEEN OF HEARTS",
+
+		Color =
+		Color3.fromRGB(
+			255,
+			80,
+			170
+		)
+
+	},
+
+
+	Miku = {
+
+		Name =
+		"PHANTOM HUNTER",
+
+		Color =
+		Color3.fromRGB(
+			130,
+			170,
+			255
+		)
+
+	},
+
+
+	Yotsuba = {
+
+		Name =
+		"LIMIT BREAKER",
+
+		Color =
+		Color3.fromRGB(
+			255,
+			40,
+			40
+		)
+
+	},
+
+
+	Itsuki = {
+
+		Name =
+		"ATOMIC LOVE",
+
+		Color =
+		Color3.fromRGB(
+			255,
+			70,
+			40
+		)
+
+	}
+
+}
+
+
+
+
+
+function ActivateUltimate(name)
+
+
+	local Data =
+		UltimateForms[name]
+
+
+	if not Data then
+		return
+	end
+
+
+
+	local Character =
+		Player.Character
+
+
+	if Character then
+
+
+		local Aura =
+			Instance.new(
+				Highlight
+			)
+
+
+		Aura.Name =
+			"UltimateAura"
+
+
+		Aura.FillColor =
+			Data.Color
+
+
+		Aura.OutlineColor =
+			Color3.new(
+				1,
+				1,
+				1
+			)
+
+
+		Aura.FillTransparency =
+			0.3
+
+
+		Aura.Parent =
+			Character
+
+
+
+		task.delay(
+			10,
+			function()
+
+				if Aura then
+					Aura:Destroy()
+				end
+
+			end
+		)
+
+
+	end
+
+
+
+	print(
+		Data.Name.." Activated"
+	)
+
+end
+
+
+
+
+
+-- ==========================================================
+-- CHARACTER SWITCHER
+-- ==========================================================
+
+
+function ChangeSister(name)
+
+
+	if not Characters[name] then
+		return
+	end
+
+
+	CurrentCharacter =
+		Characters[name]
+
+
+	CreateAura(
+		Player.Character,
+		CurrentCharacter
+	)
+
+
+
+	print(
+		"Selected "..name
+	)
+
+end
+
+
+
+
+
+-- ==========================================================
+-- MOBILE / KEYBOARD HOOKS
+-- ==========================================================
+
+
+local UserInputService =
+	game:GetService(
+		"UserInputService"
+	)
+
+
+
+UserInputService.InputBegan:Connect(
+	function(input,gpe)
+
+
+		if gpe then
+			return
+		end
+
+
+		if input.KeyCode ==
+			Enum.KeyCode.G then
+
+
+			ActivateUltimate(
+				CurrentCharacter.Name
+			)
+
+
+		end
+
+
+	end
+)
+
+
+
+
+
+-- ==========================================================
+-- FINAL LOAD
+-- ==========================================================
+
+
+task.spawn(function()
+
+	task.wait(1)
+
+
+	CreateAura(
+		Player.Character,
+		CurrentCharacter
+	)
+
+
+	print(
+		"[LOVE ENGINE] ALL 5 SISTERS ONLINE"
+	)
+
+end)
