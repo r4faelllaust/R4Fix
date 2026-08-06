@@ -1,71 +1,296 @@
---==================================================
--- AETHER ULTIMATE BAR CONFIG
--- Blue Flame + Crimson Fire Theme
---==================================================
+--========================================================--
+-- AETHER ULTIMATE BAR SYSTEM
+-- Blue Flame + Crimson Fire
+-- Standalone UI Controller
+--========================================================--
 
-getgenv().UltBarName = "AETHER'S ASCENSION"
-getgenv().UltBarActivateText = "[G]"
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+local RunService = game:GetService("RunService")
 
--- Text colors
-getgenv().UltBarActivateTextColor = Color3.fromRGB(255,255,255)
-getgenv().UltBarActivateShadowTextColor = Color3.fromRGB(0,0,0)
+local Player = Players.LocalPlayer
+local PlayerGui = Player:WaitForChild("PlayerGui")
 
-getgenv().UltBarNameTextColor = Color3.fromRGB(120,220,255)
-getgenv().UltBarNameShadowTextColor = Color3.fromRGB(20,0,0)
+--========================================================--
+-- SETTINGS
+--========================================================--
 
--- Design
-getgenv().UltBarDesign = "Default"
+local CONFIG = {
 
--- Font
-getgenv().UltBarTextFont = Font.new(
-	"rbxasset://fonts/families/GothamSSm.json",
-	Enum.FontWeight.Bold,
-	Enum.FontStyle.Italic
-)
+	BarName = "AETHER'S ASCENSION",
 
--- Main fill color
--- Aether core flame blue
-getgenv().UltBarFillColor = Color3.fromRGB(50,180,255)
+	ActivateText = "[G]",
 
--- Glow color
--- Crimson flame energy
-getgenv().UltBarGlowColor = Color3.fromRGB(255,40,40)
+	Colors = {
+		Blue = Color3.fromRGB(40,180,255),
+		Red = Color3.fromRGB(255,60,40),
+		White = Color3.fromRGB(255,255,255),
+		Black = Color3.fromRGB(0,0,0)
+	},
 
--- Transparency
-getgenv().UltGlowTransparency = 0.35
-getgenv().UltFillTransparency = 0
+	FullChargeTime = 20,
 
--- Dual flame gradient
-getgenv().UltBarGradientColor = ColorSequence.new({
+}
+
+--========================================================--
+-- STATE
+--========================================================--
+
+local Ultimate = {
+
+	Charge = 0,
+
+	MaxCharge = 100,
+
+	IsUlted = false
+
+}
+
+
+--========================================================--
+-- GUI CREATION
+--========================================================--
+
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "AetherUltimateBar"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.Parent = PlayerGui
+
+
+local Main = Instance.new("Frame")
+Main.Name = "UltimateContainer"
+Main.AnchorPoint = Vector2.new(0.5,1)
+Main.Position = UDim2.new(0.5,0,0.93,0)
+Main.Size = UDim2.new(0,420,0,80)
+Main.BackgroundTransparency = 1
+Main.Parent = ScreenGui
+
+
+
+-- TITLE
+
+local Title = Instance.new("TextLabel")
+Title.Name = "UltimateName"
+Title.Size = UDim2.new(1,0,0,30)
+Title.Position = UDim2.new(0,0,0,0)
+Title.BackgroundTransparency = 1
+Title.Text = CONFIG.BarName
+Title.Font = Enum.Font.GothamBold
+Title.TextSize = 26
+Title.TextColor3 = CONFIG.Colors.White
+Title.TextStrokeTransparency = 0
+Title.Parent = Main
+
+
+
+-- G BUTTON
+
+local Activate = Instance.new("TextLabel")
+Activate.Name = "Activate"
+Activate.Size = UDim2.new(0,70,0,30)
+Activate.Position = UDim2.new(0.5,-35,-0.35,0)
+Activate.BackgroundTransparency = 1
+Activate.Text = CONFIG.ActivateText
+Activate.Font = Enum.Font.GothamBold
+Activate.TextSize = 22
+Activate.TextColor3 = CONFIG.Colors.White
+Activate.TextStrokeTransparency = 0
+Activate.Parent = Main
+
+
+
+-- BAR BACKGROUND
+
+local Background = Instance.new("Frame")
+Background.Name = "BarBackground"
+Background.Position = UDim2.new(0,0,0.45,0)
+Background.Size = UDim2.new(1,0,0,25)
+Background.BackgroundColor3 = Color3.fromRGB(15,15,20)
+Background.BorderSizePixel = 0
+Background.Parent = Main
+
+
+local Corner = Instance.new("UICorner")
+Corner.CornerRadius = UDim.new(0,12)
+Corner.Parent = Background
+
+
+
+-- GLOW
+
+local Glow = Instance.new("UIStroke")
+Glow.Thickness = 3
+Glow.Color = CONFIG.Colors.Blue
+Glow.Transparency = 0.2
+Glow.Parent = Background
+
+
+
+-- FILL
+
+local Fill = Instance.new("Frame")
+Fill.Name = "UltimateFill"
+Fill.Size = UDim2.new(0,0,1,0)
+Fill.BackgroundColor3 = CONFIG.Colors.Blue
+Fill.BorderSizePixel = 0
+Fill.Parent = Background
+
+
+local FillCorner = Instance.new("UICorner")
+FillCorner.CornerRadius = UDim.new(0,12)
+FillCorner.Parent = Fill
+
+
+
+-- GRADIENT
+
+local Gradient = Instance.new("UIGradient")
+Gradient.Color = ColorSequence.new({
+
 	ColorSequenceKeypoint.new(
 		0,
-		Color3.fromRGB(30,140,255)
+		CONFIG.Colors.Blue
 	),
 
 	ColorSequenceKeypoint.new(
 		0.5,
-		Color3.fromRGB(255,80,40)
+		Color3.fromRGB(170,40,255)
 	),
 
 	ColorSequenceKeypoint.new(
 		1,
-		Color3.fromRGB(80,20,255)
+		CONFIG.Colors.Red
 	)
+
 })
 
-
---==================================================
--- CUSTOM DESIGN SETTINGS
---==================================================
-
-getgenv().CustomBarFillImage = "rbxassetid://1234567890"
-getgenv().CustomBarGlowImage = "rbxassetid://1234567890"
+Gradient.Parent = Fill
 
 
---==================================================
--- LOAD ULT BAR SYSTEM
---==================================================
 
-loadstring(game:HttpGet(
-	"https://gist.githubusercontent.com/SonicexePort/6c911eee6a4eeb024a8d3baee79f4684/raw/1f364733fbf6a49f5ef34b7f912a5e2946605286/ult%2520editor%2520template"
-))()
+--========================================================--
+-- BAR UPDATE
+--========================================================--
+
+local function UpdateBar()
+
+	local Percent = math.clamp(
+		Ultimate.Charge / Ultimate.MaxCharge,
+		0,
+		1
+	)
+
+
+	TweenService:Create(
+		Fill,
+		TweenInfo.new(
+			0.25,
+			Enum.EasingStyle.Quint
+		),
+		{
+			Size = UDim2.new(
+				Percent,
+				0,
+				1,
+				0
+			)
+		}
+	):Play()
+
+
+
+	if Percent >= 1 then
+
+		Activate.Text = "[G] READY"
+
+		Glow.Color = CONFIG.Colors.Red
+
+	else
+
+		Activate.Text = CONFIG.ActivateText
+
+		Glow.Color = CONFIG.Colors.Blue
+
+	end
+
+end
+
+
+
+--========================================================--
+-- CHARGE API
+--========================================================--
+
+function Ultimate:Add(amount)
+
+	Ultimate.Charge = math.clamp(
+		Ultimate.Charge + amount,
+		0,
+		Ultimate.MaxCharge
+	)
+
+	UpdateBar()
+
+end
+
+
+
+function Ultimate:Reset()
+
+	Ultimate.Charge = 0
+	UpdateBar()
+
+end
+
+
+
+function Ultimate:SetState(state)
+
+	Ultimate.IsUlted = state
+
+
+	if state then
+
+		Title.Text = "AETHER'S ASCENSION"
+
+		Glow.Color = CONFIG.Colors.Red
+
+	else
+
+		Title.Text = CONFIG.BarName
+
+		Glow.Color = CONFIG.Colors.Blue
+
+	end
+
+end
+
+
+
+--========================================================--
+-- DEMO RECHARGE SYSTEM
+-- REMOVE WHEN CONNECTING TO REAL ULT METER
+--========================================================--
+
+task.spawn(function()
+
+	while true do
+
+		task.wait(0.2)
+
+		if not Ultimate.IsUlted then
+
+			Ultimate:Add(
+				0.5
+			)
+
+		end
+
+	end
+
+end)
+
+
+
+-- Export
+getgenv().AetherUltimate = Ultimate
