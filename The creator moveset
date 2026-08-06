@@ -4,25 +4,30 @@
 -- ================================================================
 -- Place: The Strongest Battlegrounds
 -- PlaceId: 10449761463
-
+--
+-- SINGLE LOCAL SCRIPT
+--
 -- IDENTITY:
 --     THE CREATOR
-
+--
 -- FEATURES:
 --     • No flight
 --     • No custom bottom UI
 --     • Green / black glitch aesthetic
---     • Glitchy hotbar
---     • Fixed character selector
---     • Fixed decal format
---     • M1 closest-target blink
+--     • Existing TSB hotbar modification
+--     • Character selector modification
+--     • Creator decal
+--     • Closest-target M1 blink
 --     • Blink behind target BEFORE M1 animation
 --     • Phantom Engine
---     • Void teleport effects
---     • Kill / finisher presentation
---     • Garou-style green visual override
---     • Fast chaotic VFX
+--     • Void Protocol
+--     • Creator Rush
+--     • Null Execution
+--     • Creator Ultimate
+--     • Layered glitch VFX
+--     • Local background music
 --     • Respawn-safe
+--     • Re-execution-safe
 --     • Strict cleanup
 -- ================================================================
 
@@ -31,8 +36,15 @@ local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 local Debris = game:GetService("Debris")
 local StarterGui = game:GetService("StarterGui")
+local SoundService = game:GetService("SoundService")
 
 local Player = Players.LocalPlayer
+
+if not Player then
+	warn("[R4FIX] THE CREATOR: LocalPlayer unavailable.")
+	return
+end
+
 local PlayerGui = Player:WaitForChild("PlayerGui")
 
 -- ================================================================
@@ -41,8 +53,6 @@ local PlayerGui = Player:WaitForChild("PlayerGui")
 
 local MOVESET_NAME = "ＴＨＥ　ＣＲＥＡＴＯＲ"
 
--- IMPORTANT:
--- ImageLabel/ImageButton requires a Roblox asset id.
 local DECAL_ID = "rbxassetid://666236509"
 
 local PLACE_ID = 10449761463
@@ -63,137 +73,114 @@ local WHITE = Color3.fromRGB(235, 255, 240)
 -- ================================================================
 
 local CONFIG = {
+	M1Range = 90,
+	M1BehindDistance = 3.8,
 
-M1Range = 90,
-M1BehindDistance = 3.8,
+	TargetRefresh = 0.025,
 
-TargetRefresh = 0.025,
+	M1Cooldown = 0.075,
+	VFXCooldown = 0.035,
 
-M1Cooldown = 0.075,
-VFXCooldown = 0.035,
+	Move1Duration = 0.85,
+	Move2Duration = 0.95,
+	Move3Duration = 1.10,
+	Move4Duration = 1.25,
 
-GlitchDuration = 0.32,
+	UltDuration = 1.65,
 
-Move1Duration = 0.85,
-Move2Duration = 0.95,
-Move3Duration = 1.10,
-Move4Duration = 1.25,
-
-UltDuration = 1.65,
-
+	MusicId = "rbxassetid://0",
+	MusicVolume = 0.35,
 }
 
 -- ================================================================
 -- SESSION
 -- ================================================================
 
-getgenv().R4FIX_THE_CREATOR = getgenv().R4FIX_THE_CREATOR or {
+local SESSION = {
+	Initialized = false,
 
-Initialized = false,
+	Connections = {},
+	CharacterConnections = {},
 
-Connections = {},
-CharacterConnections = {},
+	CharacterToken = 0,
 
-CharacterToken = 0,
+	LastM1 = 0,
+	LastVFX = {},
 
-LastM1 = 0,
-LastVFX = {},
+	Objects = {},
+	GlitchObjects = {},
 
-Objects = {},
-GlitchObjects = {},
+	IsUlted = false,
 
-IsUlted = false,
-
-LastTarget = nil,
-
+	LastTarget = nil :: Model?,
 }
 
-local SESSION = getgenv().R4FIX_THE_CREATOR
-
 -- ================================================================
--- CONNECTIONS
+-- CLEANUP
 -- ================================================================
 
-local function disconnect(list)
+local function disconnect(list: {RBXScriptConnection})
+	for _, connection in ipairs(list) do
+		pcall(function()
+			connection:Disconnect()
+		end)
+	end
 
-for _, connection in ipairs(list) do
-
-	pcall(function()
-		connection:Disconnect()
-	end)
-
+	table.clear(list)
 end
 
-table.clear(list)
-
+local function track(
+	connection: RBXScriptConnection,
+	list: {RBXScriptConnection}
+): RBXScriptConnection
+	table.insert(list, connection)
+	return connection
 end
 
-local function track(connection)
-
-if connection then
-	table.insert(
-		SESSION.CharacterConnections,
-		connection
-	)
-end
-
-return connection
-
-end
-
--- ================================================================
--- SAFE DESTROY
--- ================================================================
-
-local function destroyObject(object)
-
-if object and object.Parent then
-
-	pcall(function()
-		object:Destroy()
-	end)
-
-end
-
+local function destroyObject(object: Instance?)
+	if object then
+		pcall(function()
+			object:Destroy()
+		end)
+	end
 end
 
 local function cleanupObjects()
+	for _, object in ipairs(SESSION.Objects) do
+		destroyObject(object)
+	end
 
-for _, object in ipairs(SESSION.Objects) do
-	destroyObject(object)
-end
-
-table.clear(SESSION.Objects)
-
+	table.clear(SESSION.Objects)
 end
 
 -- ================================================================
 -- CHARACTER
 -- ================================================================
 
-local function getCharacter()
+local function getCharacter():
+	(Model?, Humanoid?, BasePart?)
 
-local character = Player.Character
+	local character = Player.Character
 
-if not character then
-	return nil
-end
+	if not character then
+		return nil, nil, nil
+	end
 
-local humanoid =
-	character:FindFirstChildOfClass("Humanoid")
+	local humanoid =
+		character:FindFirstChildOfClass("Humanoid")
 
-local root =
-	character:FindFirstChild("HumanoidRootPart")
+	local root =
+		character:FindFirstChild("HumanoidRootPart")
 
-if not humanoid
-	or not root
-	or humanoid.Health <= 0
-then
-	return nil
-end
+	if not humanoid
+		or not root
+		or not root:IsA("BasePart")
+		or humanoid.Health <= 0
+	then
+		return nil, nil, nil
+	end
 
-return character, humanoid, root
-
+	return character, humanoid, root
 end
 
 -- ================================================================
@@ -201,116 +188,108 @@ end
 -- ================================================================
 
 local function getAnimator(humanoid: Humanoid): Animator
+	local animator =
+		humanoid:FindFirstChildOfClass("Animator")
 
-local animator =
-	humanoid:FindFirstChildOfClass("Animator")
+	if not animator then
+		animator = Instance.new("Animator")
+		animator.Parent = humanoid
+	end
 
-if not animator then
-
-	animator =
-		Instance.new("Animator")
-
-	animator.Parent =
-		humanoid
-
+	return animator
 end
 
-return animator
+local function normalizeAnimationId(id: string): string
+	local numeric = string.match(id, "%d+")
 
+	if numeric then
+		return numeric
+	end
+
+	return id
+end
+
+local function animationMatches(
+	actual: string,
+	expected: string
+): boolean
+	return normalizeAnimationId(actual)
+		== normalizeAnimationId(expected)
 end
 
 local function playAnimation(
-humanoid: Humanoid,
-id: string,
-priority: Enum.AnimationPriority?,
-speed: number?
+	humanoid: Humanoid,
+	id: string,
+	priority: Enum.AnimationPriority?,
+	speed: number?
 ): AnimationTrack?
 
-if not humanoid
-	or humanoid.Health <= 0
-then
-	return nil
-end
+	if humanoid.Health <= 0 then
+		return nil
+	end
 
-local animation =
-	Instance.new("Animation")
+	local animation = Instance.new("Animation")
+	animation.AnimationId = id
 
-animation.AnimationId =
-	id
+	local animator = getAnimator(humanoid)
 
-local animator =
-	getAnimator(humanoid)
-
-local success, result =
-	pcall(function()
+	local success, result = pcall(function()
 		return animator:LoadAnimation(animation)
 	end)
 
-animation:Destroy()
+	animation:Destroy()
 
-if not success or not result then
-	return nil
-end
+	if not success or not result then
+		return nil
+	end
 
-result.Priority =
-	priority or Enum.AnimationPriority.Action
+	local animationTrack = result :: AnimationTrack
 
-result.Looped =
-	false
+	animationTrack.Priority =
+		priority or Enum.AnimationPriority.Action
 
-pcall(function()
+	animationTrack.Looped = false
 
-	result:Play(
-		0.025,
-		1,
-		speed or 1
-	)
+	pcall(function()
+		animationTrack:Play(
+			0.025,
+			1,
+			speed or 1
+		)
+	end)
 
-end)
-
-return result
-
+	return animationTrack
 end
 
 local function playCapped(
-humanoid: Humanoid,
-id: string,
-priority: Enum.AnimationPriority?,
-duration: number,
-speed: number?
-)
+	humanoid: Humanoid,
+	id: string,
+	priority: Enum.AnimationPriority?,
+	duration: number,
+	speed: number?
+): AnimationTrack?
 
-local trackResult =
-	playAnimation(
-		humanoid,
-		id,
-		priority,
-		speed
-	)
+	local animationTrack =
+		playAnimation(
+			humanoid,
+			id,
+			priority,
+			speed
+		)
 
-if trackResult then
-
-	task.delay(
-		duration,
-		function()
-
+	if animationTrack then
+		task.delay(duration, function()
 			pcall(function()
-
-				if trackResult.IsPlaying then
-					trackResult:Stop(0.04)
+				if animationTrack.IsPlaying then
+					animationTrack:Stop(0.04)
 				end
 
-				trackResult:Destroy()
-
+				animationTrack:Destroy()
 			end)
+		end)
+	end
 
-		end
-	)
-
-end
-
-return trackResult
-
+	return animationTrack
 end
 
 -- ================================================================
@@ -318,91 +297,80 @@ end
 -- ================================================================
 
 local M1_ANIMATIONS = {
-
-"rbxassetid://15259161390",
-"rbxassetid://15240216931",
-"rbxassetid://15240176873",
-"rbxassetid://15162694192",
-
+	"rbxassetid://15259161390",
+	"rbxassetid://15240216931",
+	"rbxassetid://15240176873",
+	"rbxassetid://15162694192",
 }
 
 local MOVE1_ANIMATION =
-"rbxassetid://15290930205"
+	"rbxassetid://15290930205"
 
 local MOVE2_ANIMATION =
-"rbxassetid://15436465829"
+	"rbxassetid://15436465829"
 
 local MOVE3_ANIMATION =
-"rbxassetid://15436668469"
+	"rbxassetid://15436668469"
 
 local MOVE4_ANIMATION =
-"rbxassetid://18897115785"
+	"rbxassetid://18897115785"
 
 local ULT1_ANIMATION =
-"rbxassetid://129651400898906"
+	"rbxassetid://129651400898906"
 
 local ULT2_ANIMATION =
-"rbxassetid://18897118507"
+	"rbxassetid://18897118507"
 
 local ULT3_ANIMATION =
-"rbxassetid://18897118507"
+	"rbxassetid://18897118507"
 
 -- ================================================================
 -- TSB TRIGGERS
 -- ================================================================
 
 local M1_TRIGGERS = {
-
-["rbxassetid://18715994424"] = true,
-["rbxassetid://18715998497"] = true,
-["rbxassetid://18715999597"] = true,
-["rbxassetid://18716001119"] = true,
-
+	["18715994424"] = true,
+	["18715998497"] = true,
+	["18715999597"] = true,
+	["18716001119"] = true,
 }
 
 local MOVE_TRIGGERS = {
-
-["rbxassetid://12273188754"] = 1,
-["rbxassetid://12296113986"] = 2,
-["rbxassetid://12309835105"] = 3,
-["rbxassetid://12351854556"] = 4,
-
+	["12273188754"] = 1,
+	["12296113986"] = 2,
+	["12309835105"] = 3,
+	["12351854556"] = 4,
 }
 
 local ULT_TRIGGERS = {
-
-["rbxassetid://12467789963"] = 1,
-["rbxassetid://13630786846"] = 2,
-["rbxassetid://14057231976"] = 3,
-
+	["12467789963"] = 1,
+	["13630786846"] = 2,
+	["14057231976"] = 3,
 }
 
 -- ================================================================
 -- VFX FOLDER
 -- ================================================================
 
-local function getVFXFolder()
+local function getVFXFolder(): Folder
+	local folder =
+		workspace:FindFirstChild(
+			"R4FIX_THE_CREATOR_VFX"
+		)
 
-local folder =
-	workspace:FindFirstChild(
-		"R4FIX_THE_CREATOR_VFX"
-	)
+	if folder and folder:IsA("Folder") then
+		return folder
+	end
 
-if not folder then
+	if folder then
+		folder:Destroy()
+	end
 
-	folder =
-		Instance.new("Folder")
+	local newFolder = Instance.new("Folder")
+	newFolder.Name = "R4FIX_THE_CREATOR_VFX"
+	newFolder.Parent = workspace
 
-	folder.Name =
-		"R4FIX_THE_CREATOR_VFX"
-
-	folder.Parent =
-		workspace
-
-end
-
-return folder
-
+	return newFolder
 end
 
 -- ================================================================
@@ -410,25 +378,22 @@ end
 -- ================================================================
 
 local function allowed(
-key: string,
-cooldown: number
-)
+	key: string,
+	cooldown: number
+): boolean
 
-local now =
-	os.clock()
+	local now = os.clock()
 
-local previous =
-	SESSION.LastVFX[key] or 0
+	local previous =
+		SESSION.LastVFX[key] or 0
 
-if now - previous < cooldown then
-	return false
-end
+	if now - previous < cooldown then
+		return false
+	end
 
-SESSION.LastVFX[key] =
-	now
+	SESSION.LastVFX[key] = now
 
-return true
-
+	return true
 end
 
 -- ================================================================
@@ -436,79 +401,60 @@ end
 -- ================================================================
 
 local function glitchPart(
-cframe: CFrame,
-size: Vector3,
-duration: number,
-transparency: number?
-)
+	cframe: CFrame,
+	size: Vector3,
+	duration: number,
+	transparency: number?
+): Part
 
-local part =
-	Instance.new("Part")
+	local part = Instance.new("Part")
 
-part.Name =
-	"CREATOR_GLITCH"
+	part.Name = "CREATOR_GLITCH"
 
-part.Anchored =
-	true
+	part.Anchored = true
+	part.CanCollide = false
+	part.CanTouch = false
+	part.CanQuery = false
+	part.CastShadow = false
 
-part.CanCollide =
-	false
+	part.Material = Enum.Material.Neon
+	part.Color = GREEN
 
-part.CanTouch =
-	false
+	part.Transparency =
+		transparency or 0.15
 
-part.CanQuery =
-	false
+	part.Size = size
+	part.CFrame = cframe
 
-part.CastShadow =
-	false
+	part.Parent = getVFXFolder()
 
-part.Material =
-	Enum.Material.Neon
+	table.insert(
+		SESSION.Objects,
+		part
+	)
 
-part.Color =
-	GREEN
+	local tween =
+		TweenService:Create(
+			part,
+			TweenInfo.new(
+				duration,
+				Enum.EasingStyle.Quint,
+				Enum.EasingDirection.Out
+			),
+			{
+				Size = size * 1.8,
+				Transparency = 1,
+			}
+		)
 
-part.Transparency =
-	transparency or 0.15
+	tween:Play()
 
-part.Size =
-	size
+	Debris:AddItem(
+		part,
+		duration + 0.1
+	)
 
-part.CFrame =
-	cframe
-
-part.Parent =
-	getVFXFolder()
-
-table.insert(
-	SESSION.Objects,
-	part
-)
-
-local goalSize =
-	size * 1.8
-
-TweenService:Create(
-	part,
-	TweenInfo.new(
-		duration,
-		Enum.EasingStyle.Quint,
-		Enum.EasingDirection.Out
-	),
-	{
-		Size = goalSize,
-		Transparency = 1,
-	}
-):Play()
-
-Debris:AddItem(
-	part,
-	duration + 0.1
-)
-
-return part
-
+	return part
 end
 
 -- ================================================================
@@ -516,49 +462,44 @@ end
 -- ================================================================
 
 local function glitchBlocks(
-cframe: CFrame,
-amount: number,
-key: string
+	cframe: CFrame,
+	amount: number,
+	key: string
 )
 
-if not allowed(
-	key,
-	CONFIG.VFXCooldown
-) then
-	return
-end
+	if not allowed(
+		key,
+		CONFIG.VFXCooldown
+	) then
+		return
+	end
 
-for i = 1, amount do
-
-	local offset =
-		Vector3.new(
-			math.random(-18, 18) / 10,
-			math.random(-15, 20) / 10,
-			math.random(-18, 18) / 10
-		)
-
-	local size =
-		Vector3.new(
-			math.random(2, 7) / 10,
-			math.random(2, 10) / 10,
-			math.random(2, 7) / 10
-		)
-
-	task.delay(
-		math.random(0, 8) / 100,
-		function()
-
-			glitchPart(
-				cframe * CFrame.new(offset),
-				size,
-				math.random(12, 28) / 100
+	for i = 1, amount do
+		local offset =
+			Vector3.new(
+				math.random(-18, 18) / 10,
+				math.random(-15, 20) / 10,
+				math.random(-18, 18) / 10
 			)
 
-		end
-	)
+		local size =
+			Vector3.new(
+				math.random(2, 7) / 10,
+				math.random(2, 10) / 10,
+				math.random(2, 7) / 10
+			)
 
-end
-
+		task.delay(
+			math.random(0, 8) / 100,
+			function()
+				glitchPart(
+					cframe * CFrame.new(offset),
+					size,
+					math.random(12, 28) / 100
+				)
+			end
+		)
+	end
 end
 
 -- ================================================================
@@ -566,99 +507,79 @@ end
 -- ================================================================
 
 local function glitchRing(
-cframe: CFrame,
-startSize: number,
-endSize: number,
-key: string
+	cframe: CFrame,
+	startSize: number,
+	endSize: number,
+	key: string
 )
 
-if not allowed(
-	key,
-	CONFIG.VFXCooldown
-) then
-	return
-end
+	if not allowed(
+		key,
+		CONFIG.VFXCooldown
+	) then
+		return
+	end
 
-local ring =
-	Instance.new("Part")
+	local ring = Instance.new("Part")
 
-ring.Name =
-	"CREATOR_GLITCH_RING"
+	ring.Name = "CREATOR_GLITCH_RING"
 
-ring.Anchored =
-	true
+	ring.Anchored = true
+	ring.CanCollide = false
+	ring.CanTouch = false
+	ring.CanQuery = false
+	ring.CastShadow = false
 
-ring.CanCollide =
-	false
+	ring.Shape = Enum.PartType.Cylinder
+	ring.Material = Enum.Material.Neon
+	ring.Color = GREEN
+	ring.Transparency = 0.1
 
-ring.CanTouch =
-	false
+	ring.Size =
+		Vector3.new(
+			0.08,
+			startSize,
+			startSize
+		)
 
-ring.CanQuery =
-	false
+	ring.CFrame =
+		cframe *
+		CFrame.Angles(
+			0,
+			0,
+			math.rad(90)
+		)
 
-ring.CastShadow =
-	false
+	ring.Parent = getVFXFolder()
 
-ring.Shape =
-	Enum.PartType.Cylinder
-
-ring.Material =
-	Enum.Material.Neon
-
-ring.Color =
-	GREEN
-
-ring.Transparency =
-	0.1
-
-ring.Size =
-	Vector3.new(
-		0.08,
-		startSize,
-		startSize
+	table.insert(
+		SESSION.Objects,
+		ring
 	)
 
-ring.CFrame =
-	cframe *
-	CFrame.Angles(
-		0,
-		0,
-		math.rad(90)
+	TweenService:Create(
+		ring,
+		TweenInfo.new(
+			0.24,
+			Enum.EasingStyle.Quint,
+			Enum.EasingDirection.Out
+		),
+		{
+			Size =
+				Vector3.new(
+					0.08,
+					endSize,
+					endSize
+				),
+
+			Transparency = 1,
+		}
+	):Play()
+
+	Debris:AddItem(
+		ring,
+		0.35
 	)
-
-ring.Parent =
-	getVFXFolder()
-
-table.insert(
-	SESSION.Objects,
-	ring
-)
-
-TweenService:Create(
-	ring,
-	TweenInfo.new(
-		0.24,
-		Enum.EasingStyle.Quint,
-		Enum.EasingDirection.Out
-	),
-	{
-		Size =
-			Vector3.new(
-				0.08,
-				endSize,
-				endSize
-			),
-
-		Transparency = 1,
-	}
-):Play()
-
-Debris:AddItem(
-	ring,
-	0.35
-)
-
 end
 
 -- ================================================================
@@ -666,109 +587,77 @@ end
 -- ================================================================
 
 local function glitchFlash(
-cframe: CFrame,
-size: number,
-key: string
+	cframe: CFrame,
+	size: number,
+	key: string
 )
 
-if not allowed(
-	key,
-	CONFIG.VFXCooldown
-) then
-	return
-end
+	if not allowed(
+		key,
+		CONFIG.VFXCooldown
+	) then
+		return
+	end
 
-local part =
-	Instance.new("Part")
+	local part = Instance.new("Part")
 
-part.Name =
-	"CREATOR_FLASH"
+	part.Name = "CREATOR_FLASH"
 
-part.Anchored =
-	true
+	part.Anchored = true
+	part.CanCollide = false
+	part.CanTouch = false
+	part.CanQuery = false
+	part.CastShadow = false
 
-part.CanCollide =
-	false
+	part.Shape = Enum.PartType.Ball
+	part.Material = Enum.Material.Neon
 
-part.CanTouch =
-	false
+	part.Color = WHITE
+	part.Transparency = 0.05
+	part.Size = Vector3.one * size
+	part.CFrame = cframe
 
-part.CanQuery =
-	false
+	part.Parent = getVFXFolder()
 
-part.CastShadow =
-	false
+	local light = Instance.new("PointLight")
 
-part.Shape =
-	Enum.PartType.Ball
+	light.Color = GREEN
+	light.Brightness = 18
+	light.Range = size * 3
 
-part.Material =
-	Enum.Material.Neon
+	light.Parent = part
 
-part.Color =
-	WHITE
+	table.insert(
+		SESSION.Objects,
+		part
+	)
 
-part.Transparency =
-	0.05
+	TweenService:Create(
+		part,
+		TweenInfo.new(
+			0.16,
+			Enum.EasingStyle.Quint,
+			Enum.EasingDirection.Out
+		),
+		{
+			Size = Vector3.one * (size * 2.8),
+			Transparency = 1,
+		}
+	):Play()
 
-part.Size =
-	Vector3.one * size
+	TweenService:Create(
+		light,
+		TweenInfo.new(0.16),
+		{
+			Brightness = 0,
+			Range = 0,
+		}
+	):Play()
 
-part.CFrame =
-	cframe
-
-part.Parent =
-	getVFXFolder()
-
-local light =
-	Instance.new("PointLight")
-
-light.Color =
-	GREEN
-
-light.Brightness =
-	18
-
-light.Range =
-	size * 3
-
-light.Parent =
-	part
-
-table.insert(
-	SESSION.Objects,
-	part
-)
-
-TweenService:Create(
-	part,
-	TweenInfo.new(
-		0.16,
-		Enum.EasingStyle.Quint,
-		Enum.EasingDirection.Out
-	),
-	{
-		Size =
-			Vector3.one * (size * 2.8),
-
-		Transparency = 1,
-	}
-):Play()
-
-TweenService:Create(
-	light,
-	TweenInfo.new(0.16),
-	{
-		Brightness = 0,
-		Range = 0,
-	}
-):Play()
-
-Debris:AddItem(
-	part,
-	0.25
-)
-
+	Debris:AddItem(
+		part,
+		0.25
+	)
 end
 
 -- ================================================================
@@ -776,146 +665,136 @@ end
 -- ================================================================
 
 local function glitchParticles(
-parent: BasePart,
-amount: number,
-key: string
+	parent: BasePart,
+	amount: number,
+	key: string
 )
 
-if not allowed(
-	key,
-	CONFIG.VFXCooldown
-) then
-	return
-end
+	if not allowed(
+		key,
+		CONFIG.VFXCooldown
+	) then
+		return
+	end
 
-local attachment =
-	Instance.new("Attachment")
+	local attachment =
+		Instance.new("Attachment")
 
-attachment.Name =
-	"CREATOR_PARTICLES"
+	attachment.Name =
+		"CREATOR_PARTICLES"
 
-attachment.Parent =
-	parent
+	attachment.Parent =
+		parent
 
-local emitter =
-	Instance.new("ParticleEmitter")
+	local emitter =
+		Instance.new("ParticleEmitter")
 
-emitter.Texture =
-	"rbxasset://textures/particles/sparkles_main.dds"
+	emitter.Texture =
+		"rbxasset://textures/particles/sparkles_main.dds"
 
-emitter.Color =
-	ColorSequence.new({
+	emitter.Color =
+		ColorSequence.new({
+			ColorSequenceKeypoint.new(
+				0,
+				WHITE
+			),
 
-		ColorSequenceKeypoint.new(
+			ColorSequenceKeypoint.new(
+				0.25,
+				BRIGHT_GREEN
+			),
+
+			ColorSequenceKeypoint.new(
+				0.65,
+				GREEN
+			),
+
+			ColorSequenceKeypoint.new(
+				1,
+				DARK_GREEN
+			),
+		})
+
+	emitter.LightEmission = 1
+	emitter.Rate = 0
+
+	emitter.Lifetime =
+		NumberRange.new(
+			0.15,
+			0.5
+		)
+
+	emitter.Speed =
+		NumberRange.new(
+			8,
+			28
+		)
+
+	emitter.SpreadAngle =
+		Vector2.new(
+			360,
+			360
+		)
+
+	emitter.Rotation =
+		NumberRange.new(
 			0,
-			WHITE
-		),
+			360
+		)
 
-		ColorSequenceKeypoint.new(
-			0.25,
-			BRIGHT_GREEN
-		),
+	emitter.RotSpeed =
+		NumberRange.new(
+			-360,
+			360
+		)
 
-		ColorSequenceKeypoint.new(
-			0.65,
-			GREEN
-		),
+	emitter.Size =
+		NumberSequence.new({
+			NumberSequenceKeypoint.new(
+				0,
+				0.35
+			),
 
-		ColorSequenceKeypoint.new(
-			1,
-			DARK_GREEN
-		),
+			NumberSequenceKeypoint.new(
+				0.3,
+				0.8
+			),
 
-	})
+			NumberSequenceKeypoint.new(
+				1,
+				0
+			),
+		})
 
-emitter.LightEmission =
-	1
+	emitter.Transparency =
+		NumberSequence.new({
+			NumberSequenceKeypoint.new(
+				0,
+				0
+			),
 
-emitter.Rate =
-	0
+			NumberSequenceKeypoint.new(
+				0.7,
+				0.2
+			),
 
-emitter.Lifetime =
-	NumberRange.new(
-		0.15,
-		0.5
+			NumberSequenceKeypoint.new(
+				1,
+				1
+			),
+		})
+
+	emitter.Parent =
+		attachment
+
+	pcall(function()
+		emitter:Emit(amount)
+	end)
+
+	Debris:AddItem(
+		attachment,
+		0.8
 	)
-
-emitter.Speed =
-	NumberRange.new(
-		8,
-		28
-	)
-
-emitter.SpreadAngle =
-	Vector2.new(
-		360,
-		360
-	)
-
-emitter.Rotation =
-	NumberRange.new(
-		0,
-		360
-	)
-
-emitter.RotSpeed =
-	NumberRange.new(
-		-360,
-		360
-	)
-
-emitter.Size =
-	NumberSequence.new({
-
-		NumberSequenceKeypoint.new(
-			0,
-			0.35
-		),
-
-		NumberSequenceKeypoint.new(
-			0.3,
-			0.8
-		),
-
-		NumberSequenceKeypoint.new(
-			1,
-			0
-		),
-
-	})
-
-emitter.Transparency =
-	NumberSequence.new({
-
-		NumberSequenceKeypoint.new(
-			0,
-			0
-		),
-
-		NumberSequenceKeypoint.new(
-			0.7,
-			0.2
-		),
-
-		NumberSequenceKeypoint.new(
-			1,
-			1
-		),
-
-	})
-
-emitter.Parent =
-	attachment
-
-pcall(function()
-	emitter:Emit(amount)
-end)
-
-Debris:AddItem(
-	attachment,
-	0.8
-)
-
 end
 
 -- ================================================================
@@ -923,95 +802,85 @@ end
 -- ================================================================
 
 local function afterimage(
-character: Model,
-cframe: CFrame
+	character: Model,
+	cframe: CFrame
 )
 
-local model =
-	Instance.new("Model")
+	local model =
+		Instance.new("Model")
 
-model.Name =
-	"CREATOR_AFTERIMAGE"
+	model.Name =
+		"CREATOR_AFTERIMAGE"
 
-model.Parent =
-	getVFXFolder()
+	model.Parent =
+		getVFXFolder()
 
-local root =
-	Instance.new("Part")
+	local root =
+		Instance.new("Part")
 
-root.Name =
-	"Root"
+	root.Name = "Root"
 
-root.Anchored =
-	true
+	root.Anchored = true
+	root.CanCollide = false
+	root.CanTouch = false
+	root.CanQuery = false
+	root.CastShadow = false
 
-root.CanCollide =
-	false
+	root.Transparency = 1
+	root.Size =
+		Vector3.new(
+			2,
+			4,
+			1
+		)
 
-root.CanTouch =
-	false
+	root.CFrame =
+		cframe
 
-root.CanQuery =
-	false
+	root.Parent =
+		model
 
-root.Transparency =
-	1
+	local highlight =
+		Instance.new("Highlight")
 
-root.Size =
-	Vector3.new(
-		2,
-		4,
-		1
+	highlight.Adornee =
+		model
+
+	highlight.FillColor =
+		GREEN
+
+	highlight.OutlineColor =
+		WHITE
+
+	highlight.FillTransparency =
+		0.65
+
+	highlight.OutlineTransparency =
+		0
+
+	highlight.DepthMode =
+		Enum.HighlightDepthMode.AlwaysOnTop
+
+	highlight.Parent =
+		model
+
+	TweenService:Create(
+		highlight,
+		TweenInfo.new(
+			0.22,
+			Enum.EasingStyle.Quad,
+			Enum.EasingDirection.Out
+		),
+		{
+			FillTransparency = 1,
+			OutlineTransparency = 1,
+		}
+	):Play()
+
+	Debris:AddItem(
+		model,
+		0.3
 	)
-
-root.CFrame =
-	cframe
-
-root.Parent =
-	model
-
-local highlight =
-	Instance.new("Highlight")
-
-highlight.Adornee =
-	model
-
-highlight.FillColor =
-	GREEN
-
-highlight.OutlineColor =
-	WHITE
-
-highlight.FillTransparency =
-	0.65
-
-highlight.OutlineTransparency =
-	0
-
-highlight.DepthMode =
-	Enum.HighlightDepthMode.AlwaysOnTop
-
-highlight.Parent =
-	model
-
-TweenService:Create(
-	highlight,
-	TweenInfo.new(
-		0.22,
-		Enum.EasingStyle.Quad,
-		Enum.EasingDirection.Out
-	),
-	{
-		FillTransparency = 1,
-		OutlineTransparency = 1,
-	}
-):Play()
-
-Debris:AddItem(
-	model,
-	0.3
-)
-
 end
 
 -- ================================================================
@@ -1019,163 +888,152 @@ end
 -- ================================================================
 
 local function chaoticBurst(
-cframe: CFrame,
-power: number,
-key: string
+	cframe: CFrame,
+	power: number,
+	key: string
 )
 
-glitchFlash(
-	cframe,
-	power,
-	key .. "_flash"
-)
-
-glitchRing(
-	cframe,
-	2,
-	power * 5,
-	key .. "_ring"
-)
-
-glitchRing(
-	cframe * CFrame.Angles(
-		math.rad(90),
-		0,
-		0
-	),
-	1,
-	power * 3.5,
-	key .. "_ring2"
-)
-
-glitchBlocks(
-	cframe,
-	math.floor(power * 2),
-	key .. "_blocks"
-)
-
-local _, _, root =
-	getCharacter()
-
-if root then
-
-	glitchParticles(
-		root,
-		math.floor(power * 7),
-		key .. "_particles"
+	glitchFlash(
+		cframe,
+		power,
+		key .. "_flash"
 	)
 
-end
+	glitchRing(
+		cframe,
+		2,
+		power * 5,
+		key .. "_ring"
+	)
 
+	glitchRing(
+		cframe *
+			CFrame.Angles(
+				math.rad(90),
+				0,
+				0
+			),
+		1,
+		power * 3.5,
+		key .. "_ring2"
+	)
+
+	glitchBlocks(
+		cframe,
+		math.floor(power * 2),
+		key .. "_blocks"
+	)
+
+	local _, _, root =
+		getCharacter()
+
+	if root then
+		glitchParticles(
+			root,
+			math.floor(power * 7),
+			key .. "_particles"
+		)
+	end
 end
 
 -- ================================================================
 -- TARGETING
 -- ================================================================
 
-local function getLiveFolder()
-
-return workspace:FindFirstChild("Live")
-
+local function getLiveFolder(): Instance?
+	return workspace:FindFirstChild("Live")
 end
 
 local function validTarget(
-model: Model,
-ownCharacter: Model
-)
+	model: Model,
+	ownCharacter: Model
+): boolean
 
-if model == ownCharacter then
-	return false
-end
-
-local humanoid =
-	model:FindFirstChildOfClass("Humanoid")
-
-local root =
-	model:FindFirstChild("HumanoidRootPart")
-
-if not humanoid
-	or not root
-then
-	return false
-end
-
-if humanoid.Health <= 0 then
-	return false
-end
-
-return true
-
-end
-
-local function getClosestTarget()
-
-local character, _, root =
-	getCharacter()
-
-if not character
-	or not root
-then
-	return nil
-end
-
-local live =
-	getLiveFolder()
-
-if not live then
-	return nil
-end
-
-local closest: Model? =
-	nil
-
-local closestDistance =
-	CONFIG.M1Range
-
-for _, object in ipairs(
-	live:GetChildren()
-) do
-
-	if object:IsA("Model")
-		and validTarget(
-			object,
-			character
-		)
-	then
-
-		local targetRoot =
-			object:FindFirstChild(
-				"HumanoidRootPart"
-			)
-
-		if targetRoot
-			and targetRoot:IsA("BasePart")
-		then
-
-			local distance =
-				(
-					targetRoot.Position
-					- root.Position
-				).Magnitude
-
-			if distance < closestDistance then
-
-				closestDistance =
-					distance
-
-				closest =
-					object
-
-			end
-
-		end
-
+	if model == ownCharacter then
+		return false
 	end
 
+	local humanoid =
+		model:FindFirstChildOfClass("Humanoid")
+
+	local root =
+		model:FindFirstChild("HumanoidRootPart")
+
+	if not humanoid
+		or not root
+		or not root:IsA("BasePart")
+	then
+		return false
+	end
+
+	if humanoid.Health <= 0 then
+		return false
+	end
+
+	return true
 end
 
-return closest
+local function getClosestTarget(): Model?
 
+	local character, _, root =
+		getCharacter()
+
+	if not character or not root then
+		return nil
+	end
+
+	local live =
+		getLiveFolder()
+
+	if not live then
+		return nil
+	end
+
+	local closest: Model? = nil
+	local closestDistance =
+		CONFIG.M1Range
+
+	for _, object in ipairs(
+		live:GetChildren()
+	) do
+
+		if object:IsA("Model")
+			and validTarget(
+				object,
+				character
+			)
+		then
+
+			local targetRoot =
+				object:FindFirstChild(
+					"HumanoidRootPart"
+				)
+
+			if targetRoot
+				and targetRoot:IsA("BasePart")
+			then
+
+				local distance =
+					(
+						targetRoot.Position
+						- root.Position
+					).Magnitude
+
+				if distance <
+					closestDistance
+				then
+
+					closestDistance =
+						distance
+
+					closest =
+						object
+				end
+			end
+		end
+	end
+
+	return closest
 end
 
 -- ================================================================
@@ -1183,99 +1041,105 @@ end
 -- ================================================================
 
 local function blinkBehindTarget(
-target: Model
-)
+	target: Model
+): boolean
 
-local character, _, root =
-	getCharacter()
+	local character, _, root =
+		getCharacter()
 
-if not character
-	or not root
-	or not target
-then
-	return false
-end
+	if not character
+		or not root
+		or not target
+	then
+		return false
+	end
 
-local targetRoot =
-	target:FindFirstChild(
-		"HumanoidRootPart"
-	)
+	if not validTarget(
+		target,
+		character
+	) then
+		return false
+	end
 
-if not targetRoot
-	or not targetRoot:IsA("BasePart")
-then
-	return false
-end
+	local targetRoot =
+		target:FindFirstChild(
+			"HumanoidRootPart"
+		)
 
-local targetPosition =
-	targetRoot.Position
+	if not targetRoot
+		or not targetRoot:IsA("BasePart")
+	then
+		return false
+	end
 
-local behindPosition =
-	targetPosition
-	- targetRoot.CFrame.LookVector
-	* CONFIG.M1BehindDistance
+	local targetPosition =
+		targetRoot.Position
 
--- Slightly elevated so the blink does not
--- shove the player into the floor.
-
-behindPosition +=
-	Vector3.new(
-		0,
-		0.15,
-		0
-	)
-
-local destination =
-	CFrame.lookAt(
-		behindPosition,
+	local behindPosition =
 		targetPosition
+		- targetRoot.CFrame.LookVector
+		* CONFIG.M1BehindDistance
+
+	behindPosition +=
+		Vector3.new(
+			0,
+			0.15,
+			0
+		)
+
+	local destination =
+		CFrame.lookAt(
+			behindPosition,
+			targetPosition
+		)
+
+	-- DEPARTURE
+	chaoticBurst(
+		root.CFrame,
+		2.2,
+		"m1_depart"
 	)
 
--- Pre-teleport distortion.
-chaoticBurst(
-	root.CFrame,
-	2.2,
-	"m1_depart"
-)
-
-afterimage(
-	character,
-	root.CFrame
-)
-
--- The actual local character reposition.
-pcall(function()
-
-	character:PivotTo(
-		destination
+	afterimage(
+		character,
+		root.CFrame
 	)
 
-end)
+	-- ACTUAL BLINK
+	local success =
+		pcall(function()
+			character:PivotTo(
+				destination
+			)
+		end)
 
-root.AssemblyLinearVelocity =
-	Vector3.zero
+	if not success then
+		return false
+	end
 
-root.AssemblyAngularVelocity =
-	Vector3.zero
+	root.AssemblyLinearVelocity =
+		Vector3.zero
 
--- Arrival distortion.
-chaoticBurst(
-	destination,
-	2.7,
-	"m1_arrive"
-)
+	root.AssemblyAngularVelocity =
+		Vector3.zero
 
-glitchParticles(
-	root,
-	30,
-	"m1_arrive_particles"
-)
+	-- ARRIVAL
+	chaoticBurst(
+		destination,
+		2.7,
+		"m1_arrive"
+	)
 
-SESSION.LastTarget =
-	target
+	glitchParticles(
+		root,
+		30,
+		"m1_arrive_particles"
+	)
 
-return true
+	SESSION.LastTarget =
+		target
 
+	return true
 end
 
 -- ================================================================
@@ -1284,69 +1148,66 @@ end
 
 local function performM1()
 
-local now =
-	os.clock()
+	local now =
+		os.clock()
 
-if now - SESSION.LastM1
-	< CONFIG.M1Cooldown
-then
-	return
-end
+	if now - SESSION.LastM1
+		< CONFIG.M1Cooldown
+	then
+		return
+	end
 
-SESSION.LastM1 =
-	now
+	SESSION.LastM1 =
+		now
 
-local character, humanoid, root =
-	getCharacter()
+	local character, humanoid, root =
+		getCharacter()
 
-if not character
-	or not humanoid
-	or not root
-then
-	return
-end
+	if not character
+		or not humanoid
+		or not root
+	then
+		return
+	end
 
-local target =
-	getClosestTarget()
+	local target =
+		getClosestTarget()
 
-if target then
+	-- IMPORTANT:
+	-- BLINK FIRST.
+	-- ANIMATION SECOND.
+	if target then
+		blinkBehindTarget(
+			target
+		)
+	end
 
-	blinkBehindTarget(
-		target
+	local animation =
+		M1_ANIMATIONS[
+			math.random(
+				1,
+				#M1_ANIMATIONS
+			)
+		]
+
+	playAnimation(
+		humanoid,
+		animation,
+		Enum.AnimationPriority.Action4,
+		1.45
 	)
 
-end
+	glitchParticles(
+		root,
+		18,
+		"m1_hand_particles"
+	)
 
--- The animation is deliberately played AFTER the blink.
--- This fixes the old ordering problem.
-
-local animation =
-	M1_ANIMATIONS[
-		math.random(
-			1,
-			#M1_ANIMATIONS
-		)
-	]
-
-playAnimation(
-	humanoid,
-	animation,
-	Enum.AnimationPriority.Action4,
-	1.45
-)
-
-glitchParticles(
-	root,
-	18,
-	"m1_hand_particles"
-)
-
-glitchBlocks(
-	root.CFrame,
-	6,
-	"m1_blocks"
-)
-
+	glitchBlocks(
+		root.CFrame,
+		6,
+		"m1_blocks"
+	)
 end
 
 -- ================================================================
@@ -1354,189 +1215,176 @@ end
 -- ================================================================
 
 local function phantomEngine(
-level: number
+	level: number
 )
 
-local character, humanoid, root =
-	getCharacter()
+	local character, humanoid, root =
+		getCharacter()
 
-if not character
-	or not humanoid
-	or not root
-then
-	return
+	if not character
+		or not humanoid
+		or not root
+	then
+		return
+	end
+
+	local target =
+		getClosestTarget()
+
+	if target then
+		blinkBehindTarget(
+			target
+		)
+	end
+
+	playCapped(
+		humanoid,
+		MOVE1_ANIMATION,
+		Enum.AnimationPriority.Action4,
+		CONFIG.Move1Duration,
+		1.65
+	)
+
+	for i = 1, 7 do
+
+		task.delay(
+			i * 0.045,
+			function()
+
+				local _, _, currentRoot =
+					getCharacter()
+
+				if currentRoot then
+
+					chaoticBurst(
+						currentRoot.CFrame
+							* CFrame.new(
+								math.random(-5, 5) / 10,
+								math.random(-5, 5) / 10,
+								math.random(-5, 5) / 10
+							),
+						1.5 + level * 0.3,
+						"phantom_" .. i
+					)
+
+				end
+			end
+		)
+	end
 end
 
-local target =
-	getClosestTarget()
+-- ================================================================
+-- VOID PROTOCOL
+-- ================================================================
 
-if target then
+local function voidTeleport()
+
+	local character, humanoid, root =
+		getCharacter()
+
+	if not character
+		or not humanoid
+		or not root
+	then
+		return
+	end
+
+	local target =
+		getClosestTarget()
+
+	if not target then
+
+		chaoticBurst(
+			root.CFrame,
+			4,
+			"void_self"
+		)
+
+		return
+	end
+
+	local targetRoot =
+		target:FindFirstChild(
+			"HumanoidRootPart"
+		)
+
+	if not targetRoot
+		or not targetRoot:IsA("BasePart")
+	then
+		return
+	end
+
+	chaoticBurst(
+		targetRoot.CFrame,
+		5,
+		"void_collapse"
+	)
+
+	for i = 1, 5 do
+
+		task.delay(
+			i * 0.035,
+			function()
+
+				if targetRoot.Parent then
+
+					glitchPart(
+						targetRoot.CFrame
+							* CFrame.new(
+								math.random(-20, 20) / 10,
+								math.random(-20, 20) / 10,
+								math.random(-20, 20) / 10
+							),
+						Vector3.new(
+							0.2,
+							math.random(3, 9),
+							0.2
+						),
+						0.18
+					)
+
+				end
+			end
+		)
+	end
 
 	blinkBehindTarget(
 		target
 	)
 
-end
-
-playCapped(
-	humanoid,
-	MOVE1_ANIMATION,
-	Enum.AnimationPriority.Action4,
-	CONFIG.Move1Duration,
-	1.65
-)
-
-for i = 1, 7 do
+	playCapped(
+		humanoid,
+		MOVE2_ANIMATION,
+		Enum.AnimationPriority.Action4,
+		CONFIG.Move2Duration,
+		1.75
+	)
 
 	task.delay(
-		i * 0.045,
+		0.28,
 		function()
 
-			if
-				root
-				and root.Parent
-			then
+			local _, _, currentRoot =
+				getCharacter()
+
+			if currentRoot then
 
 				chaoticBurst(
-					root.CFrame
-						* CFrame.new(
-							math.random(-5, 5) / 10,
-							math.random(-5, 5) / 10,
-							math.random(-5, 5) / 10
-						),
-					1.5 + level * 0.3,
-					"phantom_" .. i
+					currentRoot.CFrame,
+					7,
+					"void_finish"
+				)
+
+				glitchRing(
+					currentRoot.CFrame,
+					4,
+					55,
+					"void_finish_ring"
 				)
 
 			end
-
 		end
 	)
-
-end
-
-end
-
--- ================================================================
--- VOID TELEPORT
--- ================================================================
-
-local function voidTeleport()
-
-local character, humanoid, root =
-	getCharacter()
-
-if not character
-	or not humanoid
-	or not root
-then
-	return
-end
-
-local target =
-	getClosestTarget()
-
-if not target then
-
-	chaoticBurst(
-		root.CFrame,
-		4,
-		"void_self"
-	)
-
-	return
-
-end
-
-local targetRoot =
-	target:FindFirstChild(
-		"HumanoidRootPart"
-	)
-
-if not targetRoot
-	or not targetRoot:IsA("BasePart")
-then
-	return
-end
-
--- Collapse effect at the target.
-chaoticBurst(
-	targetRoot.CFrame,
-	5,
-	"void_collapse"
-)
-
-for i = 1, 5 do
-
-	task.delay(
-		i * 0.035,
-		function()
-
-			if targetRoot.Parent then
-
-				glitchPart(
-					targetRoot.CFrame
-						* CFrame.new(
-							math.random(-20, 20) / 10,
-							math.random(-20, 20) / 10,
-							math.random(-20, 20) / 10
-						),
-					Vector3.new(
-						0.2,
-						math.random(3, 9),
-						0.2
-					),
-					0.18
-				)
-
-			end
-
-		end
-	)
-
-end
-
--- Blink to the target before the finisher animation.
-
-blinkBehindTarget(
-	target
-)
-
-playCapped(
-	humanoid,
-	MOVE2_ANIMATION,
-	Enum.AnimationPriority.Action4,
-	CONFIG.Move2Duration,
-	1.75
-)
-
-task.delay(
-	0.28,
-	function()
-
-		local _, _, currentRoot =
-			getCharacter()
-
-		if currentRoot then
-
-			chaoticBurst(
-				currentRoot.CFrame,
-				7,
-				"void_finish"
-			)
-
-			glitchRing(
-				currentRoot.CFrame,
-				4,
-				55,
-				"void_finish_ring"
-			)
-
-		end
-
-	end
-)
-
 end
 
 -- ================================================================
@@ -1545,35 +1393,113 @@ end
 
 local function creatorRush()
 
-local character, humanoid, root =
-	getCharacter()
+	local character, humanoid, root =
+		getCharacter()
 
-if not character
-	or not humanoid
-	or not root
-then
-	return
+	if not character
+		or not humanoid
+		or not root
+	then
+		return
+	end
+
+	local target =
+		getClosestTarget()
+
+	if target then
+		blinkBehindTarget(
+			target
+		)
+	end
+
+	playCapped(
+		humanoid,
+		MOVE3_ANIMATION,
+		Enum.AnimationPriority.Action4,
+		CONFIG.Move3Duration,
+		1.9
+	)
+
+	for i = 1, 12 do
+
+		task.delay(
+			i * 0.035,
+			function()
+
+				local _, _, currentRoot =
+					getCharacter()
+
+				if currentRoot then
+
+					chaoticBurst(
+						currentRoot.CFrame,
+						1.2 + i / 8,
+						"rush_" .. i
+					)
+
+				end
+			end
+		)
+	end
 end
 
-local target =
-	getClosestTarget()
+-- ================================================================
+-- NULL EXECUTION
+-- ================================================================
 
-if target then
-	blinkBehindTarget(target)
-end
+local function creatorExecution()
 
-playCapped(
-	humanoid,
-	MOVE3_ANIMATION,
-	Enum.AnimationPriority.Action4,
-	CONFIG.Move3Duration,
-	1.9
-)
+	local character, humanoid, root =
+		getCharacter()
 
-for i = 1, 12 do
+	if not character
+		or not humanoid
+		or not root
+	then
+		return
+	end
+
+	local target =
+		getClosestTarget()
+
+	if target then
+		blinkBehindTarget(
+			target
+		)
+	end
+
+	playCapped(
+		humanoid,
+		MOVE4_ANIMATION,
+		Enum.AnimationPriority.Action4,
+		CONFIG.Move4Duration,
+		2
+	)
+
+	for i = 1, 18 do
+
+		task.delay(
+			i * 0.03,
+			function()
+
+				local _, _, currentRoot =
+					getCharacter()
+
+				if currentRoot then
+
+					glitchBlocks(
+						currentRoot.CFrame,
+						4,
+						"execution_" .. i
+					)
+
+				end
+			end
+		)
+	end
 
 	task.delay(
-		i * 0.035,
+		0.42,
 		function()
 
 			local _, _, currentRoot =
@@ -1583,152 +1509,111 @@ for i = 1, 12 do
 
 				chaoticBurst(
 					currentRoot.CFrame,
-					1.2 + i / 8,
-					"rush_" .. i
+					10,
+					"execution_final"
 				)
 
 			end
-
 		end
 	)
-
-end
-
 end
 
 -- ================================================================
--- CREATOR EXECUTION
--- ================================================================
-
-local function creatorExecution()
-
-local character, humanoid, root =
-	getCharacter()
-
-if not character
-	or not humanoid
-	or not root
-then
-	return
-end
-
-local target =
-	getClosestTarget()
-
-if target then
-	blinkBehindTarget(target)
-end
-
-playCapped(
-	humanoid,
-	MOVE4_ANIMATION,
-	Enum.AnimationPriority.Action4,
-	CONFIG.Move4Duration,
-	2
-)
-
-for i = 1, 18 do
-
-	task.delay(
-		i * 0.03,
-		function()
-
-			local _, _, currentRoot =
-				getCharacter()
-
-			if currentRoot then
-
-				glitchBlocks(
-					currentRoot.CFrame,
-					4,
-					"execution_" .. i
-				)
-
-			end
-
-		end
-	)
-
-end
-
-task.delay(
-	0.42,
-	function()
-
-		local _, _, currentRoot =
-			getCharacter()
-
-		if currentRoot then
-
-			chaoticBurst(
-				currentRoot.CFrame,
-				10,
-				"execution_final"
-			)
-
-		end
-
-	end
-)
-
-end
-
--- ================================================================
--- ULTIMATE
+-- CREATOR ULTIMATE
 -- ================================================================
 
 local function creatorUltimate(
-number: number
+	number: number
 )
 
-local character, humanoid, root =
-	getCharacter()
+	local character, humanoid, root =
+		getCharacter()
 
-if not character
-	or not humanoid
-	or not root
-then
-	return
-end
+	if not character
+		or not humanoid
+		or not root
+	then
+		return
+	end
 
-SESSION.IsUlted =
-	true
+	SESSION.IsUlted =
+		true
 
-local target =
-	getClosestTarget()
+	local target =
+		getClosestTarget()
 
-if target then
-	blinkBehindTarget(target)
-end
+	if target then
+		blinkBehindTarget(
+			target
+		)
+	end
 
-local animation
+	local animation: string
 
-if number == 1 then
-	animation = ULT1_ANIMATION
-elseif number == 2 then
-	animation = ULT2_ANIMATION
-else
-	animation = ULT3_ANIMATION
-end
+	if number == 1 then
+		animation = ULT1_ANIMATION
+	elseif number == 2 then
+		animation = ULT2_ANIMATION
+	else
+		animation = ULT3_ANIMATION
+	end
 
-playCapped(
-	humanoid,
-	animation,
-	Enum.AnimationPriority.Action4,
-	CONFIG.UltDuration,
-	1.5
-)
+	playCapped(
+		humanoid,
+		animation,
+		Enum.AnimationPriority.Action4,
+		CONFIG.UltDuration,
+		1.5
+	)
 
-chaoticBurst(
-	root.CFrame,
-	12,
-	"ULT_START"
-)
+	chaoticBurst(
+		root.CFrame,
+		12,
+		"ULT_START"
+	)
 
-for i = 1, 25 do
+	for i = 1, 25 do
+
+		task.delay(
+			i * 0.04,
+			function()
+
+				local _, _, currentRoot =
+					getCharacter()
+
+				if currentRoot then
+
+					local angle =
+						(i / 25)
+						* math.pi
+						* 2
+
+					local offset =
+						Vector3.new(
+							math.cos(angle) * (i / 2),
+							math.sin(i * 0.7) * 2,
+							math.sin(angle) * (i / 2)
+						)
+
+					glitchPart(
+						currentRoot.CFrame
+							* CFrame.new(
+								offset
+							),
+						Vector3.new(
+							0.2,
+							math.random(3, 10),
+							0.2
+						),
+						0.2
+					)
+				end
+			end
+		)
+	end
 
 	task.delay(
-		i * 0.04,
+		0.55,
 		function()
 
 			local _, _, currentRoot =
@@ -1736,108 +1621,68 @@ for i = 1, 25 do
 
 			if currentRoot then
 
-				local angle =
-					(i / 25)
-					* math.pi
-					* 2
+				glitchRing(
+					currentRoot.CFrame,
+					5,
+					90,
+					"ULT_RING_1"
+				)
 
-				local offset =
-					Vector3.new(
-						math.cos(angle) * (i / 2),
-						math.sin(i * 0.7) * 2,
-						math.sin(angle) * (i / 2)
-					)
-
-				glitchPart(
+				glitchRing(
 					currentRoot.CFrame
-						* CFrame.new(offset),
-					Vector3.new(
-						0.2,
-						math.random(3, 10),
-						0.2
-					),
-					0.2
+						* CFrame.Angles(
+							math.rad(90),
+							0,
+							0
+						),
+					3,
+					65,
+					"ULT_RING_2"
 				)
 
 			end
-
 		end
 	)
-
-end
-
-task.delay(
-	0.55,
-	function()
-
-		local _, _, currentRoot =
-			getCharacter()
-
-		if currentRoot then
-
-			glitchRing(
-				currentRoot.CFrame,
-				5,
-				90,
-				"ULT_RING_1"
-			)
-
-			glitchRing(
-				currentRoot.CFrame
-					* CFrame.Angles(
-						math.rad(90),
-						0,
-						0
-					),
-				3,
-				65,
-				"ULT_RING_2"
-			)
-
-		end
-
-	end
-)
-
 end
 
 -- ================================================================
 -- HOTBAR
 -- ================================================================
 
-local function findHotbarSlot(number: number)
+local function findHotbarSlot(
+	number: number
+): Instance?
 
-local hotbar =
-	PlayerGui:FindFirstChild(
-		"Hotbar"
+	local hotbar =
+		PlayerGui:FindFirstChild(
+			"Hotbar"
+		)
+
+	if not hotbar then
+		return nil
+	end
+
+	local backpack =
+		hotbar:FindFirstChild(
+			"Backpack"
+		)
+
+	if not backpack then
+		return nil
+	end
+
+	local frame =
+		backpack:FindFirstChild(
+			"Hotbar"
+		)
+
+	if not frame then
+		return nil
+	end
+
+	return frame:FindFirstChild(
+		tostring(number)
 	)
-
-if not hotbar then
-	return nil
-end
-
-local backpack =
-	hotbar:FindFirstChild(
-		"Backpack"
-	)
-
-if not backpack then
-	return nil
-end
-
-local frame =
-	backpack:FindFirstChild(
-		"Hotbar"
-	)
-
-if not frame then
-	return nil
-end
-
-return frame:FindFirstChild(
-	tostring(number)
-)
-
 end
 
 -- ================================================================
@@ -1845,187 +1690,177 @@ end
 -- ================================================================
 
 local GLITCH_CHARS = {
-"█",
-"▓",
-"▒",
-"░",
-"X",
-"0",
-"1",
-"/",
-"\",
-"<",
-">",
-"!",
-"#",
-"%",
-"?"
-
+	"█",
+	"▓",
+	"▒",
+	"░",
+	"X",
+	"0",
+	"1",
+	"/",
+	"\\",
+	"<",
+	">",
+	"!",
+	"#",
+	"%",
+	"?",
 }
 
-local function glitchString(text: string)
+local function glitchString(
+	text: string
+): string
 
-local result = {}
+	local result = {}
 
-for i = 1, #text do
+	for i = 1, #text do
 
-	local character =
-		string.sub(
-			text,
-			i,
-			i
+		local character =
+			string.sub(
+				text,
+				i,
+				i
+			)
+
+		if math.random() < 0.17 then
+
+			character =
+				GLITCH_CHARS[
+					math.random(
+						1,
+						#GLITCH_CHARS
+					)
+				]
+
+		end
+
+		table.insert(
+			result,
+			character
 		)
-
-	if math.random() < 0.17 then
-
-		character =
-			GLITCH_CHARS[
-				math.random(
-					1,
-					#GLITCH_CHARS
-				)
-			]
-
 	end
 
-	table.insert(
-		result,
-		character
+	return table.concat(
+		result
 	)
-
-end
-
-return table.concat(
-	result
-)
-
 end
 
 local function styleSlot(
-number: number,
-name: string
+	number: number,
+	name: string
 )
 
-local slot =
-	findHotbarSlot(number)
+	local slot =
+		findHotbarSlot(number)
 
-if not slot then
-	return
-end
+	if not slot then
+		return
+	end
 
-local base =
-	slot:FindFirstChild("Base")
+	local base =
+		slot:FindFirstChild("Base")
 
-if base then
-	slot = base
-end
+	if base then
+		slot = base
+	end
 
-for _, descendant in ipairs(
-	slot:GetDescendants()
-) do
+	for _, descendant in ipairs(
+		slot:GetDescendants()
+	) do
 
-	if descendant:IsA("TextLabel")
-		or descendant:IsA("TextButton")
-	then
+		if descendant:IsA("TextLabel")
+			or descendant:IsA("TextButton")
+		then
 
-		local lower =
-			string.lower(
-				descendant.Name
-			)
+			local lower =
+				string.lower(
+					descendant.Name
+				)
 
-		if
-			string.find(
+			if string.find(
 				lower,
 				"name",
 				1,
 				true
 			)
-			or string.find(
-				lower,
-				"reuse",
-				1,
-				true
-			)
+				or string.find(
+					lower,
+					"reuse",
+					1,
+					true
+				)
+			then
+
+				pcall(function()
+
+					descendant.Text =
+						glitchString(name)
+
+					descendant.TextColor3 =
+						GREEN
+
+					descendant.TextStrokeColor3 =
+						BLACK
+
+					descendant.TextStrokeTransparency =
+						0
+
+				end)
+			end
+		end
+	end
+
+	for _, descendant in ipairs(
+		slot:GetDescendants()
+	) do
+
+		if descendant:IsA("UIStroke") then
+
+			pcall(function()
+
+				descendant.Color =
+					GREEN
+
+				descendant.Transparency =
+					0.1
+
+			end)
+
+		elseif descendant:IsA("ImageLabel")
+			or descendant:IsA("ImageButton")
 		then
 
 			pcall(function()
 
-				descendant.Text =
-					glitchString(name)
-
-				descendant.TextColor3 =
+				descendant.ImageColor3 =
 					GREEN
 
-				descendant.TextStrokeColor3 =
-					BLACK
-
-				descendant.TextStrokeTransparency =
-					0
-
 			end)
-
 		end
-
 	end
-
-end
-
--- Make the entire slot itself glitchy.
-for _, descendant in ipairs(
-	slot:GetDescendants()
-) do
-
-	if descendant:IsA("UIStroke") then
-
-		pcall(function()
-
-			descendant.Color =
-				GREEN
-
-			descendant.Transparency =
-				0.1
-
-		end)
-
-	elseif descendant:IsA("ImageLabel")
-		or descendant:IsA("ImageButton")
-	then
-
-		pcall(function()
-
-			descendant.ImageColor3 =
-				GREEN
-
-		end)
-
-	end
-
-end
-
 end
 
 local function refreshHotbar()
 
-styleSlot(
-	1,
-	"PHANTOM ENGINE"
-)
+	styleSlot(
+		1,
+		"PHANTOM ENGINE"
+	)
 
-styleSlot(
-	2,
-	"VOID PROTOCOL"
-)
+	styleSlot(
+		2,
+		"VOID PROTOCOL"
+	)
 
-styleSlot(
-	3,
-	"CREATOR RUSH"
-)
+	styleSlot(
+		3,
+		"CREATOR RUSH"
+	)
 
-styleSlot(
-	4,
-	"NULL EXECUTION"
-)
-
+	styleSlot(
+		4,
+		"NULL EXECUTION"
+	)
 end
 
 -- ================================================================
@@ -2034,493 +1869,348 @@ end
 
 local function fixCharacterTab()
 
-local topbar =
-	PlayerGui:FindFirstChild(
-		"TopbarPlus"
-	)
-
-if not topbar then
-	return
-end
-
-for _, descendant in ipairs(
-	topbar:GetDescendants()
-) do
-
-	if descendant.Name ==
-		"IconButton"
-	then
-
-		local label =
-			descendant:FindFirstChild(
-				"IconLabel"
-			)
-
-		local image =
-			descendant:FindFirstChild(
-				"IconImage"
-			)
-
-		if label
-			and label:IsA("TextLabel")
-		then
-
-			local current =
-				label.Text
-
-			if
-				current == "Hero Hunter"
-				or current == "Garou"
-				or current == "Dark Garou"
-				or current == "The Creator"
-				or current == "ＴＨＥ　ＣＲＥＡＴＯＲ"
-			then
-
-				label.Text =
-					MOVESET_NAME
-
-				label.TextColor3 =
-					GREEN
-
-				label.TextStrokeColor3 =
-					BLACK
-
-				label.TextStrokeTransparency =
-					0
-
-			end
-
-		end
-
-		if image
-			and (
-				image:IsA("ImageLabel")
-				or image:IsA("ImageButton")
-			)
-		then
-
-			pcall(function()
-
-				image.Image =
-					DECAL_ID
-
-				image.ImageColor3 =
-					WHITE
-
-			end)
-
-		end
-
-	end
-
-end
-
-end
-
--- ================================================================
--- GAROU EFFECT / VFX OVERRIDE
--- ================================================================
--- This does not delete game objects.
--- It recolors common visual objects locally to
--- the Creator green/black presentation.
-
-local function overrideEffect(
-object: Instance
-)
-
-if not object
-	or not object.Parent
-then
-	return
-end
-
-local name =
-	string.lower(
-		object.Name
-	)
-
-local interesting =
-	string.find(
-		name,
-		"garou",
-		1,
-		true
-	)
-	or string.find(
-		name,
-		"effect",
-		1,
-		true
-	)
-	or string.find(
-		name,
-		"aura",
-		1,
-		true
-	)
-	or string.find(
-		name,
-		"particle",
-		1,
-		true
-	)
-	or string.find(
-		name,
-		"vfx",
-		1,
-		true
-	)
-
-if not interesting then
-	return
-end
-
-if object:IsA("ParticleEmitter") then
-
-	pcall(function()
-
-		object.Color =
-			ColorSequence.new({
-				ColorSequenceKeypoint.new(
-					0,
-					BRIGHT_GREEN
-				),
-
-				ColorSequenceKeypoint.new(
-					0.5,
-					GREEN
-				),
-
-				ColorSequenceKeypoint.new(
-					1,
-					DARK_GREEN
-				),
-			})
-
-		object.LightEmission =
-			1
-
-	end)
-
-elseif object:IsA("Beam") then
-
-	pcall(function()
-
-		object.Color =
-			ColorSequence.new(
-				GREEN
-			)
-
-		object.LightEmission =
-			1
-
-	end)
-
-elseif object:IsA("Trail") then
-
-	pcall(function()
-
-		object.Color =
-			ColorSequence.new({
-				ColorSequenceKeypoint.new(
-					0,
-					WHITE
-				),
-
-				ColorSequenceKeypoint.new(
-					0.5,
-					GREEN
-				),
-
-				ColorSequenceKeypoint.new(
-					1,
-					DARK_GREEN
-				),
-			})
-
-		object.LightEmission =
-			1
-
-	end)
-
-elseif object:IsA("PointLight")
-	or object:IsA("SpotLight")
-	or object:IsA("SurfaceLight")
-then
-
-	pcall(function()
-
-		object.Color =
-			GREEN
-
-	end)
-
-end
-
-end
-
-local function scanGarouEffects()
-
-for _, descendant in ipairs(
-	workspace:GetDescendants()
-) do
-
-	pcall(function()
-
-		overrideEffect(
-			descendant
+	local topbar =
+		PlayerGui:FindFirstChild(
+			"TopbarPlus"
 		)
 
-	end)
+	if not topbar then
+		return
+	end
 
-end
+	for _, descendant in ipairs(
+		topbar:GetDescendants()
+	) do
 
-end
+		if descendant.Name ==
+			"IconButton"
+		then
 
--- ================================================================
--- ANIMATION HANDLER
--- ================================================================
-
-local function setupAnimationHandler(
-character: Model,
-humanoid: Humanoid,
-root: BasePart,
-token: number
-)
-
-track(
-	humanoid.AnimationPlayed:Connect(
-		function(animationTrack)
-
-			if token
-				~= SESSION.CharacterToken
-			then
-				return
-			end
-
-			local animation =
-				animationTrack.Animation
-
-			if not animation then
-				return
-			end
-
-			local id =
-				animation.AnimationId
-
-			-- =================================================
-			-- M1
-			-- =================================================
-
-			if M1_TRIGGERS[id] then
-
-				pcall(function()
-					animationTrack:Stop(0)
-				end)
-
-				performM1()
-
-				return
-
-			end
-
-			-- =================================================
-			-- MOVES
-			-- =================================================
-
-			local move =
-				MOVE_TRIGGERS[id]
-
-			if move then
-
-				pcall(function()
-					animationTrack:Stop(0)
-				end)
-
-				if move == 1 then
-
-					phantomEngine(1)
-
-				elseif move == 2 then
-
-					voidTeleport()
-
-				elseif move == 3 then
-
-					creatorRush()
-
-				elseif move == 4 then
-
-					creatorExecution()
-
-				end
-
-				return
-
-			end
-
-			-- =================================================
-			-- ULT
-			-- =================================================
-
-			local ult =
-				ULT_TRIGGERS[id]
-
-			if ult then
-
-				pcall(function()
-					animationTrack:Stop(0)
-				end)
-
-				creatorUltimate(
-					ult
+			local label =
+				descendant:FindFirstChild(
+					"IconLabel"
 				)
 
-				return
+			local image =
+				descendant:FindFirstChild(
+					"IconImage"
+				)
 
+			if label
+				and label:IsA("TextLabel")
+			then
+
+				local current =
+					label.Text
+
+				if current == "Hero Hunter"
+					or current == "Garou"
+					or current == "Dark Garou"
+					or current == "The Creator"
+					or current == "ＴＨＥ　ＣＲＥＡＴＯＲ"
+				then
+
+					label.Text =
+						MOVESET_NAME
+
+					label.TextColor3 =
+						GREEN
+
+					label.TextStrokeColor3 =
+						BLACK
+
+					label.TextStrokeTransparency =
+						0
+				end
 			end
 
-		end
-	)
-)
+			if image
+				and (
+					image:IsA("ImageLabel")
+					or image:IsA("ImageButton")
+				)
+			then
 
+				pcall(function()
+
+					image.Image =
+						DECAL_ID
+
+					image.ImageColor3 =
+						WHITE
+
+				end)
+			end
+		end
+	end
 end
 
 -- ================================================================
--- CHARACTER GLITCH AURA
+-- CREATOR VFX OVERRIDE
+-- ================================================================
+
+local function overrideEffect(
+	object: Instance
+)
+
+	if not object.Parent then
+		return
+	end
+
+	local name =
+		string.lower(
+			object.Name
+		)
+
+	local interesting =
+		string.find(
+			name,
+			"garou",
+			1,
+			true
+		)
+		or string.find(
+			name,
+			"effect",
+			1,
+			true
+		)
+		or string.find(
+			name,
+			"aura",
+			1,
+			true
+		)
+		or string.find(
+			name,
+			"particle",
+			1,
+			true
+		)
+		or string.find(
+			name,
+			"vfx",
+			1,
+			true
+		)
+
+	if not interesting then
+		return
+	end
+
+	if object:IsA("ParticleEmitter") then
+
+		pcall(function()
+
+			object.Color =
+				ColorSequence.new({
+					ColorSequenceKeypoint.new(
+						0,
+						BRIGHT_GREEN
+					),
+
+					ColorSequenceKeypoint.new(
+						0.5,
+						GREEN
+					),
+
+					ColorSequenceKeypoint.new(
+						1,
+						DARK_GREEN
+					),
+				})
+
+			object.LightEmission =
+				1
+
+		end)
+
+	elseif object:IsA("Beam") then
+
+		pcall(function()
+
+			object.Color =
+				ColorSequence.new(
+					GREEN
+				)
+
+			object.LightEmission =
+				1
+
+		end)
+
+	elseif object:IsA("Trail") then
+
+		pcall(function()
+
+			object.Color =
+				ColorSequence.new({
+					ColorSequenceKeypoint.new(
+						0,
+						WHITE
+					),
+
+					ColorSequenceKeypoint.new(
+						0.5,
+						GREEN
+					),
+
+					ColorSequenceKeypoint.new(
+						1,
+						DARK_GREEN
+					),
+				})
+
+			object.LightEmission =
+				1
+
+		end)
+
+	elseif object:IsA("PointLight")
+		or object:IsA("SpotLight")
+		or object:IsA("SurfaceLight")
+	then
+
+		pcall(function()
+			object.Color =
+				GREEN
+		end)
+	end
+end
+
+-- ================================================================
+-- CREATOR AURA
 -- ================================================================
 
 local function createCreatorAura(
-character: Model
+	character: Model
 )
 
-local root =
-	character:FindFirstChild(
-		"HumanoidRootPart"
+	local root =
+		character:FindFirstChild(
+			"HumanoidRootPart"
+		)
+
+	if not root
+		or not root:IsA("BasePart")
+	then
+		return
+	end
+
+	local attachment =
+		Instance.new("Attachment")
+
+	attachment.Name =
+		"CREATOR_AURA"
+
+	attachment.Parent =
+		root
+
+	local emitter =
+		Instance.new("ParticleEmitter")
+
+	emitter.Texture =
+		"rbxasset://textures/particles/sparkles_main.dds"
+
+	emitter.Color =
+		ColorSequence.new({
+			ColorSequenceKeypoint.new(
+				0,
+				WHITE
+			),
+
+			ColorSequenceKeypoint.new(
+				0.4,
+				BRIGHT_GREEN
+			),
+
+			ColorSequenceKeypoint.new(
+				1,
+				DARK_GREEN
+			),
+		})
+
+	emitter.LightEmission =
+		1
+
+	emitter.Rate =
+		10
+
+	emitter.Lifetime =
+		NumberRange.new(
+			0.2,
+			0.6
+		)
+
+	emitter.Speed =
+		NumberRange.new(
+			0.5,
+			3
+		)
+
+	emitter.SpreadAngle =
+		Vector2.new(
+			360,
+			360
+		)
+
+	emitter.Size =
+		NumberSequence.new({
+			NumberSequenceKeypoint.new(
+				0,
+				0.18
+			),
+
+			NumberSequenceKeypoint.new(
+				0.4,
+				0.55
+			),
+
+			NumberSequenceKeypoint.new(
+				1,
+				0
+			),
+		})
+
+	emitter.Parent =
+		attachment
+
+	table.insert(
+		SESSION.Objects,
+		attachment
 	)
 
-if not root
-	or not root:IsA("BasePart")
-then
-	return
-end
+	local highlight =
+		Instance.new("Highlight")
 
-local attachment =
-	Instance.new("Attachment")
+	highlight.Name =
+		"CREATOR_GLITCH_OUTLINE"
 
-attachment.Name =
-	"CREATOR_AURA"
+	highlight.Adornee =
+		character
 
-attachment.Parent =
-	root
+	highlight.FillColor =
+		GREEN
 
-local emitter =
-	Instance.new("ParticleEmitter")
+	highlight.OutlineColor =
+		WHITE
 
-emitter.Texture =
-	"rbxasset://textures/particles/sparkles_main.dds"
+	highlight.FillTransparency =
+		0.94
 
-emitter.Color =
-	ColorSequence.new({
-		ColorSequenceKeypoint.new(
-			0,
-			WHITE
-		),
+	highlight.OutlineTransparency =
+		0.15
 
-		ColorSequenceKeypoint.new(
-			0.4,
-			BRIGHT_GREEN
-		),
+	highlight.DepthMode =
+		Enum.HighlightDepthMode.Occluded
 
-		ColorSequenceKeypoint.new(
-			1,
-			DARK_GREEN
-		),
-	})
+	highlight.Parent =
+		character
 
-emitter.LightEmission =
-	1
-
-emitter.Rate =
-	10
-
-emitter.Lifetime =
-	NumberRange.new(
-		0.2,
-		0.6
+	table.insert(
+		SESSION.Objects,
+		highlight
 	)
-
-emitter.Speed =
-	NumberRange.new(
-		0.5,
-		3
-	)
-
-emitter.SpreadAngle =
-	Vector2.new(
-		360,
-		360
-	)
-
-emitter.Size =
-	NumberSequence.new({
-		NumberSequenceKeypoint.new(
-			0,
-			0.18
-		),
-
-		NumberSequenceKeypoint.new(
-			0.4,
-			0.55
-		),
-
-		NumberSequenceKeypoint.new(
-			1,
-			0
-		),
-	})
-
-emitter.Parent =
-	attachment
-
-table.insert(
-	SESSION.Objects,
-	attachment
-)
-
-local highlight =
-	Instance.new("Highlight")
-
-highlight.Name =
-	"CREATOR_GLITCH_OUTLINE"
-
-highlight.Adornee =
-	character
-
-highlight.FillColor =
-	GREEN
-
-highlight.OutlineColor =
-	WHITE
-
-highlight.FillTransparency =
-	0.94
-
-highlight.OutlineTransparency =
-	0.15
-
-highlight.DepthMode =
-	Enum.HighlightDepthMode.Occluded
-
-highlight.Parent =
-	character
-
-table.insert(
-	SESSION.Objects,
-	highlight
-
-)
-
 end
 
 -- ================================================================
@@ -2528,21 +2218,185 @@ end
 -- ================================================================
 
 local function spawnEffect(
-root: BasePart
+	root: BasePart
 )
 
-chaoticBurst(
-	root.CFrame,
-	5,
-	"SPAWN"
+	chaoticBurst(
+		root.CFrame,
+		5,
+		"SPAWN"
+	)
+
+	glitchParticles(
+		root,
+		55,
+		"SPAWN_PARTICLES"
+	)
+end
+
+-- ================================================================
+-- MUSIC
+-- ================================================================
+
+local MUSIC_ID =
+	"rbxassetid://0"
+
+local MUSIC_URL =
+	"https://github.com/r4faelllaust/R4Fix/raw/refs/heads/main/Soviet_Anthem_Instrumental_1955.ogg.mp3"
+
+-- Roblox Sound objects cannot directly stream an arbitrary
+-- GitHub URL. The actual asset must be a Roblox audio asset.
+-- Therefore this section intentionally does not pretend the
+-- GitHub URL is a valid SoundId.
+
+local function setupMusic()
+
+	if MUSIC_ID == "rbxassetid://0" then
+		return
+	end
+
+	local old =
+		SoundService:FindFirstChild(
+			"R4FIX_CREATOR_MUSIC"
+		)
+
+	if old then
+		old:Destroy()
+	end
+
+	local sound =
+		Instance.new("Sound")
+
+	sound.Name =
+		"R4FIX_CREATOR_MUSIC"
+
+	sound.SoundId =
+		MUSIC_ID
+
+	sound.Volume =
+		CONFIG.MusicVolume
+
+	sound.Looped =
+		true
+
+	sound.Parent =
+		SoundService
+
+	table.insert(
+		SESSION.Objects,
+		sound
+	)
+
+	pcall(function()
+		sound:Play()
+	end)
+end
+
+-- ================================================================
+-- ANIMATION HANDLER
+-- ================================================================
+
+local function setupAnimationHandler(
+	character: Model,
+	humanoid: Humanoid,
+	root: BasePart,
+	token: number
 )
 
-glitchParticles(
-	root,
-	55,
-	"SPAWN_PARTICLES"
-)
+	track(
+		humanoid.AnimationPlayed:Connect(
+			function(animationTrack)
 
+				if token
+					~= SESSION.CharacterToken
+				then
+					return
+				end
+
+				local animation =
+					animationTrack.Animation
+
+				if not animation then
+					return
+				end
+
+				local id =
+					normalizeAnimationId(
+						animation.AnimationId
+					)
+
+				-- =================================================
+				-- M1
+				-- =================================================
+
+				if M1_TRIGGERS[id] then
+
+					pcall(function()
+						animationTrack:Stop(0)
+					end)
+
+					performM1()
+
+					return
+				end
+
+				-- =================================================
+				-- MOVES
+				-- =================================================
+
+				local move =
+					MOVE_TRIGGERS[id]
+
+				if move then
+
+					pcall(function()
+						animationTrack:Stop(0)
+					end)
+
+					if move == 1 then
+
+						phantomEngine(1)
+
+					elseif move == 2 then
+
+						voidTeleport()
+
+					elseif move == 3 then
+
+						creatorRush()
+
+					elseif move == 4 then
+
+						creatorExecution()
+
+					end
+
+					return
+				end
+
+				-- =================================================
+				-- ULT
+				-- =================================================
+
+				local ult =
+					ULT_TRIGGERS[id]
+
+				if ult then
+
+					pcall(function()
+						animationTrack:Stop(0)
+					end)
+
+					creatorUltimate(
+						ult
+					)
+
+					return
+				end
+			end
+		),
+		SESSION.CharacterConnections
+	)
 end
 
 -- ================================================================
@@ -2550,125 +2404,152 @@ end
 -- ================================================================
 
 local function setupCharacter(
-character: Model
+	character: Model
 )
 
-SESSION.CharacterToken += 1
+	SESSION.CharacterToken += 1
 
-local token =
-	SESSION.CharacterToken
+	local token =
+		SESSION.CharacterToken
 
-disconnect(
-	SESSION.CharacterConnections
-)
-
-cleanupObjects()
-
-SESSION.IsUlted =
-	false
-
-local humanoid =
-	character:WaitForChild(
-		"Humanoid",
-		10
-	) :: Humanoid?
-
-local root =
-	character:WaitForChild(
-		"HumanoidRootPart",
-		10
-	) :: BasePart?
-
-if not humanoid
-	or not root
-then
-	warn(
-		"[R4FIX] The Creator: character failed to load."
+	disconnect(
+		SESSION.CharacterConnections
 	)
 
-	return
+	cleanupObjects()
 
-end
+	SESSION.IsUlted =
+		false
 
-createCreatorAura(
-	character
-)
+	local humanoid =
+		character:WaitForChild(
+			"Humanoid",
+			10
+		)
 
-spawnEffect(
-	root
-)
+	local root =
+		character:WaitForChild(
+			"HumanoidRootPart",
+			10
+		)
 
-setupAnimationHandler(
-	character,
-	humanoid,
-	root,
-	token
-)
+	if not humanoid
+		or not humanoid:IsA("Humanoid")
+		or not root
+		or not root:IsA("BasePart")
+	then
 
-track(
-	character.DescendantAdded:Connect(
-		function(object)
+		warn(
+			"[R4FIX] THE CREATOR: Character failed to load."
+		)
 
-			task.defer(function()
+		return
+	end
 
-				overrideEffect(
-					object
+	createCreatorAura(
+		character
+	)
+
+	spawnEffect(
+		root
+	)
+
+	setupAnimationHandler(
+		character,
+		humanoid,
+		root,
+		token
+	)
+
+	track(
+		character.DescendantAdded:Connect(
+			function(object)
+
+				task.defer(
+					function()
+
+						pcall(function()
+
+							overrideEffect(
+								object
+							)
+
+						end)
+					end
 				)
-
-			end)
-
-		end
+			end
+		),
+		SESSION.CharacterConnections
 	)
-)
-
 end
 
 -- ================================================================
--- UI REFRESH LOOP
+-- UI REFRESH
 -- ================================================================
 
 local function refreshAll()
 
-pcall(function()
+	pcall(function()
 
-	fixCharacterTab()
+		fixCharacterTab()
 
-	refreshHotbar()
+		refreshHotbar()
 
-end)
-
+	end)
 end
 
 -- ================================================================
 -- INITIALIZATION
 -- ================================================================
 
-if not SESSION.Initialized then
+if SESSION.Initialized then
+
+	-- If this exact script was already initialized,
+	-- clean its previous character/VFX state before
+	-- installing the current character again.
+
+	disconnect(
+		SESSION.CharacterConnections
+	)
+
+	cleanupObjects()
+
+end
 
 SESSION.Initialized =
 	true
 
--- Character reload
-table.insert(
-	SESSION.Connections,
+-- ================================================================
+-- CHARACTER RELOAD
+-- ================================================================
 
+track(
 	Player.CharacterAdded:Connect(
 		function(character)
 
 			task.wait(0.15)
 
-			setupCharacter(
-				character
-			)
+			if character.Parent then
 
+				setupCharacter(
+					character
+				)
+
+				task.defer(
+					refreshAll
+				)
+
+			end
 		end
-	)
+	),
+	SESSION.Connections
 )
 
--- UI can be rebuilt by TSB.
-table.insert(
-	SESSION.Connections,
+-- ================================================================
+-- UI REBUILD WATCHER
+-- ================================================================
 
+track(
 	PlayerGui.DescendantAdded:Connect(
 		function()
 
@@ -2677,35 +2558,38 @@ table.insert(
 			)
 
 		end
-	)
+	),
+	SESSION.Connections
 )
 
--- Effect override watcher.
-table.insert(
-	SESSION.Connections,
+-- ================================================================
+-- NEW VFX WATCHER
+-- ================================================================
 
+track(
 	workspace.DescendantAdded:Connect(
 		function(object)
 
 			task.defer(
 				function()
 
-					pcall(function()
+					if object.Parent then
 
-						overrideEffect(
-							object
-						)
+						pcall(function()
 
-					end)
+							overrideEffect(
+								object
+							)
 
+						end)
+
+					end
 				end
 			)
-
 		end
-	)
+	),
+	SESSION.Connections
 )
-
-end
 
 -- ================================================================
 -- CURRENT CHARACTER
@@ -2713,22 +2597,24 @@ end
 
 if Player.Character then
 
-task.spawn(
-	function()
+	task.spawn(
+		function()
 
-		setupCharacter(
-			Player.Character
-		)
+			setupCharacter(
+				Player.Character :: Model
+			)
 
-	end
-)
+		end
+	)
 
 else
 
-setupCharacter(
-	Player.CharacterAdded:Wait()
-)
+	local character =
+		Player.CharacterAdded:Wait()
 
+	setupCharacter(
+		character
+	)
 end
 
 -- ================================================================
@@ -2736,49 +2622,59 @@ end
 -- ================================================================
 
 task.spawn(
-function()
+	function()
 
-	while Player.Parent do
+		while Player.Parent do
 
-		pcall(function()
+			pcall(function()
 
-			refreshAll()
+				refreshAll()
 
-		end)
+			end)
 
-		task.wait(
-			0.18
-		)
-
+			task.wait(
+				0.18
+			)
+		end
 	end
-
-end
-
 )
 
 -- ================================================================
--- EFFECT OVERRIDE LOOP
+-- INITIAL EFFECT SCAN
 -- ================================================================
 
 task.spawn(
-function()
+	function()
 
-	while Player.Parent do
+		-- Only scan once on startup.
+		-- We do NOT repeatedly scan every workspace descendant,
+		-- which was unnecessary and could cause performance issues.
 
-		pcall(function()
+		for _, descendant in ipairs(
+			workspace:GetDescendants()
+		) do
 
-			scanGarouEffects()
+			pcall(function()
 
-		end)
+				overrideEffect(
+					descendant
+				)
 
-		task.wait(
-			1.25
-		)
+			end)
+		end
+	end
+)
+
+-- ================================================================
+-- MUSIC
+-- ================================================================
+
+task.defer(
+	function()
+
+		setupMusic()
 
 	end
-
-end
-
 )
 
 -- ================================================================
@@ -2786,34 +2682,31 @@ end
 -- ================================================================
 
 task.defer(
-function()
+	function()
 
-	task.wait(0.7)
+		task.wait(0.7)
 
-	pcall(function()
+		pcall(function()
 
-		StarterGui:SetCore(
-			"SendNotification",
-			{
-				Title =
-					"ＴＨＥ　ＣＲＥＡＴＯＲ",
+			StarterGui:SetCore(
+				"SendNotification",
+				{
+					Title =
+						"ＴＨＥ　ＣＲＥＡＴＯＲ",
 
-				Text =
-					"GLITCH ENGINE // ONLINE",
+					Text =
+						"GLITCH ENGINE // ONLINE",
 
-				Icon =
-					DECAL_ID,
+					Icon =
+						DECAL_ID,
 
-				Duration =
-					4,
+					Duration =
+						4,
+				}
+			)
 
-			}
-		)
-
-	end)
-
-end
-
+		end)
+	end
 )
 
 -- ================================================================
@@ -2821,49 +2714,53 @@ end
 -- ================================================================
 
 print(
-"[R4FIX] ==========================================="
+	"[R4FIX] ==========================================="
 )
 
 print(
-"[R4FIX] THE CREATOR // FINAL GLITCH ENGINE"
+	"[R4FIX] THE CREATOR // FINAL GLITCH ENGINE"
 )
 
 print(
-"[R4FIX] Green / Black Override: ONLINE"
+	"[R4FIX] Green / Black Override: ONLINE"
 )
 
 print(
-"[R4FIX] M1 Target Blink: ONLINE"
+	"[R4FIX] M1 Target Blink: ONLINE"
 )
 
 print(
-"[R4FIX] Phantom Engine: ONLINE"
+	"[R4FIX] Phantom Engine: ONLINE"
 )
 
 print(
-"[R4FIX] Void Protocol: ONLINE"
+	"[R4FIX] Void Protocol: ONLINE"
 )
 
 print(
-"[R4FIX] Creator Rush: ONLINE"
+	"[R4FIX] Creator Rush: ONLINE"
 )
 
 print(
-"[R4FIX] Null Execution: ONLINE"
+	"[R4FIX] Null Execution: ONLINE"
 )
 
 print(
-"[R4FIX] Flight: REMOVED"
+	"[R4FIX] Flight: REMOVED"
 )
 
 print(
-"[R4FIX] Bottom UI: REMOVED"
+	"[R4FIX] Bottom UI: REMOVED"
 )
 
 print(
-"[R4FIX] Decal: 666236509"
+	"[R4FIX] Character Selector: ONLINE"
 )
 
 print(
-"[R4FIX] ==========================================="
+	"[R4FIX] Decal: 666236509"
+)
+
+print(
+	"[R4FIX] ==========================================="
 )
