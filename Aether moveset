@@ -1082,131 +1082,72 @@ print(
 "[AETHER] COMBAT ONLINE"
 )
 --==============================================================
--- AETHER // FINAL SYSTEM
--- PART 3
+-- AETHER // ASCENSION SYSTEM
+-- CLEAN CELESTIAL VERSION
+-- FIRE + THUNDER
 --==============================================================
 
 
-local RunService =
-game:GetService("RunService")
-
-local StarterGui =
-game:GetService("StarterGui")
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
 
 
-
---==============================================================
--- AETHER IDENTITY
---==============================================================
-
-
-local MOVESET_NAME =
-"AETHER"
-
-
-local DECAL =
-"rbxassetid://9387143810"
+local Player = Players.LocalPlayer
 
 
 
 --==============================================================
--- ULTIMATE COLORS
+-- COLORS
 --==============================================================
 
 
-local ULT_BLACK =
+local FIRE_RED =
 Color3.fromRGB(
-0,
-5,
-0
-)
-
-
-local ULT_GREEN =
-Color3.fromRGB(
-30,
 255,
-90
+45,
+30
 )
 
 
-local ULT_DARK =
+local FIRE_ORANGE =
 Color3.fromRGB(
-0,
-80,
-25
+255,
+130,
+40
+)
+
+
+local THUNDER_BLUE =
+Color3.fromRGB(
+40,
+150,
+255
+)
+
+
+local THUNDER_WHITE =
+Color3.fromRGB(
+220,
+245,
+255
+)
+
+
+local DARK =
+Color3.fromRGB(
+8,
+10,
+18
 )
 
 
 
 --==============================================================
--- GLITCH TEXT
+-- ULT BAR
 --==============================================================
 
 
-local GlitchWords =
-{
-
-"AETHER // ASCENDED",
-
-"A3THER // ASC3NDED",
-
-"AETHER // OVERRIDE",
-
-"AE_THER // GOD MODE",
-
-"AETHER // REALITY BREAK"
-
-
-}
-
-
-
-local function GlitchText(label)
-
-
-	if not label then
-		return
-	end
-
-
-	task.spawn(
-	function()
-
-		while label.Parent do
-
-
-			label.Text =
-			GlitchWords[
-				math.random(
-					1,
-					#GlitchWords
-				)
-			]
-
-
-			task.wait(
-				0.15
-			)
-
-
-		end
-
-
-	end)
-
-
-end
-
-
-
-
---==============================================================
--- ULT BAR STYLE
---==============================================================
-
-
-local function SetupUltBar()
+local function SetupAetherUltimate()
 
 
 	local gui =
@@ -1235,55 +1176,146 @@ local function SetupUltBar()
 
 
 
-	for _,v in ipairs(
+	for _,obj in ipairs(
 		bar:GetDescendants()
 	) do
 
 
 
-		if v:IsA(
-			"TextLabel"
-		) then
+		-- MAIN BAR
+
+		if obj:IsA(
+			"Frame"
+		)
+		or obj:IsA(
+			"ImageLabel"
+		)
+		then
 
 
-			v.TextColor3 =
-			ULT_GREEN
+			local gradient =
+			obj:FindFirstChildOfClass(
+				"UIGradient"
+			)
 
 
-			if string.find(
-				string.lower(v.Name),
-				"text"
-			) then
 
-				GlitchText(v)
+			if not gradient then
+
+
+				gradient =
+				Instance.new(
+					"UIGradient"
+				)
+
+
+				gradient.Parent =
+				obj
+
 
 			end
 
 
+
+			gradient.Color =
+			ColorSequence.new({
+
+				ColorSequenceKeypoint.new(
+					0,
+					FIRE_RED
+				),
+
+
+				ColorSequenceKeypoint.new(
+					0.45,
+					FIRE_ORANGE
+				),
+
+
+				ColorSequenceKeypoint.new(
+					0.5,
+					THUNDER_WHITE
+				),
+
+
+				ColorSequenceKeypoint.new(
+					0.55,
+					THUNDER_BLUE
+				),
+
+
+				ColorSequenceKeypoint.new(
+					1,
+					THUNDER_BLUE
+				)
+
+			})
+
+
+
+			-- smooth energy movement
+
+			task.spawn(function()
+
+
+				while obj.Parent do
+
+
+					for i=-1,1,0.01 do
+
+
+						gradient.Offset =
+						Vector2.new(
+							i,
+							0
+						)
+
+
+						task.wait(
+							0.025
+						)
+
+
+					end
+
+
+				end
+
+
+			end)
+
+
+
 		end
 
 
 
-		if v:IsA(
-			"Frame"
-		) then
+
+		-- TEXT
 
 
-			v.BackgroundColor3 =
-			ULT_BLACK
+		if obj:IsA(
+			"TextLabel"
+		)
+		then
 
 
-		end
+			obj.Text =
+			"AETHER ASCENSION"
+
+
+			obj.TextColor3 =
+			THUNDER_WHITE
 
 
 
-		if v:IsA(
-			"ImageLabel"
-		) then
+			obj.TextStrokeColor3 =
+			DARK
 
 
-			v.ImageColor3 =
-			ULT_GREEN
+			obj.TextStrokeTransparency =
+			0.2
+
 
 
 		end
@@ -1299,27 +1331,24 @@ end
 
 
 --==============================================================
--- ASCENDED FORM
+-- AETHER TRANSFORMATION
 --==============================================================
 
 
-local Ascended = false
+local AetherMode = false
 
 
 
-local function ActivateAscended()
+local function ActivateAether()
 
 
-	if Ascended then
+	if AetherMode then
 		return
 	end
 
 
-	Ascended = true
-
-
-
-	CreateAura()
+	AetherMode =
+	true
 
 
 
@@ -1334,65 +1363,44 @@ local function ActivateAscended()
 
 
 
+
+	-- fire explosion
+
+	SpawnVFX(
+		VFX_MODELS.FireImpact,
+
+		root.CFrame,
+
+		2,
+
+		0.8
+	)
+
+
+
+	-- thunder awakening
+
 	SpawnVFX(
 		VFX_MODELS.BlueThunder,
 
-		root.CFrame,
+		root.CFrame *
+		CFrame.new(
+			0,
+			4,
+			0
+		),
 
-		3,
-
-		1
-	)
-
-
-
-	SpawnVFX(
-		VFX_MODELS.MoonThunder,
-
-		root.CFrame,
-
-		3,
+		2.5,
 
 		1
 	)
 
 
 
-	FireImpact()
 
+	-- aura
 
-
-	task.spawn(
-	function()
-
-
-		while Ascended
-		and char.Parent
-		do
-
-
-			if math.random(
-				1,
-				4
-			)==1 then
-
-
-				SpawnRandomThunder()
-
-
-			end
-
-
-
-			task.wait(
-				0.5
-			)
-
-
-		end
-
-
-	end)
+	CreateAura()
 
 
 
@@ -1400,10 +1408,57 @@ end
 
 
 
-local function DisableAscended()
 
-	Ascended =
-	false
+--==============================================================
+-- MOBILE SUPPORT
+-- USE EXISTING BUTTON
+--==============================================================
+
+
+local function SetupMobilePunch()
+
+
+	local gui =
+	Player:FindFirstChild(
+		"PlayerGui"
+	)
+
+
+
+	if not gui then
+		return
+	end
+
+
+
+
+	local button =
+	gui:FindFirstChild(
+		"PunchButton",
+		true
+	)
+
+
+
+	if button
+	and button:IsA(
+		"GuiButton"
+	)
+	then
+
+
+		button.Activated:Connect(
+		function()
+
+
+			M1()
+
+
+		end)
+
+
+	end
+
 
 
 end
@@ -1416,7 +1471,7 @@ end
 --==============================================================
 
 
-local function UpdateCharacterTab()
+local function FixCharacterName()
 
 
 	local gui =
@@ -1431,58 +1486,34 @@ local function UpdateCharacterTab()
 
 
 
-	for _,obj in ipairs(
+	for _,v in ipairs(
 		gui:GetDescendants()
 	) do
 
 
-		if obj:IsA(
+		if v:IsA(
 			"TextLabel"
-		) then
-
-
-			if obj.Text ==
-			"Garou"
-			or obj.Text ==
-			"Hero Hunter"
-			then
-
-
-				obj.Text =
-				MOVESET_NAME
-
-
-			end
-
-
-		end
-
-
-
-		if obj:IsA(
-			"ImageLabel"
-		)
-		or obj:IsA(
-			"ImageButton"
 		)
 		then
 
 
-			if obj.Name:
-			lower():find(
-				"icon"
-			)
+			if v.Text ==
+			"Garou"
+			or v.Text ==
+			"Hero Hunter"
 			then
 
 
-				obj.Image =
-				DECAL
+				v.Text =
+				"AETHER"
 
 
 			end
 
 
+
 		end
+
 
 
 	end
@@ -1494,210 +1525,29 @@ end
 
 
 --==============================================================
--- MOBILE BUTTONS
+-- START
 --==============================================================
 
 
-local function MakeButton(name,key)
+task.spawn(function()
 
 
-	local gui =
-	Player.PlayerGui
+	task.wait(1)
 
 
 
-	local screen =
-	gui:FindFirstChild(
-		"AetherMobile"
-	)
+	SetupAetherUltimate()
 
+	SetupMobilePunch()
 
+	FixCharacterName()
 
-	if not screen then
-
-
-		screen =
-		Instance.new(
-			"ScreenGui"
-		)
-
-
-		screen.Name =
-		"AetherMobile"
-
-
-		screen.Parent =
-		gui
-
-
-	end
-
-
-
-
-	local button =
-	Instance.new(
-		"TextButton"
-	)
-
-
-
-	button.Name =
-	name
-
-
-	button.Size =
-	UDim2.new(
-		0,
-		100,
-		0,
-		55
-	)
-
-
-	button.Position =
-	UDim2.new(
-		1,
-		-120,
-		0.6,
-		0
-	)
-
-
-	button.BackgroundColor3 =
-	ULT_DARK
-
-
-	button.TextColor3 =
-	ULT_GREEN
-
-
-	button.Text =
-	name
-
-
-	button.Parent =
-	screen
-
-
-
-
-	button.Activated:Connect(
-	function()
-
-
-		if key == 1 then
-
-			M1()
-
-		elseif key == 2 then
-
-			PhantomShift()
-
-
-		elseif key == 3 then
-
-			CelestialOverload()
-
-
-		elseif key == 4 then
-
-			RealityFracture()
-
-
-		end
-
-
-	end)
-
-
-
-end
-
-
-
-
---==============================================================
--- STARTUP
---==============================================================
-
-
-task.spawn(
-function()
-
-
-	while Player.Parent do
-
-
-		pcall(
-		function()
-
-			UpdateCharacterTab()
-
-			SetupUltBar()
-
-
-		end)
-
-
-		task.wait(
-			1
-		)
-
-
-	end
 
 
 end)
 
 
 
-MakeButton(
-"AETHER 1",
-1
-)
-
-
-MakeButton(
-"AETHER 2",
-2
-)
-
-
-MakeButton(
-"AETHER 3",
-3
-)
-
-
-MakeButton(
-"AETHER 4",
-4
-)
-
-
-
-StarterGui:SetCore(
-"SendNotification",
-{
-
-Title =
-"AETHER",
-
-Text =
-"ASCENDED SYSTEM ONLINE",
-
-Icon =
-DECAL,
-
-Duration =
-3
-
-}
-)
-
-
-
 print(
-"[AETHER] FULL SYSTEM LOADED"
+"[AETHER] ASCENSION READY"
 )
