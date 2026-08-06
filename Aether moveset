@@ -1,318 +1,97 @@
--- // ========================================================== \\ --
--- //              AETHER HUNTER ULT + VFX OVERRIDE             \\ --
--- //                  Scripted by R4Fix🇦🇹                      \\ --
--- // ========================================================== \\ --
+-- ================================================================
+-- R4FIX // AETHER CLIENT VFX SYSTEM
+-- PART 1/2
+-- ================================================================
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
 
 local Player = Players.LocalPlayer
-
-local MOVESET_NAME = "Aether"
-local DECAL_ID = "rbxthumb://type=Asset&id=13394302362&w=150&h=150"
-
-local VFX_ID = "rbxassetid://95183267034317"
-
-local Character
-local AuraModel
-
-
-local function GetCharacter()
-
-	Character = Player.Character or Player.CharacterAdded:Wait()
-
-	return Character
-
-end
-
-
---------------------------------------------------
--- HUNTER -> AETHER CHARACTER TAB
---------------------------------------------------
-
-RunService.Heartbeat:Connect(function()
-
-	pcall(function()
-
-		local gui = Player:FindFirstChild("PlayerGui")
-
-		if not gui then return end
-
-
-		local topbar = gui:FindFirstChild("TopbarPlus")
-
-		if topbar then
-
-			for _,obj in ipairs(topbar:GetDescendants()) do
-
-				if obj.Name == "IconButton" then
-
-					local label = obj:FindFirstChild("IconLabel")
-					local image = obj:FindFirstChild("IconImage")
-
-
-					if label then
-
-						if label.Text == "Hunter"
-						or label.Text == "Hero Hunter" then
-
-							label.Text = MOVESET_NAME
-
-							if image then
-								image.Image = DECAL_ID
-							end
-
-						end
-
-					end
-
-				end
-
-			end
-
-		end
-
-	end)
-
-end)
-
-
-
---------------------------------------------------
--- AETHER AURA LOADER
---------------------------------------------------
-
-local function RemoveAura()
-
-	if AuraModel then
-
-		AuraModel:Destroy()
-		AuraModel = nil
-
-	end
-
-end
-
-
-
-local function LoadAura()
-
-	RemoveAura()
-
-	local character = GetCharacter()
-	local root = character:WaitForChild("HumanoidRootPart")
-
-
-	local success,objects = pcall(function()
-
-		return game:GetObjects(VFX_ID)
-
-	end)
-
-
-	if not success or not objects or #objects == 0 then
-		warn("Aether VFX failed loading")
-		return
-	end
-
-
-	local model = objects[1]
-
-
-	if not model then
-		return
-	end
-
-
-	model.Name = "Aether_Aura"
-	model.Parent = workspace
-
-
-	if model:IsA("Model") then
-
-
-		if not model.PrimaryPart then
-
-			model.PrimaryPart =
-				model:FindFirstChild("HumanoidRootPart")
-				or model:FindFirstChildWhichIsA("BasePart")
-
-		end
-
-
-		if model.PrimaryPart then
-
-			model:SetPrimaryPartCFrame(root.CFrame)
-
-		else
-
-			model:PivotTo(root.CFrame)
-
-		end
-
-
-	elseif model:IsA("BasePart") then
-
-		model.CFrame = root.CFrame
-
-	end
-
-
-	AuraModel = model
-
-
-
-	RunService.RenderStepped:Connect(function()
-
-		if AuraModel and root and root.Parent then
-
-
-			if AuraModel:IsA("Model") then
-
-				if AuraModel.PrimaryPart then
-
-					AuraModel:SetPrimaryPartCFrame(root.CFrame)
-
-				else
-
-					AuraModel:PivotTo(root.CFrame)
-
-				end
-
-
-			elseif AuraModel:IsA("BasePart") then
-
-				AuraModel.CFrame = root.CFrame
-
-			end
-
-
-		end
-
-	end)
-
-end
-
-
-
---------------------------------------------------
--- CONNECT TO EXISTING ULTIMATE
---------------------------------------------------
--- Looks for existing TSB ultimate activation
--- and adds Aether aura to it
-
-local function HookUltimate()
-
-	for _,v in ipairs(getgc(true)) do
-
-		if typeof(v) == "function" then
-
-			local info = debug.getinfo(v)
-
-			if info and info.name then
-
-				if string.find(string.lower(info.name),"ult")
-				or string.find(string.lower(info.name),"awak") then
-
-					-- hook point for existing ultimate
-					-- keeps original system
-
-				end
-
-			end
-
-		end
-
-	end
-
-end
-
-
-
---------------------------------------------------
--- MANUAL FALLBACK KEY
---------------------------------------------------
--- Remove this if your existing ult already fires
-
-local UIS = game:GetService("UserInputService")
-
-UIS.InputBegan:Connect(function(input,gp)
-
-	if gp then return end
-
-	if input.KeyCode == Enum.KeyCode.G then
-
-		LoadAura()
-
-	end
-
-end)
-
-
-Player.CharacterAdded:Connect(function()
-
-	RemoveAura()
-
-end)
-
-
-HookUltimate()
-
--- ================================================================
--- R4FIX // AETHER HUNTER ULT + PUNCH VFX OVERRIDE
--- ================================================================
-
-local Players = game:GetService("Players")
-local Workspace = game:GetService("Workspace")
-local LocalPlayer = Players.LocalPlayer
+local PlayerGui = Player:WaitForChild("PlayerGui")
 
 local AETHER_NAME = "Aether"
 local DECAL_ID = "rbxthumb://type=Asset&id=13394302362&w=150&h=150"
 
-local PUNCH_VFX = "rbxassetid://107157303748652"
+local M1_VFX_ID = "rbxassetid://133060042063817"
+
+local VFX_FOLDER_NAME = "Aether_Local_VFX"
+
+local Purple =
+	Color3.fromRGB(170,80,255)
+
+
+local VFXFolder =
+	workspace:FindFirstChild(VFX_FOLDER_NAME)
+
+if not VFXFolder then
+
+	VFXFolder = Instance.new("Folder")
+	VFXFolder.Name = VFX_FOLDER_NAME
+	VFXFolder.Parent = workspace
+
+end
+
+
+local function GetCharacter()
+
+	return Player.Character
+		or Player.CharacterAdded:Wait()
+
+end
+
 
 
 -- ================================================================
--- CHARACTER TAB
+-- CHARACTER UI
 -- ================================================================
+
+local function UpdateAetherUI()
+
+	pcall(function()
+
+		for _,obj in ipairs(
+			PlayerGui:GetDescendants()
+		) do
+
+
+			if obj:IsA("TextLabel") then
+
+				if obj.Text == "Hunter"
+				or obj.Text == "Hero Hunter" then
+
+					obj.Text = AETHER_NAME
+
+				end
+
+			end
+
+
+			if obj:IsA("ImageLabel")
+			or obj:IsA("ImageButton") then
+
+				if obj.Name:lower():find("icon")
+				or obj.Name:lower():find("image") then
+
+					obj.Image = DECAL_ID
+
+				end
+
+			end
+
+		end
+
+	end)
+
+end
+
+
 
 task.spawn(function()
 
 	while task.wait(0.5) do
 
-		pcall(function()
-
-			local gui = LocalPlayer.PlayerGui
-
-			for _,v in ipairs(gui:GetDescendants()) do
-
-				if v:IsA("TextLabel") then
-
-					if v.Text == "Hero Hunter"
-					or v.Text == "Hunter" then
-
-						v.Text = AETHER_NAME
-
-					end
-
-				end
-
-
-				if v:IsA("ImageLabel")
-				or v:IsA("ImageButton") then
-
-					if v.Image:find("Hero")
-					or v.Image:find("Hunter") then
-
-						v.Image = DECAL_ID
-
-					end
-
-				end
-
-			end
-
-		end)
+		UpdateAetherUI()
 
 	end
 
@@ -321,104 +100,77 @@ end)
 
 
 -- ================================================================
--- EXISTING ULT BAR MODIFIER
+-- AETHER M1 VFX SPAWNER
 -- ================================================================
 
-task.spawn(function()
+local function FadeRemove(effect)
 
-	while task.wait(0.25) do
-
-		pcall(function()
-
-			for _,obj in ipairs(
-				LocalPlayer.PlayerGui:GetDescendants()
-			) do
+	for _,v in ipairs(
+		effect:GetDescendants()
+	) do
 
 
-				local name =
-					string.lower(obj.Name)
+		if v:IsA("BasePart") then
+
+			TweenService:Create(
+				v,
+				TweenInfo.new(
+					0.25,
+					Enum.EasingStyle.Quad
+				),
+				{
+					Transparency = 1
+				}
+			):Play()
 
 
-				if string.find(name,"ultimate")
-				or string.find(name,"awakening")
-				or string.find(name,"ult")
-				or string.find(name,"awaken")
-				then
+		elseif v:IsA("ParticleEmitter") then
+
+			v.Enabled = false
 
 
-					if obj:IsA("TextLabel") then
+		elseif v:IsA("Trail")
+		or v:IsA("Beam") then
 
-						obj.Text =
-							obj.Text:gsub(
-								"Hero Hunter",
-								"Aether"
-							)
+			v.Enabled = false
 
-					end
-
-
-					if obj:IsA("Frame") then
-
-						for _,child in ipairs(
-							obj:GetDescendants()
-						) do
-
-							if child:IsA("Frame")
-							and child.Size.X.Scale > 0
-							then
-
-								child.BackgroundColor3 =
-									Color3.fromRGB(
-										170,
-										80,
-										255
-									)
-
-							end
-
-						end
-
-					end
-
-
-				end
-
-			end
-
-		end)
+		end
 
 	end
 
-end)
+
+	task.delay(0.3,function()
+
+		if effect then
+			effect:Destroy()
+		end
+
+	end)
+
+end
 
 
 
--- ================================================================
--- AETHER PUNCH VFX
--- ================================================================
-
-local function SpawnPunchVFX()
+local function SpawnAetherM1()
 
 	local character =
-		LocalPlayer.Character
-
-	if not character then return end
-
+		GetCharacter()
 
 	local root =
 		character:FindFirstChild(
 			"HumanoidRootPart"
 		)
 
-	if not root then return end
-
+	if not root then
+		return
+	end
 
 
 	local success,objects =
 		pcall(function()
 
 			return game:GetObjects(
-				PUNCH_VFX
+				M1_VFX_ID
 			)
 
 		end)
@@ -426,100 +178,72 @@ local function SpawnPunchVFX()
 
 	if not success
 	or not objects
-	or #objects == 0
+	or not objects[1]
 	then
-		warn(
-			"[R4FIX] Punch VFX failed loading"
-		)
-		return
-	end
 
+		warn(
+			"Aether M1 VFX failed"
+		)
+
+		return
+
+	end
 
 
 	local effect =
 		objects[1]
 
 
-	effect.Parent =
-		Workspace
+	effect.Name =
+		"Aether_M1"
 
+
+	effect.Parent =
+		VFXFolder
+
+
+	local position =
+		root.CFrame *
+		CFrame.new(
+			0,
+			0,
+			-3
+		)
 
 
 	if effect:IsA("Model") then
 
-
-		if not effect.PrimaryPart then
-
-			effect.PrimaryPart =
-				effect:FindFirstChildWhichIsA(
-					"BasePart"
-				)
-
-		end
-
-
-		if effect.PrimaryPart then
-
-			effect:SetPrimaryPartCFrame(
-				root.CFrame *
-				CFrame.new(
-					0,
-					0,
-					-3
-				)
-			)
-
-		else
-
-			effect:PivotTo(
-				root.CFrame
-			)
-
-		end
-
+		effect:PivotTo(
+			position
+		)
 
 	elseif effect:IsA("BasePart") then
 
 		effect.CFrame =
-			root.CFrame *
-			CFrame.new(
-				0,
-				0,
-				-3
-			)
+			position
 
 	end
 
-
-
-	-- recolor possible effects
 
 	for _,v in ipairs(
 		effect:GetDescendants()
 	) do
 
-
 		if v:IsA("ParticleEmitter") then
 
 			v.Color =
 				ColorSequence.new(
-					Color3.fromRGB(
-						170,
-						80,
-						255
-					)
+					Purple
 				)
+
+			v:Emit(25)
 
 		elseif v:IsA("Trail")
 		or v:IsA("Beam") then
 
 			v.Color =
 				ColorSequence.new(
-					Color3.fromRGB(
-						170,
-						80,
-						255
-					)
+					Purple
 				)
 
 		end
@@ -527,41 +251,107 @@ local function SpawnPunchVFX()
 	end
 
 
-
 	task.delay(
-		3,
+		0.45,
 		function()
 
-			if effect then
-				effect:Destroy()
-			end
+			FadeRemove(effect)
 
 		end
 	)
 
 end
 
+-- ================================================================
+-- R4FIX // AETHER CLIENT VFX SYSTEM
+-- PART 2/2
+-- ================================================================
+
+
+local function SetupCharacter()
+
+	local character =
+		Player.Character
+
+	if not character then
+		return
+	end
+
+
+	task.wait(0.5)
+
+	UpdateAetherUI()
+
+end
+
 
 
 -- ================================================================
--- WATCH FOR PUNCH/MOVE EFFECTS
+-- OPTIONAL LOCAL TEST KEY
+-- Remove this when connecting your own combat system
 -- ================================================================
 
-Workspace.DescendantAdded:Connect(
-function(obj)
-
-	local n =
-		string.lower(obj.Name)
+local UserInputService =
+	game:GetService("UserInputService")
 
 
-	if string.find(n,"punch")
-	or string.find(n,"m1")
-	or string.find(n,"attack")
-	then
+UserInputService.InputBegan:Connect(function(
+	input,
+	gameProcessed
+)
 
-		task.wait()
+	if gameProcessed then
+		return
+	end
 
-		SpawnPunchVFX()
+
+	if input.KeyCode == Enum.KeyCode.G then
+
+		SpawnAetherM1()
+
+	end
+
+end)
+
+
+
+-- ================================================================
+-- CHARACTER RESET CLEANUP
+-- ================================================================
+
+Player.CharacterAdded:Connect(function()
+
+	for _,v in ipairs(
+		VFXFolder:GetChildren()
+	) do
+
+		v:Destroy()
+
+	end
+
+
+	task.wait(1)
+
+	SetupCharacter()
+
+end)
+
+
+
+-- ================================================================
+-- INITIAL START
+-- ================================================================
+
+SetupCharacter()
+
+
+task.spawn(function()
+
+	while Player.Parent do
+
+		UpdateAetherUI()
+
+		task.wait(2)
 
 	end
 
@@ -570,5 +360,5 @@ end)
 
 
 print(
-"[R4FIX] Aether Hunter Ultimate + Punch VFX loaded."
+	"[R4FIX] Aether Client VFX System loaded."
 )
