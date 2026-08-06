@@ -1,49 +1,1253 @@
--- R4Fix Persistent Loop Music
+-- // ========================================================== \\ --
+-- //        ICHIKA NAKANO: CYBER HEART PROTOCOL               \\ --
+-- //              R4FIX ULTIMATE SYSTEM                      \\ --
+-- // ========================================================== \\ --
 
 local Players = game:GetService("Players")
-local SoundService = game:GetService("SoundService")
+local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
+local Debris = game:GetService("Debris")
+
+local Player = Players.LocalPlayer
+local PlayerGui = Player:WaitForChild("PlayerGui")
+
+local Character = Player.Character or Player.CharacterAdded:Wait()
+local Humanoid = Character:WaitForChild("Humanoid")
+local Root = Character:WaitForChild("HumanoidRootPart")
+
+
+Player.CharacterAdded:Connect(function(char)
+	Character = char
+	Humanoid = char:WaitForChild("Humanoid")
+	Root = char:WaitForChild("HumanoidRootPart")
+end)
+
+
+-- ==========================================================
+-- CHARACTER TAB OVERRIDE
+-- ==========================================================
+
+local MOVESET_NAME = "Ichika Nakano"
+local DECAL_ID = "rbxthumb://type=Asset&id=98181799656366&w=150&h=150"
+
+
+RunService.Heartbeat:Connect(function()
+
+	pcall(function()
+
+		local Topbar = PlayerGui:FindFirstChild("TopbarPlus")
+
+		if Topbar then
+
+			for _,obj in ipairs(Topbar:GetDescendants()) do
+
+				if obj.Name == "IconButton" then
+
+					local Label = obj:FindFirstChild("IconLabel")
+					local Image = obj:FindFirstChild("IconImage")
+
+
+					if Label then
+
+						if Label.Text == "Hero Hunter"
+						or Label.Text == "Garou"
+						or Label.Text == "Cyborg"
+						or Label.Text == MOVESET_NAME
+						then
+
+							Label.Text = MOVESET_NAME
+
+							if Image then
+								Image.Image = DECAL_ID
+							end
+
+						end
+
+					end
+
+				end
+
+			end
+
+		end
+
+	end)
+
+end)
+
+
+
+-- ==========================================================
+-- HOTBAR RENAMES
+-- ==========================================================
+
+
+local function ChangeMoveName(slot,name)
+
+	pcall(function()
+
+		local Hotbar =
+			PlayerGui:FindFirstChild("Hotbar")
+
+		local Backpack =
+			Hotbar:FindFirstChild("Backpack")
+
+		local Frame =
+			Backpack:FindFirstChild("Hotbar")
+
+
+		local Button =
+			Frame:FindFirstChild(slot)
+
+
+		if Button then
+
+			local Base =
+				Button:FindFirstChild("Base")
+
+
+			if Base then
+
+				local ToolName =
+					Base:FindFirstChild("ToolName")
+
+
+				if ToolName then
+					ToolName.Text = name
+				end
+
+			end
+
+		end
+
+	end)
+
+end
+
+
+
+task.spawn(function()
+
+	while task.wait() do
+
+		ChangeMoveName(
+			"1",
+			"Mirage Step"
+		)
+
+
+		ChangeMoveName(
+			"2",
+			"Cyber Heart Barrage"
+		)
+
+
+		ChangeMoveName(
+			"3",
+			"Sweet Signal Override"
+		)
+
+
+		ChangeMoveName(
+			"4",
+			"Idol Break Protocol"
+		)
+
+	end
+
+end)
+
+
+
+-- ==========================================================
+-- ICHIKA COLOR SYSTEM
+-- ==========================================================
+
+
+local YELLOW =
+	Color3.fromRGB(
+		255,
+		220,
+		40
+	)
+
+
+local LIGHT_YELLOW =
+	Color3.fromRGB(
+		255,
+		245,
+		120
+	)
+
+
+
+-- ==========================================================
+-- PHANTOM ENGINE
+-- ==========================================================
+
+
+local PhantomEngine = {
+
+	Active = false,
+
+	Name = "LOVE.EXE: Phantom Heart",
+
+	Multiplier = 1
+
+}
+
+
+
+local function ActivatePhantomEngine()
+
+	if PhantomEngine.Active then
+		return
+	end
+
+
+	PhantomEngine.Active = true
+
+	PhantomEngine.Multiplier = 2
+
+
+	local Highlight =
+		Instance.new("Highlight")
+
+	Highlight.Parent = Character
+
+	Highlight.FillColor = YELLOW
+	Highlight.OutlineColor = LIGHT_YELLOW
+
+	Highlight.FillTransparency = 0.45
+	Highlight.OutlineTransparency = 0
+
+
+	Debris:AddItem(
+		Highlight,
+		15
+	)
+
+
+
+	local Folder =
+		Instance.new("Folder")
+
+	Folder.Name =
+		"IchikaPhantomEffects"
+
+	Folder.Parent =
+		Character
+
+
+
+	local Aura =
+		Instance.new("ParticleEmitter")
+
+	Aura.Texture =
+		"rbxassetid://241594419"
+
+	Aura.Color =
+		ColorSequence.new(YELLOW)
+
+	Aura.LightEmission = 1
+
+	Aura.Rate = 50
+
+	Aura.Speed =
+		NumberRange.new(2,5)
+
+	Aura.Parent =
+		Root
+
+
+
+	Debris:AddItem(
+		Folder,
+		15
+	)
+
+	Debris:AddItem(
+		Aura,
+		15
+	)
+
+
+
+	task.delay(
+		15,
+		function()
+
+			PhantomEngine.Active = false
+			PhantomEngine.Multiplier = 1
+
+		end
+	)
+
+end
+
+
+
+-- ==========================================================
+-- AUTO DETECT ULT ACTIVATION
+-- ==========================================================
+
+
+Humanoid.AnimationPlayed:Connect(function(track)
+
+	local id =
+		track.Animation.AnimationId
+
+
+	if id:find("12460977270")
+	or id:find("12463072679")
+	then
+
+		ActivatePhantomEngine()
+
+	end
+
+
+end)
+
+
+
+print(
+"[R4FIX] Ichika Nakano Cyber Heart Protocol Loaded"
+)
+-- // ========================================================== \\ --
+-- //              ICHIKA CYBER HEART PROTOCOL                 \\ --
+-- //                    PART 2 MOVES                         \\ --
+-- // ========================================================== \\ --
+
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+local Debris = game:GetService("Debris")
+local RunService = game:GetService("RunService")
 
 local Player = Players.LocalPlayer
 
-local FileName = "R4Fix_5sis.mp3"
-local URL = "https://github.com/r4faelllaust/R4Fix/raw/refs/heads/main/5sis.mp3"
+local Character = Player.Character or Player.CharacterAdded:Wait()
+local Humanoid = Character:WaitForChild("Humanoid")
+local Root = Character:WaitForChild("HumanoidRootPart")
 
--- Download/save the asset (executor environments only)
-if not isfile(FileName) then
-	writefile(FileName, game:HttpGet(URL))
-end
 
--- Remove old copy if script runs again
-local OldSound = SoundService:FindFirstChild("R4FixMusic")
-if OldSound then
-	OldSound:Destroy()
-end
+Player.CharacterAdded:Connect(function(char)
 
-local Sound = Instance.new("Sound")
-Sound.Name = "R4FixMusic"
-Sound.Parent = SoundService
-Sound.SoundId = getcustomasset(FileName)
-Sound.Volume = 1
-Sound.Looped = true
-Sound.PlayOnRemove = false
+	Character = char
+	Humanoid = char:WaitForChild("Humanoid")
+	Root = char:WaitForChild("HumanoidRootPart")
 
--- Keep playing
-Sound:Play()
-
--- Safety check if Roblox stops it
-Sound.Ended:Connect(function()
-	if Sound.Looped then
-		Sound:Play()
-	end
 end)
 
--- Restart after character death
-Player.CharacterAdded:Connect(function()
-	task.wait(1)
 
-	if not Sound.IsPlaying then
-		Sound:Play()
+
+-- ==========================================================
+-- COLORS
+-- ==========================================================
+
+local Yellow =
+	Color3.fromRGB(
+		255,
+		220,
+		40
+	)
+
+local WhiteYellow =
+	Color3.fromRGB(
+		255,
+		255,
+		170
+	)
+
+
+
+-- ==========================================================
+-- CLOSEST PLAYER SYSTEM
+-- ==========================================================
+
+local function GetClosestPlayer()
+
+	local closest
+	local distance = math.huge
+
+
+	for _,plr in ipairs(Players:GetPlayers()) do
+
+		if plr ~= Player
+		and plr.Character
+		then
+
+			local enemyRoot =
+				plr.Character:FindFirstChild(
+					"HumanoidRootPart"
+				)
+
+			local enemyHum =
+				plr.Character:FindFirstChildOfClass(
+					"Humanoid"
+				)
+
+
+			if enemyRoot
+			and enemyHum
+			and enemyHum.Health > 0
+			then
+
+				local dist =
+					(Root.Position - enemyRoot.Position).Magnitude
+
+
+				if dist < distance then
+
+					distance = dist
+					closest = plr.Character
+
+				end
+
+			end
+
+		end
+
 	end
+
+
+	return closest
+
+end
+
+
+
+-- ==========================================================
+-- CYBER AFTERIMAGE
+-- ==========================================================
+
+local function CreateAfterImage()
+
+	local Clone =
+		Character:Clone()
+
+
+	for _,v in ipairs(Clone:GetDescendants()) do
+
+		if v:IsA("BasePart") then
+
+			v.Material =
+				Enum.Material.Neon
+
+			v.Color =
+				Yellow
+
+			v.Transparency =
+				0.45
+
+
+			v.CanCollide =
+				false
+
+		elseif v:IsA("Humanoid") then
+
+			v:Destroy()
+
+		end
+
+	end
+
+
+	Clone.Parent =
+		workspace
+
+
+	Debris:AddItem(
+		Clone,
+		0.35
+	)
+
+
+end
+
+
+
+-- ==========================================================
+-- CYBER EXPLOSION EFFECT
+-- ==========================================================
+
+local function CyberBurst(position)
+
+
+	local Part =
+		Instance.new("Part")
+
+
+	Part.Anchored = true
+	Part.CanCollide = false
+	Part.Transparency = 1
+
+	Part.Position =
+		position
+
+	Part.Parent =
+		workspace
+
+
+
+	local Emitter =
+		Instance.new("ParticleEmitter")
+
+
+	Emitter.Texture =
+		"rbxassetid://243098098"
+
+
+	Emitter.Color =
+		ColorSequence.new(
+			Yellow
+		)
+
+
+	Emitter.LightEmission =
+		1
+
+
+	Emitter.Rate =
+		200
+
+
+	Emitter.Speed =
+		NumberRange.new(8,14)
+
+
+	Emitter.Lifetime =
+		NumberRange.new(
+			0.4,
+			0.8
+		)
+
+
+	Emitter.Parent =
+		Part
+
+
+
+	Debris:AddItem(
+		Part,
+		1
+	)
+
+end
+
+
+
+-- ==========================================================
+-- MOVE 1
+-- MIRAGE STEP
+-- ==========================================================
+
+
+local MirageAnimation =
+	16945550029
+
+
+local function MirageStep()
+
+
+	local Target =
+		GetClosestPlayer()
+
+
+	if not Target then
+		return
+	end
+
+
+	local EnemyRoot =
+		Target:FindFirstChild(
+			"HumanoidRootPart"
+		)
+
+
+	if not EnemyRoot then
+		return
+	end
+
+
+
+	for i = 1,5 do
+
+		CreateAfterImage()
+
+		task.wait(
+			0.05
+		)
+
+	end
+
+
+
+	local BackPosition =
+		EnemyRoot.Position
+		-
+		EnemyRoot.CFrame.LookVector * 4
+
+
+
+	Root.CFrame =
+		CFrame.lookAt(
+			BackPosition,
+			EnemyRoot.Position
+		)
+
+
+
+	CyberBurst(
+		EnemyRoot.Position
+	)
+
+
+
+end
+
+
+
+-- ==========================================================
+-- MOVE 2
+-- CYBER HEART BARRAGE
+-- ==========================================================
+
+
+local BarrageAnimation =
+	94395585475029
+
+
+
+local function CyberHeartBarrage()
+
+
+	local Target =
+		GetClosestPlayer()
+
+
+	if not Target then
+		return
+	end
+
+
+	local EnemyRoot =
+		Target:FindFirstChild(
+			"HumanoidRootPart"
+		)
+
+
+	if not EnemyRoot then
+		return
+	end
+
+
+
+	for i = 1,8 do
+
+
+		local Offset =
+			CFrame.new(
+				math.random(-3,3),
+				math.random(0,3),
+				math.random(-3,3)
+			)
+
+
+
+		CreateAfterImage()
+
+
+		Root.CFrame =
+			CFrame.lookAt(
+				EnemyRoot.Position + Offset.Position,
+				EnemyRoot.Position
+			)
+
+
+
+		CyberBurst(
+			EnemyRoot.Position
+		)
+
+
+
+		task.wait(
+			0.12
+		)
+
+	end
+
+
+end
+
+
+
+-- ==========================================================
+-- ANIMATION REPLACEMENT HOOKS
+-- ==========================================================
+
+
+local function ReplaceAnimation(
+	Original,
+	New
+)
+
+
+	Humanoid.AnimationPlayed:Connect(
+	function(track)
+
+
+		if track.Animation.AnimationId
+			==
+			"rbxassetid://"..Original
+		then
+
+
+			track:Stop()
+
+
+			local Animation =
+				Instance.new(
+					"Animation"
+				)
+
+
+			Animation.AnimationId =
+				"rbxassetid://"..New
+
+
+			local Loaded =
+				Humanoid:LoadAnimation(
+					Animation
+				)
+
+
+			Loaded:Play()
+
+
+		end
+
+
+	end)
+
+end
+
+
+
+-- Move animation replacements
+
+ReplaceAnimation(
+	12273188754,
+	16945550029
+)
+
+
+ReplaceAnimation(
+	12296113986,
+	94395585475029
+)
+
+
+
+print(
+"[R4FIX] Ichika Moves 1-2 Loaded"
+)
+-- // ========================================================== \\ --
+-- //              ICHIKA CYBER HEART PROTOCOL                 \\ --
+-- //                    PART 3 ULTIMATE                       \\ --
+-- // ========================================================== \\ --
+
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+local Debris = game:GetService("Debris")
+local RunService = game:GetService("RunService")
+
+local Player = Players.LocalPlayer
+local Character = Player.Character or Player.CharacterAdded:Wait()
+
+local Humanoid = Character:WaitForChild("Humanoid")
+local Root = Character:WaitForChild("HumanoidRootPart")
+
+
+Player.CharacterAdded:Connect(function(char)
+
+	Character = char
+	Humanoid = char:WaitForChild("Humanoid")
+	Root = char:WaitForChild("HumanoidRootPart")
+
 end)
 
-print("R4Fix Music System Loaded")
+
+
+-- ==========================================================
+-- COLORS
+-- ==========================================================
+
+local GOLD =
+	Color3.fromRGB(
+		255,
+		210,
+		30
+	)
+
+local CYBER =
+	Color3.fromRGB(
+		255,
+		240,
+		90
+	)
+
+
+
+-- ==========================================================
+-- CLOSEST TARGET
+-- ==========================================================
+
+local function Closest()
+
+	local Target
+	local Distance = math.huge
+
+
+	for _,v in pairs(Players:GetPlayers()) do
+
+		if v ~= Player
+		and v.Character
+		then
+
+			local HRP =
+				v.Character:FindFirstChild(
+					"HumanoidRootPart"
+				)
+
+			local Hum =
+				v.Character:FindFirstChildOfClass(
+					"Humanoid"
+				)
+
+
+			if HRP and Hum and Hum.Health > 0 then
+
+				local Mag =
+					(Root.Position-HRP.Position).Magnitude
+
+
+				if Mag < Distance then
+
+					Distance = Mag
+					Target = v.Character
+
+				end
+
+			end
+
+		end
+
+	end
+
+
+	return Target
+
+end
+
+
+
+-- ==========================================================
+-- CYBER SHOCKWAVE
+-- ==========================================================
+
+local function Shockwave(Position,Size)
+
+
+	local Ring =
+		Instance.new("Part")
+
+
+	Ring.Shape =
+		Enum.PartType.Ball
+
+
+	Ring.Material =
+		Enum.Material.Neon
+
+
+	Ring.Color =
+		GOLD
+
+
+	Ring.Transparency =
+		0.3
+
+
+	Ring.Anchored =
+		true
+
+
+	Ring.CanCollide =
+		false
+
+
+	Ring.Size =
+		Vector3.new(
+			2,
+			2,
+			2
+		)
+
+
+	Ring.Position =
+		Position
+
+
+	Ring.Parent =
+		workspace
+
+
+
+	TweenService:Create(
+		Ring,
+		TweenInfo.new(
+			0.5
+		),
+		{
+			Size =
+				Vector3.new(
+					Size,
+					Size,
+					Size
+				),
+
+			Transparency = 1
+		}
+
+	):Play()
+
+
+
+	Debris:AddItem(
+		Ring,
+		1
+	)
+
+end
+
+
+
+-- ==========================================================
+-- MOVE 3
+-- SWEET SIGNAL OVERRIDE
+-- ==========================================================
+
+
+local function SignalOverride()
+
+
+	local Target =
+		Closest()
+
+
+	if not Target then
+		return
+	end
+
+
+	local Enemy =
+		Target:FindFirstChild(
+			"HumanoidRootPart"
+		)
+
+
+	if not Enemy then
+		return
+	end
+
+
+
+	Root.CFrame =
+		CFrame.lookAt(
+			Enemy.Position +
+			Enemy.CFrame.LookVector * 5,
+
+			Enemy.Position
+		)
+
+
+
+	for i = 1,6 do
+
+		Shockwave(
+			Enemy.Position,
+			5+i*3
+		)
+
+		task.wait(
+			0.08
+		)
+
+	end
+
+
+
+end
+
+
+
+-- ==========================================================
+-- MOVE 4
+-- IDOL BREAK PROTOCOL
+-- ==========================================================
+
+
+local function IdolBreak()
+
+
+	local Target =
+		Closest()
+
+
+	if Target then
+
+		local Enemy =
+			Target:FindFirstChild(
+				"HumanoidRootPart"
+			)
+
+
+		if Enemy then
+
+			Root.CFrame =
+				CFrame.lookAt(
+					Enemy.Position-Enemy.CFrame.LookVector*3,
+					Enemy.Position
+				)
+
+		end
+
+	end
+
+
+
+	for i = 1,10 do
+
+		Shockwave(
+			Root.Position,
+			i*8
+		)
+
+
+		task.wait(
+			0.05
+		)
+
+	end
+
+
+end
+
+
+
+-- ==========================================================
+-- ULTIMATE BAR
+-- ==========================================================
+
+
+local UltimateName =
+	"LOVE.EXE: PHANTOM HEART AWAKENING"
+
+
+
+task.spawn(function()
+
+
+	pcall(function()
+
+
+		local MagicHealth =
+			Player.PlayerGui.ScreenGui.MagicHealth
+
+
+		local Bar =
+			MagicHealth.Health.Bar.Bar
+
+
+		Bar.ImageColor3 =
+			GOLD
+
+
+		local Text =
+			MagicHealth.TextLabel.TextLabel
+
+
+		Text.Text =
+			UltimateName
+
+
+		Text.TextColor3 =
+			CYBER
+
+
+	end)
+
+
+end)
+
+
+
+-- ==========================================================
+-- PHANTOM HEART TRANSFORMATION
+-- ==========================================================
+
+
+local UltimateActive = false
+
+
+
+local function ActivateUltimate()
+
+
+	if UltimateActive then
+		return
+	end
+
+
+	UltimateActive = true
+
+
+
+	local Highlight =
+		Instance.new("Highlight")
+
+
+	Highlight.Parent =
+		Character
+
+
+	Highlight.FillColor =
+		GOLD
+
+
+	Highlight.OutlineColor =
+		CYBER
+
+
+	Highlight.FillTransparency =
+		0.35
+
+
+
+	local Aura =
+		Instance.new("ParticleEmitter")
+
+
+	Aura.Texture =
+		"rbxassetid://243098098"
+
+
+	Aura.Color =
+		ColorSequence.new(
+			GOLD
+		)
+
+
+	Aura.LightEmission =
+		1
+
+
+	Aura.Rate =
+		100
+
+
+	Aura.Parent =
+		Root
+
+
+
+	Shockwave(
+		Root.Position,
+		40
+	)
+
+
+
+	task.delay(
+		25,
+		function()
+
+			UltimateActive=false
+
+			Highlight:Destroy()
+			Aura:Destroy()
+
+		end
+	)
+
+
+end
+
+
+
+-- ==========================================================
+-- ULTIMATE MOVE NAMES
+-- ==========================================================
+
+
+local UltimateMoves = {
+
+	["1"]="Phantom Heart Collapse",
+
+	["2"]="Cyber Idol Singularity",
+
+	["3"]="Nakano Zero System",
+
+	["4"]="Final Love Protocol"
+
+}
+
+
+
+task.spawn(function()
+
+	while task.wait() do
+
+		pcall(function()
+
+
+			local Hotbar =
+				Player.PlayerGui.Hotbar.Backpack.Hotbar
+
+
+			for slot,name in pairs(UltimateMoves) do
+
+
+				local Button =
+					Hotbar:FindFirstChild(slot)
+
+
+				if Button then
+
+					local Base =
+						Button.Base
+
+
+					Base.ToolName.Text =
+						name
+
+
+				end
+
+
+			end
+
+
+		end)
+
+	end
+
+end)
+
+
+
+print(
+"[R4FIX] Ichika Nakano LOVE.EXE Ultimate Loaded"
+)
