@@ -4944,3 +4944,145 @@ task.spawn(function()
 		pcall(reconnect)
 	end)
 end)
+
+--// CREATOR MOBILE PUNCH BUTTON GLITCH EFFECT
+
+task.spawn(function()
+	local Players = game:GetService("Players")
+	local TweenService = game:GetService("TweenService")
+
+	local LP = Players.LocalPlayer
+
+	local function ApplyGlitch(Button)
+		if not Button or not Button:IsA("GuiObject") then
+			return
+		end
+
+		-- Prevent duplicates
+		if Button:FindFirstChild("CreatorGlitchEffect") then
+			return
+		end
+
+		local Tag = Instance.new("BoolValue")
+		Tag.Name = "CreatorGlitchEffect"
+		Tag.Parent = Button
+
+
+		-- Green glow outline
+		local Stroke = Instance.new("UIStroke")
+		Stroke.Name = "CreatorGreenHackGlow"
+		Stroke.Color = Color3.fromRGB(0,255,80)
+		Stroke.Thickness = 2
+		Stroke.Transparency = 0.2
+		Stroke.Parent = Button
+
+
+		-- Glitch overlay
+		local Overlay = Instance.new("Frame")
+		Overlay.Name = "CreatorGlitchOverlay"
+		Overlay.Size = UDim2.fromScale(1,1)
+		Overlay.Position = UDim2.fromScale(0,0)
+		Overlay.BackgroundColor3 = Color3.fromRGB(0,255,80)
+		Overlay.BackgroundTransparency = 1
+		Overlay.BorderSizePixel = 0
+		Overlay.ZIndex = Button.ZIndex + 5
+		Overlay.Parent = Button
+
+
+		local function Glitch()
+			while Button.Parent do
+
+				-- Pulse glow
+				TweenService:Create(
+					Stroke,
+					TweenInfo.new(
+						0.15,
+						Enum.EasingStyle.Linear
+					),
+					{
+						Transparency = 0
+					}
+				):Play()
+
+				task.wait(0.08)
+
+				TweenService:Create(
+					Stroke,
+					TweenInfo.new(
+						0.3
+					),
+					{
+						Transparency = 0.6
+					}
+				):Play()
+
+
+				-- Random corruption flicker
+				if math.random(1,3) == 1 then
+					Overlay.BackgroundTransparency = 0.4
+					Overlay.Position = UDim2.new(
+						math.random(-2,2)/100,
+						0,
+						math.random(-2,2)/100,
+						0
+					)
+
+					task.wait(0.05)
+
+					Overlay.BackgroundTransparency = 1
+					Overlay.Position = UDim2.fromScale(0,0)
+				end
+
+
+				-- Small hacked rotation
+				Button.Rotation = math.random(-3,3)
+
+				task.wait(0.1)
+
+				Button.Rotation = 0
+
+				task.wait(math.random(3,8)/10)
+			end
+		end
+
+		task.spawn(Glitch)
+	end
+
+
+	local function FindPunch()
+		local PG = LP:WaitForChild("PlayerGui")
+
+		local TouchGui = PG:FindFirstChild("TouchGui")
+
+		if TouchGui then
+			local Button = TouchGui
+				:FindFirstChild("TouchControlFrame", true)
+				and TouchGui
+				:FindFirstChild("TouchControlFrame", true)
+				:FindFirstChild("JumpButton")
+				and TouchGui
+				:FindFirstChild("TouchControlFrame", true)
+				.JumpButton:FindFirstChild("PunchButton")
+
+			if Button then
+				ApplyGlitch(Button)
+			end
+		end
+	end
+
+
+	FindPunch()
+
+
+	LP.CharacterAdded:Connect(function()
+		task.wait(2)
+		FindPunch()
+	end)
+
+
+	LP.PlayerGui.ChildAdded:Connect(function()
+		task.wait(1)
+		FindPunch()
+	end)
+
+end)
