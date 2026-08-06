@@ -1,19 +1,16 @@
 --!strict
 -- ================================================================
--- QUINTESSENTIAL QUINTUPLETS MOVESET
--- Ichika (Cyborg) / Nino (Martial Arts) / Miku (Hero Hunter)
--- Yotsuba (Saitama) / Itsuki (Blademaster)
+-- QUINTESSENTIAL QUINTUPLETS MOVESET (Real Anim Edition)
 -- ================================================================
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local TweenService = game:GetService("TweenService")
 local Debris = game:GetService("Debris")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local UserInputService = game:GetService("UserInputService")
 local StarterGui = game:GetService("StarterGui")
 local Workspace = game:GetService("Workspace")
-local HttpService = game:GetService("HttpService")
+local SoundService = game:GetService("SoundService")
 
 local LocalPlayer = Players.LocalPlayer
 if not LocalPlayer then return end
@@ -41,11 +38,29 @@ GEN.R4Fix5Sis = {
 local S = GEN.R4Fix5Sis
 
 -- ================================================================
--- SISTER DATA
+-- CONFIG
 -- ================================================================
 
-local BLACK = Color3.fromRGB(0, 0, 0)
-local WHITE = Color3.fromRGB(255, 255, 255)
+local CFG = {
+	DashRange = 30,
+	DashStop = 4.5,
+	DashSpeed = 140,
+	DashDuration = 0.35,
+
+	M1DashRange = 14,
+	M1DashSpeed = 100,
+	M1Cooldown = 0.3,
+
+	MoveCooldown = {3, 4, 5, 7},
+	UltCooldown = 25,
+	UltDuration = 8,
+}
+
+local function A(id) return "rbxassetid://" .. id end
+
+-- ================================================================
+-- SISTER DATA — real TSB animation IDs mapped per theme
+-- ================================================================
 
 local SISTERS = {
 	Ichika = {
@@ -53,92 +68,114 @@ local SISTERS = {
 		Color1 = Color3.fromRGB(255, 221, 64),
 		Color2 = Color3.fromRGB(255, 250, 205),
 		EngineName = "OVERRIDE ENGINE",
-		MoveNames = {"CIRCUIT BREAK", "SYSTEM PURGE", "OVERCLOCK", "FULL SHUTDOWN"},
-		UltName = "ABSOLUTE OVERRIDE",
 		Anim = {
-			M1 = {0, 0, 0, 0},
-			Move = {0, 0, 0, 0},
-			Ult = 0,
+			Spawn = A("18716464560"),
+			WallCombo = A("18716485513"),
+			M1 = {A("18716472014"), A("18716475828"), A("18716477298"), A("18716478642")},
+			Move = {
+				A("18716481342"), -- Ignition Burst
+				A("18716470698"), -- Machine Gun Blows
+				A("12618271998"), -- Blitz Shot
+				A("12684390285"), -- Jet Drive
+			},
+			MoveNames = {"IGNITION BURST", "MACHINE GUN BLOWS", "BLITZ SHOT", "JET DRIVE"},
+			Awk = A("18778839005"),
+			Ult = A("13146710762"), -- Incinerate
+			UltName = "INCINERATE OVERRIDE",
 		},
 	},
+
 	Nino = {
 		Decal = "rbxassetid://84966996106387",
 		Color1 = Color3.fromRGB(255, 105, 180),
 		Color2 = Color3.fromRGB(255, 200, 225),
 		EngineName = "FURY ENGINE",
-		MoveNames = {"RAPID FIST", "HEEL CRUSH", "STORM COMBO", "FINAL TAKEDOWN"},
-		UltName = "UNLEASHED FURY",
 		Anim = {
-			M1 = {0, 0, 0, 0},
-			Move = {0, 0, 0, 0},
-			Ult = 0,
+			Spawn = A("18716634245"),
+			WallCombo = A("18716750744"),
+			M1 = {A("18716641152"), A("18716644788"), A("18716646083"), A("18716647575")},
+			Move = {
+				A("18716650993"), -- Grand Slam
+				A("18716660379"), -- Foul Ball
+				A("18716667710"), -- Homerun
+				A("18716698376"), -- Beatdown
+			},
+			MoveNames = {"GRAND SLAM", "FOUL BALL", "HOMERUN", "BEATDOWN"},
+			Awk = A("18716765679"),
+			Ult = A("18716734026"), -- Death Blow
+			UltName = "DEATH BLOW FINALE",
 		},
 	},
+
 	Miku = {
 		Decal = "rbxassetid://139310852089028",
 		Color1 = Color3.fromRGB(90, 130, 255),
 		Color2 = Color3.fromRGB(190, 160, 255),
 		EngineName = "GHOST ENGINE",
-		MoveNames = {"SILENT MARK", "SHADOW STEP", "HUNTER'S EDGE", "EXECUTION"},
-		UltName = "APEX HUNTER",
 		Anim = {
-			M1 = {0, 0, 0, 0},
-			Move = {0, 0, 0, 0},
-			Ult = 0,
+			Spawn = A("18715986914"),
+			WallCombo = A("18716197426"),
+			M1 = {A("18715994424"), A("18715998497"), A("18715999597"), A("18716001119")},
+			Move = {
+				A("18716009111"), -- Counter
+				A("18716022049"), -- Lethal Whirlwind
+				A("18716033506"), -- Hunter's Grasp
+				A("18716169065"), -- Crushed Rock
+			},
+			MoveNames = {"SILENT COUNTER", "LETHAL WHIRLWIND", "HUNTER'S GRASP", "CRUSHED RESOLVE"},
+			Awk = A("18716153127"),
+			Ult = A("12467789963"), -- The Final Hunt
+			UltName = "THE FINAL HUNT",
 		},
 	},
+
 	Yotsuba = {
 		Decal = "rbxassetid://127206472590344",
 		Color1 = Color3.fromRGB(255, 60, 40),
 		Color2 = Color3.fromRGB(255, 170, 90),
 		EngineName = "ONE PUNCH ENGINE",
-		MoveNames = {"SERIOUS JAB", "SERIOUS KICK", "SERIOUS TACKLE", "CONSECUTIVE NORMAL PUNCHES"},
-		UltName = "SERIOUS PUNCH",
 		Anim = {
-			M1 = {0, 0, 0, 0},
-			Move = {0, 0, 0, 0},
-			Ult = 0,
+			Spawn = A("18715800557"),
+			WallCombo = A("18715829082"),
+			M1 = {A("18715812734"), A("18715817240"), A("18715818827"), A("18715820628")},
+			Move = {
+				A("18715831781"), -- Consecutive Normal Punches
+				A("18715837899"), -- Normal Uppercut
+				A("18715842262"), -- Normal Punch
+				A("18715845645"), -- Normal Shove
+			},
+			MoveNames = {"CONSECUTIVE PUNCHES", "SERIOUS UPPERCUT", "SERIOUS PUNCH", "SERIOUS SHOVE"},
+			Awk = A("12447707844"),
+			Ult = A("18715898844"), -- Awk Serious Punch
+			UltName = "SERIOUS PUNCH",
 		},
 	},
+
 	Itsuki = {
 		Decal = "rbxassetid://115613783620344",
 		Color1 = Color3.fromRGB(255, 170, 40),
 		Color2 = Color3.fromRGB(255, 225, 150),
 		EngineName = "BLADE ENGINE",
-		MoveNames = {"IAI DRAW", "CRESCENT CUT", "FLAME EDGE", "THOUSAND SLASH"},
-		UltName = "ATOMIC SAMURAI",
 		Anim = {
-			M1 = {0, 0, 0, 0},
-			Move = {0, 0, 0, 0},
-			Ult = 0,
+			Spawn = A("18716865654"),
+			WallCombo = A("18716867254"),
+			M1 = {A("15259161390"), A("15240216931"), A("15240176873"), A("15162694192")},
+			Move = {
+				A("18716871856"), -- Pinpoint Cut
+				A("15145462680"), -- Atmos Cleave
+				A("15290930205"), -- Quick Slice
+				A("15334974550"), -- Split Second Counter
+			},
+			MoveNames = {"PINPOINT CUT", "ATMOS CLEAVE", "QUICK SLICE", "SPLIT SECOND COUNTER"},
+			Awk = A("18716880183"),
+			Ult = A("18716893399"), -- Atomic Slash
+			UltName = "ATOMIC SLASH",
 		},
 	},
 }
 
-local ORDER = {"Ichika", "Nino", "Miku", "Yotsuba", "Itsuki"}
-
 -- ================================================================
--- CONFIG
--- ================================================================
-
-local CFG = {
-	DashRange = 32,          -- max distance a dash-move can close
-	DashStop = 4.5,          -- stops this far from target
-	DashSpeed = 145,
-	DashDuration = 0.35,
-
-	M1DashRange = 14,
-	M1DashSpeed = 100,
-	M1Cooldown = 0.28,
-
-	VFXCooldown = 0.04,
-	MoveCooldown = {2.5, 3.5, 4.5, 6},
-	UltCooldown = 20,
-	UltDuration = 8,
-}
-
--- ================================================================
--- BASIC HELPERS
+-- HELPERS
 -- ================================================================
 
 local function getCharacter()
@@ -160,22 +197,16 @@ local function getAnimator(humanoid: Humanoid)
 end
 
 local function playAnimation(humanoid: Humanoid, id: string, speed: number?, duration: number?)
-	if id == "0" or id == "rbxassetid://0" then return nil end
 	if humanoid.Health <= 0 then return nil end
-
 	local animator = getAnimator(humanoid)
 	local animation = Instance.new("Animation")
 	animation.AnimationId = id
-
-	local success, track = pcall(function()
-		return animator:LoadAnimation(animation)
-	end)
+	local success, track = pcall(function() return animator:LoadAnimation(animation) end)
 	animation:Destroy()
 	if not success or not track then return nil end
 
 	track.Priority = Enum.AnimationPriority.Action4
 	table.insert(S.Tracks, track)
-
 	pcall(function() track:Play(0.04, 1, speed or 1) end)
 
 	if duration then
@@ -185,7 +216,6 @@ local function playAnimation(humanoid: Humanoid, id: string, speed: number?, dur
 			end)
 		end)
 	end
-
 	return track
 end
 
@@ -206,14 +236,6 @@ local function cleanupTracks()
 	end
 end
 
-local function allowedFX(key: string, cooldown: number?)
-	local now = os.clock()
-	local prev = S.LastFX[key] or 0
-	if now - prev < (cooldown or CFG.VFXCooldown) then return false end
-	S.LastFX[key] = now
-	return true
-end
-
 local function getFXFolder()
 	local folder = Workspace:FindFirstChild("R4Fix_5SisFX")
 	if not folder then
@@ -229,15 +251,13 @@ local function currentTheme()
 end
 
 -- ================================================================
--- VFX PRIMITIVES (themed by active sister colors)
+-- VFX
 -- ================================================================
 
-local function burst(root: BasePart, size: number, duration: number, colorOverride: Color3?)
+local function burst(root: BasePart, size: number, duration: number)
 	if not root.Parent then return end
 	local theme = currentTheme()
-
 	local part = Instance.new("Part")
-	part.Name = "SisBurst"
 	part.Anchored = true
 	part.CanCollide = false
 	part.CanTouch = false
@@ -245,7 +265,7 @@ local function burst(root: BasePart, size: number, duration: number, colorOverri
 	part.CastShadow = false
 	part.Shape = Enum.PartType.Ball
 	part.Material = Enum.Material.Neon
-	part.Color = colorOverride or theme.Color1
+	part.Color = theme.Color1
 	part.Transparency = 0.15
 	part.Size = Vector3.one
 	part.CFrame = root.CFrame
@@ -255,16 +275,13 @@ local function burst(root: BasePart, size: number, duration: number, colorOverri
 		Size = Vector3.new(size, size, size),
 		Transparency = 1,
 	}):Play()
-
 	Debris:AddItem(part, duration + 0.05)
 end
 
 local function ring(root: BasePart, startSize: number, endSize: number, duration: number)
 	if not root.Parent then return end
 	local theme = currentTheme()
-
 	local part = Instance.new("Part")
-	part.Name = "SisRing"
 	part.Anchored = true
 	part.CanCollide = false
 	part.CanTouch = false
@@ -282,17 +299,14 @@ local function ring(root: BasePart, startSize: number, endSize: number, duration
 		Size = Vector3.new(0.08, endSize, endSize),
 		Transparency = 1,
 	}):Play()
-
 	Debris:AddItem(part, duration + 0.05)
 end
 
 local function particlePop(root: BasePart, amount: number)
 	if not root.Parent then return end
 	local theme = currentTheme()
-
 	local attachment = Instance.new("Attachment")
 	attachment.Parent = root
-
 	local emitter = Instance.new("ParticleEmitter")
 	emitter.Color = ColorSequence.new(theme.Color1, theme.Color2)
 	emitter.LightEmission = 1
@@ -305,32 +319,18 @@ local function particlePop(root: BasePart, amount: number)
 	})
 	emitter.Rate = 0
 	emitter.Parent = attachment
-
 	emitter:Emit(amount)
 	Debris:AddItem(attachment, 0.6)
 end
 
-local function playSound(parent: Instance?, id: string, volume: number?, speed: number?)
-	if not parent or not parent.Parent then return end
-	local sound = Instance.new("Sound")
-	sound.SoundId = id
-	sound.Volume = volume or 1
-	sound.PlaybackSpeed = speed or 1
-	sound.Parent = parent
-	pcall(function() sound:Play() end)
-	Debris:AddItem(sound, 4)
-end
-
 -- ================================================================
--- TARGETING (for dash moves only — never used to teleport onto a player)
+-- TARGETING & DASH (no teleport — velocity dash, stops short, can whiff)
 -- ================================================================
 
 local function findClosestTarget(origin: Vector3, maxRange: number)
 	local ownCharacter = LocalPlayer.Character
 	if not ownCharacter then return nil end
-
 	local best, bestDist = nil, maxRange
-
 	for _, plr in ipairs(Players:GetPlayers()) do
 		if plr.Character and plr.Character ~= ownCharacter then
 			local root = plr.Character:FindFirstChild("HumanoidRootPart")
@@ -344,15 +344,8 @@ local function findClosestTarget(origin: Vector3, maxRange: number)
 			end
 		end
 	end
-
 	return best
 end
-
--- ================================================================
--- DASH (gap-closer, NOT a teleport)
--- Moves the player toward a target using velocity, stops short,
--- and whiffs if the target gets out of range mid-dash.
--- ================================================================
 
 local function engineDash(targetRoot: BasePart, speed: number, duration: number, stopDistance: number)
 	local character, humanoid, root = getCharacter()
@@ -361,7 +354,6 @@ local function engineDash(targetRoot: BasePart, speed: number, duration: number,
 
 	local attachment = Instance.new("Attachment")
 	attachment.Parent = root
-
 	local velocity = Instance.new("LinearVelocity")
 	velocity.Attachment0 = attachment
 	velocity.MaxForce = math.huge
@@ -389,19 +381,15 @@ local function engineDash(targetRoot: BasePart, speed: number, duration: number,
 
 	while os.clock() - started < duration do
 		if humanoid.Health <= 0 or not root.Parent or not targetRoot.Parent then break end
-
 		local toTarget = targetRoot.Position - root.Position
 		local dist = toTarget.Magnitude
-
 		if dist <= stopDistance then
 			reached = true
 			break
 		end
-
 		local dir = toTarget.Unit
 		velocity.VectorVelocity = Vector3.new(dir.X * speed, 0, dir.Z * speed)
 		root.CFrame = CFrame.lookAt(root.Position, root.Position + Vector3.new(dir.X, 0, dir.Z))
-
 		RunService.Heartbeat:Wait()
 	end
 
@@ -410,10 +398,7 @@ local function engineDash(targetRoot: BasePart, speed: number, duration: number,
 	pcall(function() a0:Destroy() end)
 	pcall(function() a1:Destroy() end)
 	pcall(function() trail:Destroy() end)
-
-	if root.Parent then
-		root.AssemblyLinearVelocity = Vector3.zero
-	end
+	if root.Parent then root.AssemblyLinearVelocity = Vector3.zero end
 
 	return reached
 end
@@ -438,19 +423,38 @@ local function creatorM1()
 	local target = findClosestTarget(root.Position, CFG.M1DashRange)
 
 	m1Index = (m1Index % 4) + 1
-	local animId = theme.Anim.M1[m1Index]
 
 	if target then
 		engineDash(target, CFG.M1DashSpeed, 0.22, 3.2)
 	end
 
-	playAnimation(humanoid, tostring(animId), 1.1, 0.35)
+	playAnimation(humanoid, theme.Anim.M1[m1Index], 1.1, 0.35)
 	burst(root, 3, 0.12)
 	particlePop(root, 6)
 end
 
 -- ================================================================
--- MOVES 1–4 (data-driven, themed per sister)
+-- WALL COMBO
+-- ================================================================
+
+local lastWallCombo = 0
+
+local function wallCombo()
+	if os.clock() - lastWallCombo < 4 then return end
+	lastWallCombo = os.clock()
+
+	local character, humanoid, root = getCharacter()
+	if not character or not humanoid or not root then return end
+
+	local theme = currentTheme()
+	playAnimation(humanoid, theme.Anim.WallCombo, 1, 1.0)
+	burst(root, 5, 0.18)
+	ring(root, 2, 14, 0.25)
+	particlePop(root, 10)
+end
+
+-- ================================================================
+-- MOVES 1–4
 -- ================================================================
 
 local function runMove(index: number)
@@ -464,22 +468,18 @@ local function runMove(index: number)
 	end
 
 	local theme = currentTheme()
-	local moveName = theme.MoveNames[index]
-	local animId = theme.Anim.Move[index]
-
 	local target = findClosestTarget(root.Position, CFG.DashRange)
 
 	if target and index <= 3 then
 		engineDash(target, CFG.DashSpeed, CFG.DashDuration, CFG.DashStop)
 	end
 
-	playAnimation(humanoid, tostring(animId), 1, 0.6)
-
-	burst(root, 4 + index * 1.5, 0.15)
-	ring(root, 2, 10 + index * 4, 0.22)
+	playAnimation(humanoid, theme.Anim.Move[index], 1, 0.7)
+	burst(root, 4 + index * 1.5, 0.16)
+	ring(root, 2, 10 + index * 4, 0.24)
 	particlePop(root, 6 + index * 2)
 
-	print("[5SIS] " .. S.Active .. " used " .. moveName)
+	print("[5SIS] " .. S.Active .. " used " .. theme.Anim.MoveNames[index])
 
 	task.delay(CFG.MoveCooldown[index], function()
 		S.Busy["Move" .. index] = nil
@@ -487,7 +487,7 @@ local function runMove(index: number)
 end
 
 -- ================================================================
--- ULTIMATE (multi-pulse cinematic, per framework doc)
+-- ULTIMATE
 -- ================================================================
 
 local lastUlt = 0
@@ -504,27 +504,25 @@ local function runUltimate()
 	local theme = currentTheme()
 	S.UltActive = true
 
-	playAnimation(humanoid, tostring(theme.Anim.Ult), 1, 1.2)
+	playAnimation(humanoid, theme.Anim.Ult, 1, 1.3)
 
-	-- multi pulse
 	local pulses = {
 		{delay = 0.00, burstSize = 8,  ringSize = 14},
-		{delay = 0.07, burstSize = 12, ringSize = 23},
-		{delay = 0.14, burstSize = 16, ringSize = 32},
-		{delay = 0.21, burstSize = 20, ringSize = 41},
+		{delay = 0.08, burstSize = 12, ringSize = 23},
+		{delay = 0.16, burstSize = 16, ringSize = 32},
+		{delay = 0.24, burstSize = 20, ringSize = 41},
 	}
 
 	for _, p in ipairs(pulses) do
 		task.delay(p.delay, function()
 			if root.Parent then
-				burst(root, p.burstSize, 0.3)
-				ring(root, 2, p.ringSize, 0.4)
+				burst(root, p.burstSize, 0.32)
+				ring(root, 2, p.ringSize, 0.42)
 				particlePop(root, 14)
 			end
 		end)
 	end
 
-	-- flash light
 	local light = Instance.new("PointLight")
 	light.Brightness = 12
 	light.Range = 28
@@ -533,9 +531,7 @@ local function runUltimate()
 	TweenService:Create(light, TweenInfo.new(CFG.UltDuration), {Brightness = 0, Range = 0}):Play()
 	Debris:AddItem(light, CFG.UltDuration + 0.2)
 
-	-- persistent aura for duration
 	local auraAttachment = Instance.new("Attachment")
-	auraAttachment.Name = "SisUltAura"
 	auraAttachment.Parent = root
 	local aura = Instance.new("ParticleEmitter")
 	aura.Color = ColorSequence.new(theme.Color1, theme.Color2)
@@ -550,38 +546,41 @@ local function runUltimate()
 	})
 	aura.Parent = auraAttachment
 
-	print("[5SIS] " .. S.Active .. " ULTIMATE: " .. theme.UltName)
+	pcall(function()
+		StarterGui:SetCore("SendNotification", {
+			Title = S.Active:upper(),
+			Text = theme.Anim.UltName,
+			Icon = theme.Decal,
+			Duration = 4,
+		})
+	end)
 
 	task.delay(CFG.UltDuration, function()
 		pcall(function() aura:Destroy() end)
 		pcall(function() auraAttachment:Destroy() end)
 		S.UltActive = false
-		print("[5SIS] Ultimate ended.")
 	end)
 end
 
 -- ================================================================
--- BACKGROUND MUSIC (loops forever, survives respawn)
+-- BACKGROUND MUSIC
 -- ================================================================
 
 local function startMusic()
 	pcall(function()
 		local url = "https://github.com/r4faelllaust/R4Fix/raw/refs/heads/main/5sis.mp3"
-
 		if not isfile or not isfile("5sis_theme.mp3") then
 			local data = game:HttpGet(url)
 			writefile("5sis_theme.mp3", data)
 		end
-
 		local existing = SoundService:FindFirstChild("R4Fix_5SisMusic")
 		if existing then existing:Destroy() end
-
 		local sound = Instance.new("Sound")
 		sound.Name = "R4Fix_5SisMusic"
 		sound.SoundId = getcustomasset("5sis_theme.mp3")
 		sound.Looped = true
 		sound.Volume = 0.5
-		sound.Parent = game:GetService("SoundService")
+		sound.Parent = SoundService
 		sound:Play()
 	end)
 end
@@ -640,13 +639,13 @@ local function setupInput()
 			return
 		end
 
-		if input.UserInputType == Enum.UserInputType.Touch then
-			-- optional: hook to a custom mobile button if you add one
+		if input.KeyCode == Enum.KeyCode.T then
+			runUltimate()
 			return
 		end
 
-		if input.KeyCode == Enum.KeyCode.T then
-			runUltimate()
+		if input.KeyCode == Enum.KeyCode.G then
+			wallCombo()
 			return
 		end
 
@@ -664,7 +663,7 @@ local function setupInput()
 end
 
 -- ================================================================
--- MOBILE BUTTONS (simple on-screen GUI, since touch controls vary)
+-- MOBILE GUI
 -- ================================================================
 
 local function setupMobileGui()
@@ -676,17 +675,17 @@ local function setupMobileGui()
 	screenGui.Parent = playerGui
 
 	local frame = Instance.new("Frame")
-	frame.Size = UDim2.fromOffset(220, 90)
-	frame.Position = UDim2.new(1, -230, 1, -140)
+	frame.Size = UDim2.fromOffset(260, 90)
+	frame.Position = UDim2.new(1, -270, 1, -140)
 	frame.BackgroundTransparency = 1
 	frame.Parent = screenGui
 
 	local layout = Instance.new("UIGridLayout")
-	layout.CellSize = UDim2.fromOffset(50, 40)
+	layout.CellSize = UDim2.fromOffset(48, 40)
 	layout.CellPadding = UDim2.fromOffset(4, 4)
 	layout.Parent = frame
 
-	local labels = {"Q", "E", "R", "F", "ULT"}
+	local labels = {"Q", "E", "R", "F", "WALL", "ULT"}
 	for i, label in ipairs(labels) do
 		local button = Instance.new("TextButton")
 		button.Text = label
@@ -699,9 +698,36 @@ local function setupMobileGui()
 		button.Activated:Connect(function()
 			if label == "ULT" then
 				runUltimate()
+			elseif label == "WALL" then
+				wallCombo()
 			else
 				runMove(i)
 			end
+		end)
+	end
+
+	local sisterFrame = Instance.new("Frame")
+	sisterFrame.Size = UDim2.fromOffset(260, 40)
+	sisterFrame.Position = UDim2.new(1, -270, 1, -190)
+	sisterFrame.BackgroundTransparency = 1
+	sisterFrame.Parent = screenGui
+
+	local sisterLayout = Instance.new("UIGridLayout")
+	sisterLayout.CellSize = UDim2.fromOffset(48, 36)
+	sisterLayout.CellPadding = UDim2.fromOffset(4, 4)
+	sisterLayout.Parent = sisterFrame
+
+	for _, name in ipairs({"Ichika", "Nino", "Miku", "Yotsuba", "Itsuki"}) do
+		local button = Instance.new("TextButton")
+		button.Text = name:sub(1, 3)
+		button.Font = Enum.Font.GothamBold
+		button.TextScaled = true
+		button.BackgroundColor3 = SISTERS[name].Color1
+		button.TextColor3 = Color3.new(0, 0, 0)
+		button.Parent = sisterFrame
+
+		button.Activated:Connect(function()
+			switchSister(name)
 		end)
 	end
 end
@@ -715,7 +741,6 @@ local function cleanupCharacter()
 	cleanupTracks()
 	S.Busy = {}
 	table.clear(S.LastFX)
-
 	local fx = Workspace:FindFirstChild("R4Fix_5SisFX")
 	if fx then pcall(function() fx:Destroy() end) end
 end
@@ -728,13 +753,15 @@ local function setupCharacter(character: Model)
 	local root = character:WaitForChild("HumanoidRootPart", 10)
 	if not humanoid or not root then return end
 
+	local theme = currentTheme()
+	playAnimation(humanoid, theme.Anim.Spawn, 1, 1.1)
+	burst(root, 7, 0.2)
+	ring(root, 2, 18, 0.3)
+
 	table.insert(S.CharConnections, humanoid.Died:Connect(function()
 		S.Busy = {}
 		cleanupTracks()
 	end))
-
-	burst(root, 6, 0.2)
-	ring(root, 2, 15, 0.25)
 end
 
 -- ================================================================
@@ -760,10 +787,10 @@ end
 pcall(function()
 	StarterGui:SetCore("SendNotification", {
 		Title = "5 SISTERS MOVESET",
-		Text = "Loaded! 1-5 to switch sister, Q/E/R/F for moves, T for Ultimate.",
+		Text = "1-5 switch sister · Q/E/R/F moves · G wall combo · T Ultimate",
 		Icon = SISTERS.Ichika.Decal,
 		Duration = 4,
 	})
 end)
 
-print("[R4FIX] 5 Sisters moveset loaded.")
+print("[R4FIX] 5 Sisters moveset loaded (real anim edition).")
