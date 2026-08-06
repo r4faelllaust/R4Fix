@@ -1,0 +1,1189 @@
+-- ================================================================
+-- THE BLACK FIGURE // R4FIX SHADOW ENGINE
+-- PART 1: CORE + VFX ENGINE
+-- ================================================================
+
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+local Debris = game:GetService("Debris")
+
+local Player = Players.LocalPlayer
+
+-- ================================================================
+-- IDENTITY
+-- ================================================================
+
+local MOVESET_NAME = "THE BLACK FIGURE"
+local DECAL_ID = "rbxassetid://114338852748831"
+
+-- ================================================================
+-- COLORS
+-- ================================================================
+
+local SHADOW_BLACK = Color3.fromRGB(5,5,8)
+local SHADOW_GREY = Color3.fromRGB(45,45,55)
+local DARK_GREY = Color3.fromRGB(15,15,20)
+local WHITE_GLOW = Color3.fromRGB(220,220,230)
+
+-- ================================================================
+-- SESSION
+-- ================================================================
+
+getgenv().R4FIX_BLACK_FIGURE =
+getgenv().R4FIX_BLACK_FIGURE or {
+
+	Objects = {},
+	Connections = {},
+	Character = nil,
+	Token = 0,
+
+}
+
+local SESSION = getgenv().R4FIX_BLACK_FIGURE
+
+
+-- ================================================================
+-- CLEANUP
+-- ================================================================
+
+local function Cleanup()
+
+	for _,obj in ipairs(SESSION.Objects) do
+		pcall(function()
+			obj:Destroy()
+		end)
+	end
+
+	table.clear(SESSION.Objects)
+
+end
+
+
+local function Track(obj)
+
+	table.insert(
+		SESSION.Objects,
+		obj
+	)
+
+	return obj
+
+end
+
+
+-- ================================================================
+-- CHARACTER
+-- ================================================================
+
+local function GetCharacter()
+
+	local char = Player.Character
+
+	if not char then
+		return
+	end
+
+	local hum =
+		char:FindFirstChildOfClass("Humanoid")
+
+	local root =
+		char:FindFirstChild("HumanoidRootPart")
+
+	if not hum or not root then
+		return
+	end
+
+	return char,hum,root
+
+end
+
+
+-- ================================================================
+-- VFX FOLDER
+-- ================================================================
+
+local function GetFolder()
+
+	local folder =
+		workspace:FindFirstChild(
+			"R4FIX_BLACK_FIGURE_VFX"
+		)
+
+	if not folder then
+
+		folder =
+			Instance.new("Folder")
+
+		folder.Name =
+			"R4FIX_BLACK_FIGURE_VFX"
+
+		folder.Parent =
+			workspace
+
+	end
+
+	return folder
+
+end
+
+
+-- ================================================================
+-- SHADOW FLASH
+-- ================================================================
+
+local function ShadowFlash(
+	cframe,
+	size
+)
+
+	local part =
+		Instance.new("Part")
+
+	part.Name =
+		"ShadowFlash"
+
+	part.Anchored =
+		true
+
+	part.CanCollide =
+		false
+
+	part.CanTouch =
+		false
+
+	part.Material =
+		Enum.Material.Neon
+
+	part.Color =
+		WHITE_GLOW
+
+	part.Shape =
+		Enum.PartType.Ball
+
+	part.Size =
+		Vector3.new(
+			size,
+			size,
+			size
+		)
+
+	part.Transparency =
+		0.15
+
+	part.CFrame =
+		cframe
+
+	part.Parent =
+		GetFolder()
+
+	Track(part)
+
+
+	TweenService:Create(
+		part,
+		TweenInfo.new(
+			0.25,
+			Enum.EasingStyle.Quint
+		),
+		{
+			Size =
+				Vector3.new(
+					size*4,
+					size*4,
+					size*4
+				),
+
+			Transparency = 1
+		}
+
+	):Play()
+
+
+	Debris:AddItem(
+		part,
+		0.3
+	)
+
+end
+
+
+
+-- ================================================================
+-- VOID RING
+-- ================================================================
+
+local function VoidRing(
+	cframe,
+	size
+)
+
+	local ring =
+		Instance.new("Part")
+
+	ring.Name =
+		"VOID_RING"
+
+	ring.Anchored =
+		true
+
+	ring.CanCollide =
+		false
+
+	ring.Material =
+		Enum.Material.Neon
+
+	ring.Color =
+		SHADOW_GREY
+
+	ring.Shape =
+		Enum.PartType.Cylinder
+
+	ring.Size =
+		Vector3.new(
+			0.15,
+			size,
+			size
+		)
+
+	ring.Transparency =
+		0.25
+
+
+	ring.CFrame =
+		cframe *
+		CFrame.Angles(
+			0,
+			0,
+			math.rad(90)
+		)
+
+	ring.Parent =
+		GetFolder()
+
+	Track(ring)
+
+
+	TweenService:Create(
+		ring,
+		TweenInfo.new(
+			0.45,
+			Enum.EasingStyle.Exponential
+		),
+		{
+			Size =
+				Vector3.new(
+					0.15,
+					size*3,
+					size*3
+				),
+
+			Transparency = 1
+		}
+
+	):Play()
+
+
+	Debris:AddItem(
+		ring,
+		0.5
+	)
+
+end
+
+
+
+-- ================================================================
+-- SHADOW PARTICLES
+-- ================================================================
+
+local function ShadowParticles(
+	part,
+	amount
+)
+
+	local attachment =
+		Instance.new("Attachment")
+
+	attachment.Name =
+		"ShadowAttachment"
+
+	attachment.Parent =
+		part
+
+
+	local emitter =
+		Instance.new("ParticleEmitter")
+
+
+	emitter.Texture =
+		"rbxasset://textures/particles/smoke_main.dds"
+
+
+	emitter.Color =
+		ColorSequence.new(
+			{
+				ColorSequenceKeypoint.new(
+					0,
+					SHADOW_GREY
+				),
+
+				ColorSequenceKeypoint.new(
+					1,
+					SHADOW_BLACK
+				)
+			}
+		)
+
+
+	emitter.Rate =
+		0
+
+
+	emitter.Lifetime =
+		NumberRange.new(
+			0.5,
+			1
+		)
+
+
+	emitter.Speed =
+		NumberRange.new(
+			2,
+			8
+		)
+
+
+	emitter.SpreadAngle =
+		Vector2.new(
+			360,
+			360
+		)
+
+
+	emitter.Parent =
+		attachment
+
+
+	emitter:Emit(
+		amount
+	)
+
+
+	Debris:AddItem(
+		attachment,
+		1.5
+	)
+
+end
+
+
+
+-- ================================================================
+-- AFTERIMAGE
+-- ================================================================
+
+local function ShadowAfterimage(
+	cframe
+)
+
+	local part =
+		Instance.new("Part")
+
+
+	part.Name =
+		"BLACK_AFTERIMAGE"
+
+
+	part.Anchored =
+		true
+
+
+	part.CanCollide =
+		false
+
+
+	part.Transparency =
+		0.45
+
+
+	part.Material =
+		Enum.Material.Neon
+
+
+	part.Color =
+		SHADOW_BLACK
+
+
+	part.Size =
+		Vector3.new(
+			2,
+			5,
+			1
+		)
+
+
+	part.CFrame =
+		cframe
+
+
+	part.Parent =
+		GetFolder()
+
+
+	Track(part)
+
+
+	TweenService:Create(
+		part,
+		TweenInfo.new(
+			0.35
+		),
+		{
+			Transparency = 1
+		}
+
+	):Play()
+
+
+	Debris:AddItem(
+		part,
+		0.4
+	)
+
+end
+
+
+
+-- ================================================================
+-- PHANTOM ENGINE EFFECT
+-- ================================================================
+
+local function PhantomBurst()
+
+	local char,hum,root =
+		GetCharacter()
+
+	if not root then
+		return
+	end
+
+
+	ShadowAfterimage(
+		root.CFrame
+	)
+
+
+	ShadowFlash(
+		root.CFrame,
+		3
+	)
+
+
+	VoidRing(
+		root.CFrame,
+		8
+	)
+
+
+	ShadowParticles(
+		root,
+		35
+	)
+
+end
+
+
+
+-- ================================================================
+-- CHARACTER SETUP
+-- ================================================================
+
+local function SetupCharacter(char)
+
+	SESSION.Token += 1
+
+	Cleanup()
+
+	SESSION.Character =
+		char
+
+
+	local root =
+		char:WaitForChild(
+			"HumanoidRootPart"
+		)
+
+
+	-- Aura highlight
+
+	local highlight =
+		Instance.new("Highlight")
+
+	highlight.Name =
+		"BLACK_FIGURE_AURA"
+
+	highlight.FillColor =
+		SHADOW_BLACK
+
+	highlight.OutlineColor =
+		WHITE_GLOW
+
+	highlight.FillTransparency =
+		0.85
+
+	highlight.OutlineTransparency =
+		0.15
+
+	highlight.Parent =
+		char
+
+
+	Track(highlight)
+
+
+	ShadowParticles(
+		root,
+		25
+	)
+
+
+	PhantomBurst()
+
+end
+
+
+
+Player.CharacterAdded:Connect(
+	SetupCharacter
+)
+
+
+if Player.Character then
+
+	SetupCharacter(
+		Player.Character
+	)
+
+end
+
+
+print(
+	"[R4FIX] THE BLACK FIGURE CORE ONLINE"
+)
+-- ================================================================
+-- THE BLACK FIGURE // MOVE ENGINE
+-- PART 2
+-- ================================================================
+
+local TweenService = game:GetService("TweenService")
+local Debris = game:GetService("Debris")
+local Players = game:GetService("Players")
+
+local Player = Players.LocalPlayer
+
+
+local SESSION =
+	getgenv().R4FIX_BLACK_FIGURE
+
+
+-- ================================================================
+-- ANIMATIONS
+-- Replace these IDs with your animations
+-- ================================================================
+
+local ANIMATIONS = {
+
+	ShadowPhantom =
+		"rbxassetid://0",
+
+	VoidTechnique =
+		"rbxassetid://0",
+
+	AbyssRush =
+		"rbxassetid://0",
+
+	NullExistence =
+		"rbxassetid://0",
+
+	Ultimate =
+		"rbxassetid://0"
+
+}
+
+
+
+-- ================================================================
+-- CHARACTER
+-- ================================================================
+
+local function Character()
+
+	local char =
+		Player.Character
+
+	if not char then
+		return
+	end
+
+	local hum =
+		char:FindFirstChildOfClass(
+			"Humanoid"
+		)
+
+	local root =
+		char:FindFirstChild(
+			"HumanoidRootPart"
+		)
+
+	return char,hum,root
+
+end
+
+
+
+-- ================================================================
+-- ANIMATION PLAYER
+-- ================================================================
+
+local function PlayAnimation(
+	id,
+	speed
+)
+
+	local char,hum =
+		Character()
+
+	if not hum then
+		return
+	end
+
+
+	if id == "rbxassetid://0" then
+		return
+	end
+
+
+	local animator =
+		hum:FindFirstChildOfClass(
+			"Animator"
+		)
+
+
+	if not animator then
+
+		animator =
+			Instance.new(
+				"Animator"
+			)
+
+		animator.Parent =
+			hum
+
+	end
+
+
+	local anim =
+		Instance.new(
+			"Animation"
+		)
+
+
+	anim.AnimationId =
+		id
+
+
+	local track
+
+	pcall(function()
+
+		track =
+			animator:LoadAnimation(
+				anim
+			)
+
+	end)
+
+
+	anim:Destroy()
+
+
+	if track then
+
+		track.Priority =
+			Enum.AnimationPriority.Action4
+
+		track:Play(
+			0.05,
+			1,
+			speed or 1
+		)
+
+	end
+
+
+end
+
+
+
+-- ================================================================
+-- COOLDOWN SYSTEM
+-- ================================================================
+
+local Cooldowns = {}
+
+
+local function Cooldown(
+	name,
+	time
+)
+
+	if Cooldowns[name] then
+		return false
+	end
+
+
+	Cooldowns[name] =
+		true
+
+
+	task.delay(
+		time,
+		function()
+
+			Cooldowns[name] =
+				nil
+
+		end
+	)
+
+
+	return true
+
+end
+
+
+
+-- ================================================================
+-- SHADOW CLONE EFFECT
+-- ================================================================
+
+local function ShadowClone()
+
+	local char,hum,root =
+		Character()
+
+	if not root then
+		return
+	end
+
+
+	for i = 1,3 do
+
+		local clone =
+			Instance.new(
+				Part
+			)
+
+
+		clone.Name =
+			"Shadow_Copy"
+
+
+		clone.Anchored =
+			true
+
+
+		clone.CanCollide =
+			false
+
+
+		clone.Material =
+			Enum.Material.Neon
+
+
+		clone.Color =
+			Color3.fromRGB(
+				20,
+				20,
+				25
+			)
+
+
+		clone.Transparency =
+			0.45
+
+
+		clone.Size =
+			Vector3.new(
+				2,
+				5,
+				1
+			)
+
+
+		clone.CFrame =
+			root.CFrame *
+			CFrame.new(
+				math.random(-5,5),
+				0,
+				math.random(-5,5)
+			)
+
+
+		clone.Parent =
+			workspace
+
+
+		TweenService:Create(
+			clone,
+			TweenInfo.new(
+				0.4
+			),
+			{
+				Transparency = 1
+			}
+		):Play()
+
+
+		Debris:AddItem(
+			clone,
+			0.5
+		)
+
+	end
+
+end
+
+
+
+-- ================================================================
+-- MOVE 1
+-- SHADOW PHANTOM
+-- ================================================================
+
+local function ShadowPhantom()
+
+	if not Cooldown(
+		"ShadowPhantom",
+		4
+	) then
+		return
+	end
+
+
+	local char,hum,root =
+		Character()
+
+	if not root then
+		return
+	end
+
+
+	PlayAnimation(
+		ANIMATIONS.ShadowPhantom,
+		1.3
+	)
+
+
+	ShadowClone()
+
+
+	PhantomBurst()
+
+
+	for i = 1,4 do
+
+		task.delay(
+			i*0.08,
+			function()
+
+				if root.Parent then
+
+					VoidRing(
+						root.CFrame,
+						5+i*2
+					)
+
+				end
+
+			end
+		)
+
+	end
+
+
+end
+
+
+
+-- ================================================================
+-- MOVE 2
+-- VOID TECHNIQUE
+-- ================================================================
+
+local function VoidTechnique()
+
+	if not Cooldown(
+		"VoidTechnique",
+		7
+	) then
+		return
+	end
+
+
+	local char,hum,root =
+		Character()
+
+
+	if not root then
+		return
+	end
+
+
+	PlayAnimation(
+		ANIMATIONS.VoidTechnique,
+		1.2
+	)
+
+
+	-- Void opening
+
+	ShadowFlash(
+		root.CFrame,
+		5
+	)
+
+
+	VoidRing(
+		root.CFrame,
+		15
+	)
+
+
+	for i = 1,10 do
+
+		task.delay(
+			i*0.04,
+			function()
+
+				if root.Parent then
+
+					ShadowAfterimage(
+						root.CFrame
+					)
+
+				end
+
+			end
+		)
+
+	end
+
+
+	-- Dark energy burst
+
+	task.delay(
+		0.5,
+		function()
+
+			if root.Parent then
+
+				VoidRing(
+					root.CFrame,
+					35
+				)
+
+				ShadowParticles(
+					root,
+					80
+				)
+
+			end
+
+		end
+	)
+
+end
+
+
+
+-- ================================================================
+-- MOVE 3
+-- ABYSS RUSH
+-- ================================================================
+
+local function AbyssRush()
+
+	if not Cooldown(
+		"AbyssRush",
+		8
+	) then
+		return
+	end
+
+
+	local char,hum,root =
+		Character()
+
+
+	if not root then
+		return
+	end
+
+
+	PlayAnimation(
+		ANIMATIONS.AbyssRush,
+		1.5
+	)
+
+
+	for i=1,8 do
+
+		task.delay(
+			i*0.05,
+			function()
+
+				if root.Parent then
+
+					ShadowAfterimage(
+						root.CFrame
+					)
+
+					VoidRing(
+						root.CFrame,
+						4
+					)
+
+				end
+
+			end
+		)
+
+	end
+
+end
+
+
+
+-- ================================================================
+-- MOVE 4
+-- NULL EXISTENCE
+-- ================================================================
+
+local function NullExistence()
+
+	if not Cooldown(
+		"NullExistence",
+		12
+	) then
+		return
+	end
+
+
+	local char,hum,root =
+		Character()
+
+
+	if not root then
+		return
+	end
+
+
+	PlayAnimation(
+		ANIMATIONS.NullExistence,
+		1
+	)
+
+
+	ShadowFlash(
+		root.CFrame,
+		10
+	)
+
+
+	VoidRing(
+		root.CFrame,
+		50
+	)
+
+
+	for i=1,20 do
+
+		task.delay(
+			i*0.03,
+			function()
+
+				if root.Parent then
+
+					ShadowAfterimage(
+						root.CFrame *
+						CFrame.Angles(
+							0,
+							math.rad(
+								i*30
+							),
+							0
+						)
+					)
+
+				end
+
+			end
+		)
+
+	end
+
+end
+
+
+
+-- ================================================================
+-- KEYBINDS
+-- ================================================================
+
+local UIS =
+	game:GetService(
+		"UserInputService"
+	)
+
+
+UIS.InputBegan:Connect(
+	function(input,gp)
+
+		if gp then
+			return
+		end
+
+
+		if input.KeyCode ==
+			Enum.KeyCode.One then
+
+			ShadowPhantom()
+
+
+		elseif input.KeyCode ==
+			Enum.KeyCode.Two then
+
+			VoidTechnique()
+
+
+		elseif input.KeyCode ==
+			Enum.KeyCode.Three then
+
+			AbyssRush()
+
+
+		elseif input.KeyCode ==
+			Enum.KeyCode.Four then
+
+			NullExistence()
+
+		end
+
+	end
+)
+
+
+print(
+	"[R4FIX] BLACK FIGURE MOVES ONLINE"
+)
