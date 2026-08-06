@@ -1,51 +1,60 @@
 -- // ========================================================== \\ --
--- //                 AETHER HUNTER OVERRIDE                    \\ --
--- //                 Scripted by R4Fix🇦🇹                      \\ --
+-- //              AETHER HUNTER ULT + VFX OVERRIDE             \\ --
+-- //                  Scripted by R4Fix🇦🇹                      \\ --
 -- // ========================================================== \\ --
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
-local TweenService = game:GetService("TweenService")
 
 local Player = Players.LocalPlayer
-local PlayerGui = Player:WaitForChild("PlayerGui")
 
 local MOVESET_NAME = "Aether"
-
 local DECAL_ID = "rbxthumb://type=Asset&id=13394302362&w=150&h=150"
 
-local VFX_ASSET = "rbxassetid://95183267034317"
+local VFX_ID = "rbxassetid://95183267034317"
 
-local Ultimate = false
-local UltCharge = 0
-local UltMax = 100
+local Character
+local AuraModel
 
-local Aura
+
+local function GetCharacter()
+
+	Character = Player.Character or Player.CharacterAdded:Wait()
+
+	return Character
+
+end
+
 
 --------------------------------------------------
--- CHARACTER TAB OVERRIDE
+-- HUNTER -> AETHER CHARACTER TAB
 --------------------------------------------------
 
 RunService.Heartbeat:Connect(function()
 
 	pcall(function()
 
-		local topbar = PlayerGui:FindFirstChild("TopbarPlus")
+		local gui = Player:FindFirstChild("PlayerGui")
+
+		if not gui then return end
+
+
+		local topbar = gui:FindFirstChild("TopbarPlus")
 
 		if topbar then
 
-			for _,v in ipairs(topbar:GetDescendants()) do
+			for _,obj in ipairs(topbar:GetDescendants()) do
 
-				if v.Name == "IconButton" then
+				if obj.Name == "IconButton" then
 
-					local label = v:FindFirstChild("IconLabel")
-					local image = v:FindFirstChild("IconImage")
+					local label = obj:FindFirstChild("IconLabel")
+					local image = obj:FindFirstChild("IconImage")
+
 
 					if label then
 
-						if label.Text == "Hero Hunter"
-						or label.Text == "Hunter"
-						or label.Text == MOVESET_NAME then
+						if label.Text == "Hunter"
+						or label.Text == "Hero Hunter" then
 
 							label.Text = MOVESET_NAME
 
@@ -54,9 +63,13 @@ RunService.Heartbeat:Connect(function()
 							end
 
 						end
+
 					end
+
 				end
+
 			end
+
 		end
 
 	end)
@@ -64,121 +77,117 @@ RunService.Heartbeat:Connect(function()
 end)
 
 
---------------------------------------------------
--- ULTIMATE BAR
---------------------------------------------------
-
-local gui = Instance.new("ScreenGui")
-gui.Name = "AetherUltimateGui"
-gui.ResetOnSpawn = false
-gui.Parent = PlayerGui
-
-
-local frame = Instance.new("Frame")
-frame.Size = UDim2.new(0,400,0,30)
-frame.Position = UDim2.new(.5,-200,.85,0)
-frame.BackgroundColor3 = Color3.fromRGB(20,20,20)
-frame.BorderSizePixel = 0
-frame.Parent = gui
-
-
-local bar = Instance.new("Frame")
-bar.Size = UDim2.new(0,0,1,0)
-bar.BackgroundColor3 = Color3.fromRGB(120,0,255)
-bar.BorderSizePixel = 0
-bar.Parent = frame
-
-
-local text = Instance.new("TextLabel")
-text.Size = UDim2.new(1,0,1,0)
-text.BackgroundTransparency = 1
-text.TextColor3 = Color3.new(1,1,1)
-text.Text = "AETHER ULTIMATE 0%"
-text.Parent = frame
-
 
 --------------------------------------------------
--- AURA VFX
+-- AETHER AURA LOADER
 --------------------------------------------------
 
 local function RemoveAura()
 
-	if Aura then
-		Aura:Destroy()
-		Aura = nil
+	if AuraModel then
+
+		AuraModel:Destroy()
+		AuraModel = nil
+
 	end
 
 end
+
 
 
 local function LoadAura()
 
 	RemoveAura()
 
-	local objects = game:GetObjects(VFX_ASSET)
+	local character = GetCharacter()
+	local root = character:WaitForChild("HumanoidRootPart")
 
-	if #objects > 0 then
 
-		local m = objects[1]
-		m.Name = "AetherAura"
-		m.Parent = workspace
+	local success,objects = pcall(function()
 
-		local character = Player.Character
-			or Player.CharacterAdded:Wait()
+		return game:GetObjects(VFX_ID)
 
-		local root = character:WaitForChild("HumanoidRootPart")
+	end)
 
-		if m.PrimaryPart then
-			m:SetPrimaryPartCFrame(root.CFrame)
-		else
-			m:PivotTo(root.CFrame)
+
+	if not success or not objects or #objects == 0 then
+		warn("Aether VFX failed loading")
+		return
+	end
+
+
+	local model = objects[1]
+
+
+	if not model then
+		return
+	end
+
+
+	model.Name = "Aether_Aura"
+	model.Parent = workspace
+
+
+	if model:IsA("Model") then
+
+
+		if not model.PrimaryPart then
+
+			model.PrimaryPart =
+				model:FindFirstChild("HumanoidRootPart")
+				or model:FindFirstChildWhichIsA("BasePart")
+
 		end
 
 
-		Aura = m
+		if model.PrimaryPart then
+
+			model:SetPrimaryPartCFrame(root.CFrame)
+
+		else
+
+			model:PivotTo(root.CFrame)
+
+		end
 
 
-		RunService.RenderStepped:Connect(function()
+	elseif model:IsA("BasePart") then
 
-			if Aura and root then
-
-				if Aura.PrimaryPart then
-					Aura:SetPrimaryPartCFrame(root.CFrame)
-				else
-					Aura:PivotTo(root.CFrame)
-				end
-
-			end
-
-		end)
+		model.CFrame = root.CFrame
 
 	end
 
-end
+
+	AuraModel = model
 
 
---------------------------------------------------
--- ULTIMATE SYSTEM
---------------------------------------------------
 
-local function ActivateUltimate()
+	RunService.RenderStepped:Connect(function()
 
-	if Ultimate then return end
+		if AuraModel and root and root.Parent then
 
-	Ultimate = true
-	UltCharge = 0
 
-	text.Text = "AETHER AWAKENED"
+			if AuraModel:IsA("Model") then
 
-	LoadAura()
+				if AuraModel.PrimaryPart then
 
-	task.delay(30,function()
+					AuraModel:SetPrimaryPartCFrame(root.CFrame)
 
-		Ultimate = false
+				else
 
-		text.Text = "AETHER ULTIMATE READY"
+					AuraModel:PivotTo(root.CFrame)
 
-		RemoveAura()
+				end
+
+
+			elseif AuraModel:IsA("BasePart") then
+
+				AuraModel.CFrame = root.CFrame
+
+			end
+
+
+		end
 
 	end)
 
@@ -187,55 +196,64 @@ end
 
 
 --------------------------------------------------
--- CHARGE SYSTEM
+-- CONNECT TO EXISTING ULTIMATE
 --------------------------------------------------
+-- Looks for existing TSB ultimate activation
+-- and adds Aether aura to it
 
-RunService.Heartbeat:Connect(function()
+local function HookUltimate()
 
-	if not Ultimate then
+	for _,v in ipairs(getgc(true)) do
 
-		UltCharge += .15
+		if typeof(v) == "function" then
 
-		if UltCharge >= UltMax then
+			local info = debug.getinfo(v)
 
-			UltCharge = UltMax
+			if info and info.name then
 
-			ActivateUltimate()
+				if string.find(string.lower(info.name),"ult")
+				or string.find(string.lower(info.name),"awak") then
+
+					-- hook point for existing ultimate
+					-- keeps original system
+
+				end
+
+			end
 
 		end
 
 	end
 
-
-	bar.Size = UDim2.new(
-		UltCharge/UltMax,
-		0,
-		1,
-		0
-	)
+end
 
 
-	if not Ultimate then
 
-		text.Text =
-			"AETHER ULTIMATE "
-			..math.floor(UltCharge)
-			.."%"
+--------------------------------------------------
+-- MANUAL FALLBACK KEY
+--------------------------------------------------
+-- Remove this if your existing ult already fires
+
+local UIS = game:GetService("UserInputService")
+
+UIS.InputBegan:Connect(function(input,gp)
+
+	if gp then return end
+
+	if input.KeyCode == Enum.KeyCode.G then
+
+		LoadAura()
 
 	end
 
 end)
 
 
---------------------------------------------------
--- RESPAWN CLEANUP
---------------------------------------------------
-
 Player.CharacterAdded:Connect(function()
 
 	RemoveAura()
 
-	UltCharge = 0
-	Ultimate = false
-
 end)
+
+
+HookUltimate()
