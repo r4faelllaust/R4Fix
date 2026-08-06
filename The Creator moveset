@@ -4872,3 +4872,75 @@ task.spawn(function()
 		Busy = false
 	end)
 end)
+
+--// Creator Icon Image Override (append at the end)
+
+local Players = game:GetService("Players")
+
+local LOCAL_PLAYER = Players.LocalPlayer
+local DECAL_ID = "rbxassetid://666236509"
+
+local function apply()
+	local gui = LOCAL_PLAYER:FindFirstChild("PlayerGui")
+	if not gui then
+		return
+	end
+
+	for _, v in ipairs(gui:GetDescendants()) do
+		if (v:IsA("ImageLabel") or v:IsA("ImageButton")) then
+			local parent = v.Parent
+			local label = parent and parent:FindFirstChild("IconLabel")
+
+			if label and label:IsA("TextLabel") then
+				local text = label.Text:lower()
+
+				if text:find("creator") then
+					v.Image = ""
+					task.wait()
+					v.Image = DECAL_ID
+					v.ImageTransparency = 0
+					v.ImageColor3 = Color3.new(1,1,1)
+					v.Visible = true
+				end
+			end
+		end
+	end
+end
+
+task.spawn(function()
+	while true do
+		pcall(apply)
+		task.wait(0.2)
+	end
+end)
+
+task.spawn(function()
+	local Players = game:GetService("Players")
+	local LP = Players.LocalPlayer
+
+	local function reconnect()
+		local PG = LP:WaitForChild("PlayerGui")
+		local TouchGui = PG:WaitForChild("TouchGui", 10)
+		if not TouchGui then return end
+
+		local Button = TouchGui
+			:WaitForChild("TouchControlFrame")
+			:WaitForChild("JumpButton")
+			:WaitForChild("PunchButton")
+
+		if getgenv()._R4FixPunchReconnect == Button then
+			return
+		end
+
+		getgenv()._R4FixPunchReconnect = Button
+
+		Button.Activated:Connect(function()
+			Button:Activate()
+		end)
+	end
+
+	LP.CharacterAdded:Connect(function()
+		task.wait(1)
+		pcall(reconnect)
+	end)
+end)
