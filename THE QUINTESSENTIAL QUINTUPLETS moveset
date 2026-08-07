@@ -1,327 +1,2275 @@
--- appended runtime helpers and exploit features for Quintuplets moveset
--- Debug / test mode
-local DEBUG = true
+--========================================================--
+-- R4FIX QUINTUPLET BATTLEGROUNDS SYSTEM
+-- CHARACTER 1 : ICHIKA NAKANO
+-- CYBER ANGEL SYSTEM
+--========================================================--
 
-local UserInputService = game:GetService("UserInputService")
-local HttpService = game:GetService("HttpService")
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+local RunService = game:GetService("RunService")
+local Debris = game:GetService("Debris")
 
--- Character roster: decals, theme colors, default animations (picked from provided list)
-local CHARACTERS = {
-	{
-		name = "Ichika",
-		decal = "rbxthumb://type=Asset&id=98181799656366&w=150&h=150",
-		color = {main = CYBER_YELLOW, light = LIGHT_YELLOW, alt = GOLD},
-		mirageAnim = 18715691149, -- vanish style
-		ultAnim = 129651400898906,
-		baseHotbar = {"Cosplay Crush","Phantom Engine","Love Engine","Marin's Charm"},
-		ultHotbar = {"Love Overload","Kawaii Catastrophe","Marin's Finale","Cosplay Queen"}
+local Player = Players.LocalPlayer
+
+local Character = Player.Character or Player.CharacterAdded:Wait()
+local Humanoid = Character:WaitForChild("Humanoid")
+local Root = Character:WaitForChild("HumanoidRootPart")
+
+
+--========================================================--
+-- CHARACTER DATABASE
+--========================================================--
+
+local Characters = {}
+
+
+Characters.Ichika = {
+
+	Name = "Ichika Nakano",
+
+	Title = "Cyber Illusionist",
+
+	ThemeColor = Color3.fromRGB(255,220,40),
+
+	SecondaryColor = Color3.fromRGB(255,120,0),
+
+	Icon = "rbxassetid://98181799656366",
+
+	Music = "TQQ5sisOPE",
+
+	UltimateName = "CYBER LOVE OVERDRIVE",
+
+	AuraName = "Golden Phantom Core",
+
+
+	--====================================================--
+	-- NORMAL MOVES
+	--====================================================--
+
+	Moves = {
+
+
+		["1"] = {
+
+			Name = "Neon Pulse Strike",
+
+			Description = 
+			"Ichika launches a cyber enhanced punch combo.",
+
+			Cooldown = 5,
+
+			Animation = nil,
+
+		},
+
+
+
+		["2"] = {
+
+			Name = "Hologram Breaker",
+
+			Description =
+			"Creates a fake clone that attacks the enemy.",
+
+			Cooldown = 8,
+
+			Animation = nil,
+
+		},
+
+
+
+		["3"] = {
+
+			Name = "Phantom Engine",
+
+			Description =
+			"Activates cyber acceleration and rushes toward the closest opponent.",
+
+			Cooldown = 12,
+
+			Animation = nil,
+
+		},
+
+
+
+		["4"] = {
+
+			Name = "Zero Point Collapse",
+
+			Description =
+			"A powerful energy strike that launches enemies away.",
+
+			Cooldown = 15,
+
+			Animation = nil,
+
+		},
+
+
 	},
-	{
-		name = "Nino",
-		decal = "rbxthumb://type=Asset&id=84966996106387&w=150&h=150",
-		color = {main = Color3.fromRGB(255,150,200), light = Color3.fromRGB(255,200,230), alt = Color3.fromRGB(255,100,180)},
-		mirageAnim = 18715994424, -- Garou M1 (works well for martial arts)
-		ultAnim = 18716153127,
-		baseHotbar = {"Rose Barrage","Wind Step","Blossom Kick","Petal Guard"},
-		ultHotbar = {"Pink Tempest","Petal Cataclysm","Nino's Blossom","Queen's Press"}
-	},
-	{
-		name = "Miku",
-		decal = "rbxthumb://type=Asset&id=139310852089028&w=150&h=150",
-		color = {main = Color3.fromRGB(120,180,255), light = Color3.fromRGB(200,220,255), alt = Color3.fromRGB(180,150,255)},
-		mirageAnim = 18716472014, -- Genos M1 style for heavy hits
-		ultAnim = 18716880183,
-		baseHotbar = {"Hunter Strike","Pulse Shot","Aerial Slash","Anchor Pull"},
-		ultHotbar = {"Blue Judgment","Hunter's Downfall","Skyfall Finale","Omega Strike"}
-	},
-	{
-		name = "Yotsuba",
-		decal = "rbxthumb://type=Asset&id=127206472590344&w=150&h=150",
-		color = {main = Color3.fromRGB(255,90,90), light = Color3.fromRGB(255,160,160), alt = Color3.fromRGB(255,60,60)},
-		mirageAnim = 18715812734, -- Saitama M1
-		ultAnim = 12467789963,
-		baseHotbar = {"One-Punch","Charge Dash","Ground Slam","Laughing Strike"},
-		ultHotbar = {"Saitama's Fury","Meteor Punch","Thunderclap","Endless Push"}
-	},
-	{
-		name = "Itsuki",
-		decal = "rbxthumb://type=Asset&id=115613783620344&w=150&h=150",
-		color = {main = Color3.fromRGB(255,120,80), light = Color3.fromRGB(255,180,150), alt = Color3.fromRGB(255,80,40)},
-		mirageAnim = 15259161390, -- Atomic M1 variant
-		ultAnim = 18716880183,
-		baseHotbar = {"Blade Flurry","Pinpoint Cut","Cyclone Arc","Swift Draw"},
-		ultHotbar = {"Atomic Overdrive","Sunrise Cleave","Perfect Sever","Blade Queen"}
+
+
+
+	--====================================================--
+	-- ULTIMATE MOVES
+	--====================================================--
+
+
+	UltimateMoves = {
+
+
+		["1"] = {
+
+			Name = "Cyber Overload",
+
+			Description =
+			"Ichika enters maximum cyber output.",
+
+			Animation = nil,
+
+		},
+
+
+
+		["2"] = {
+
+			Name = "Golden Mirage Storm",
+
+			Description =
+			"Creates multiple holographic clones attacking everywhere.",
+
+			Animation = nil,
+
+		},
+
+
+
+		["3"] = {
+
+			Name = "Artificial Sun",
+
+			Description =
+			"A massive yellow energy explosion.",
+
+			Animation = nil,
+
+		},
+
+
+
+		["4"] = {
+
+			Name = "Final Cyber Eclipse",
+
+			Description =
+			"Ichika's strongest attack.",
+
+			Animation = nil,
+
+		},
+
 	}
+
 }
 
-local activeIndex = 1
 
-local function ApplyCharacter(index)
-	local c = CHARACTERS[index]
-	if not c then return end
 
-	-- set global labels and colors used by existing functions
-	MOVESET_NAME = c.name .. " Nakano"
-	DECAL_ID = c.decal
+--========================================================--
+-- CURRENT CHARACTER
+--========================================================--
 
-	-- set theme colors (fallback to previous values)
-	CYBER_YELLOW = c.color.main or CYBER_YELLOW
-	LIGHT_YELLOW = c.color.light or LIGHT_YELLOW
-	GOLD = c.color.alt or GOLD
+local CurrentCharacter = Characters.Ichika
 
-	-- animation mapping
-	MirageAnimation = c.mirageAnim or MirageAnimation
-	ULT1_ANIMATION = tostring(c.ultAnim) and ("rbxassetid://"..tostring(c.ultAnim)) or ULT1_ANIMATION
 
-	BASE_HOTBAR = c.baseHotbar
-	ULT_HOTBAR = c.ultHotbar
 
-	-- update topbar immediately
-	pcall(function()
-		local topbar = Player:FindFirstChild("PlayerGui") and Player.PlayerGui:FindFirstChild("TopbarPlus")
-		if topbar then
-			for _,obj in ipairs(topbar:GetDescendants()) do
-				if obj.Name == "IconButton" then
-					local label = obj:FindFirstChild("IconLabel")
-					local image = obj:FindFirstChild("IconImage")
-					if label then label.Text = MOVESET_NAME; label.TextColor3 = CYBER_YELLOW end
-					if image then image.Image = DECAL_ID end
-				end
+--========================================================--
+-- TARGET SYSTEM
+--========================================================--
+
+local function GetClosestPlayer()
+
+	local Closest = nil
+	local Distance = math.huge
+
+
+	for _,player in pairs(Players:GetPlayers()) do
+
+		if player ~= Player 
+		and player.Character
+		and player.Character:FindFirstChild("HumanoidRootPart")
+		then
+
+			local EnemyRoot =
+			player.Character.HumanoidRootPart
+
+
+			local Dist =
+			(Root.Position - EnemyRoot.Position).Magnitude
+
+
+			if Dist < Distance then
+
+				Distance = Dist
+				Closest = player.Character
+
 			end
-		end
-	end)
 
-	if DEBUG then print("Applied character:", c.name) end
+		end
+
+	end
+
+
+	return Closest
+
 end
 
--- initial apply
-ApplyCharacter(activeIndex)
 
--- Switch character helper
-local function NextCharacter()
-	activeIndex = activeIndex % #CHARACTERS + 1
-	ApplyCharacter(activeIndex)
+
+
+--========================================================--
+-- PHANTOM ENGINE SYSTEM
+--========================================================--
+
+local PhantomEngine = {
+
+	Active = false,
+
+}
+
+
+
+function PhantomEngine.Activate()
+
+
+	if PhantomEngine.Active then
+		return
+	end
+
+
+	PhantomEngine.Active = true
+
+
+	local Target =
+	GetClosestPlayer()
+
+
+	if Target then
+
+
+		local TargetRoot =
+		Target:FindFirstChild("HumanoidRootPart")
+
+
+		if TargetRoot then
+
+
+			Root.CFrame =
+			TargetRoot.CFrame *
+			CFrame.new(0,0,4)
+
+
+
+		end
+
+
+	end
+
+
+	task.wait(2)
+
+
+	PhantomEngine.Active = false
+
+
 end
-local function PrevCharacter()
-	activeIndex = (activeIndex - 2) % #CHARACTERS + 1
-	ApplyCharacter(activeIndex)
+
+
+
+
+
+--========================================================--
+-- CYBER AURA SYSTEM
+--========================================================--
+
+
+local function CreateAura()
+
+
+	local Highlight =
+	Instance.new("Highlight")
+
+
+	Highlight.Name =
+	"IchikaCyberAura"
+
+
+	Highlight.FillColor =
+	CurrentCharacter.ThemeColor
+
+
+	Highlight.OutlineColor =
+	CurrentCharacter.SecondaryColor
+
+
+	Highlight.FillTransparency =
+	0.35
+
+
+	Highlight.Parent =
+	Character
+
+
+	return Highlight
+
 end
 
--- Improved hotbar refresh: try multiple paths including the exact structure you posted
-local function refreshHotbarEnhanced()
-	local ok, gui = pcall(function() return Player.PlayerGui end)
-	if not ok or not gui then return end
 
-	local slots = {}
 
-	-- method 1: TextLabels named ToolName
-	for _,obj in ipairs(gui:GetDescendants()) do
-		if obj.Name == "ToolName" and obj:IsA("TextLabel") then table.insert(slots, obj) end
+
+
+--========================================================--
+-- MOVE HANDLER
+--========================================================--
+
+local Cooldowns = {}
+
+
+
+local function UseMove(Number)
+
+
+	local Move =
+	CurrentCharacter.Moves[tostring(Number)]
+
+
+	if not Move then
+		return
 	end
 
-	-- method 2: structured Hotbar.Backpack.Hotbar.N.Base.ToolName
-	for _,pathRoot in ipairs({"Hotbar","Backpack"}) do
-		local hb = gui:FindFirstChild(pathRoot, true)
-		if hb then
-			for i=1,4 do
-				local slot = hb:FindFirstChild(tostring(i), true) -- try numeric
-				if slot and slot:FindFirstChild("Base") and slot.Base:FindFirstChild("ToolName") then
-					table.insert(slots, slot.Base.ToolName)
-				end
-			end
-		end
+
+
+	if Cooldowns[Number] then
+		return
 	end
 
-	-- fallback: find by common node names
-	if #slots < 4 then
-		for _,obj in ipairs(gui:GetDescendants()) do
-			if obj.Name == "Base" and obj:FindFirstChild("ToolName") then table.insert(slots, obj.ToolName) end
-		end
+
+
+	Cooldowns[Number] = true
+
+
+
+	print(
+	"[ICHIKA]",
+	Move.Name
+	)
+
+
+
+	if Number == 3 then
+
+		PhantomEngine.Activate()
+
 	end
 
-	-- assign
-	for i=1,4 do
-		local name = SESSION.IsUlted and (ULT_HOTBAR and ULT_HOTBAR[i] or "") or (BASE_HOTBAR and BASE_HOTBAR[i] or "")
-		if slots[i] and slots[i].IsA and slots[i]:IsA("TextLabel") then
-			slots[i].Text = name
-		end
-	end
+
+
+	task.wait(Move.Cooldown)
+
+
+
+	Cooldowns[Number] = false
+
+
 end
 
--- bind keys for testing (Exploit environment)
-UserInputService.InputBegan:Connect(function(input, gameProcessed)
-	if gameProcessed then return end
-	if input.UserInputType == Enum.UserInputType.Keyboard then
-		local key = input.KeyCode
-		if key == Enum.KeyCode.P then
-			-- test Move1 (Mirage)
-			pcall(function() MirageStep() end)
-		elseif key == Enum.KeyCode.O then
-			-- test Ultimate
-			pcall(function() ActivateUltimate(1) end)
-		elseif key == Enum.KeyCode.One then
-			activeIndex = 1; ApplyCharacter(activeIndex)
-		elseif key == Enum.KeyCode.Two then
-			activeIndex = 2; ApplyCharacter(activeIndex)
-		elseif key == Enum.KeyCode.Three then
-			activeIndex = 3; ApplyCharacter(activeIndex)
-		elseif key == Enum.KeyCode.Four then
-			activeIndex = 4; ApplyCharacter(activeIndex)
-		elseif key == Enum.KeyCode.Five then
-			activeIndex = 5; ApplyCharacter(activeIndex)
-		elseif key == Enum.KeyCode.Left then PrevCharacter()
-		elseif key == Enum.KeyCode.Right then NextCharacter()
-		end
+
+
+
+
+--========================================================--
+-- TEST KEYS
+--========================================================--
+
+local UIS =
+game:GetService("UserInputService")
+
+
+UIS.InputBegan:Connect(function(Key,Typing)
+
+
+	if Typing then
+		return
 	end
+
+
+	if Key.KeyCode == Enum.KeyCode.One then
+
+		UseMove(1)
+
+	elseif Key.KeyCode == Enum.KeyCode.Two then
+
+		UseMove(2)
+
+	elseif Key.KeyCode == Enum.KeyCode.Three then
+
+		UseMove(3)
+
+	elseif Key.KeyCode == Enum.KeyCode.Four then
+
+		UseMove(4)
+
+	end
+
+
 end)
 
--- ensure refreshHotbar runs (reuse existing Heartbeat listener)
-RunService.Heartbeat:Connect(function() pcall(refreshHotbarEnhanced) end)
 
--- Exploit-friendly music downloader + loop player
-local musicUrl = "https://github.com/r4faelllaust/R4Fix/raw/refs/heads/main/5sis.mp3"
-local localName = "5sis.mp3"
 
-local function setupExploitAudio()
-	local success = false
-	-- try syn.request
-	if syn and syn.request then
-		pcall(function()
-			local res = syn.request{Url=musicUrl, Method="GET"}
-			if res and res.Body and res.StatusCode == 200 then
-				writefile(localName, res.Body)
-				success = true
+print(
+"[R4FIX] Ichika Cyber System Loaded 💛"
+)
+--========================================================--
+-- CHARACTER 2 : NINO NAKANO
+-- CRIMSON LOVE FIGHTER SYSTEM
+--========================================================--
+
+
+Characters.Nino = {
+
+	Name = "Nino Nakano",
+
+	Title = "Crimson Martial Artist",
+
+	ThemeColor = Color3.fromRGB(255,80,160),
+
+	SecondaryColor = Color3.fromRGB(255,20,90),
+
+	Icon = "rbxassetid://84966996106387",
+
+	Music = "TQQ5sisOPE",
+
+	UltimateName = "CRIMSON HEART AWAKENING",
+
+	AuraName = "Love Rage Core",
+
+
+
+	--====================================================--
+	-- NORMAL MOVES
+	--====================================================--
+
+
+	Moves = {
+
+
+		["1"] = {
+
+			Name = "Heartbreaker Combo",
+
+			Description =
+			"Nino rushes forward with a rapid martial arts combo.",
+
+			Cooldown = 5,
+
+			Animation = nil,
+
+		},
+
+
+
+		["2"] = {
+
+			Name = "Pink Venom Counter",
+
+			Description =
+			"Nino enters a defensive stance and counters the enemy.",
+
+			Cooldown = 9,
+
+			Animation = nil,
+
+		},
+
+
+
+		["3"] = {
+
+			Name = "Love Rush Assault",
+
+			Description =
+			"Nino instantly closes distance and unleashes a barrage.",
+
+			Cooldown = 12,
+
+			Animation = nil,
+
+		},
+
+
+
+		["4"] = {
+
+			Name = "Crimson Explosion",
+
+			Description =
+			"A powerful pink energy impact that sends enemies flying.",
+
+			Cooldown = 15,
+
+			Animation = nil,
+
+		},
+
+
+	},
+
+
+
+	--====================================================--
+	-- ULTIMATE MOVES
+	--====================================================--
+
+
+	UltimateMoves = {
+
+
+		["1"] = {
+
+			Name = "Queen's Punishment",
+
+			Description =
+			"Nino overwhelms enemies with impossible speed.",
+
+			Animation = nil,
+
+		},
+
+
+
+		["2"] = {
+
+			Name = "Crimson Phantom Dance",
+
+			Description =
+			"Creates afterimages that attack from different angles.",
+
+			Animation = nil,
+
+		},
+
+
+
+		["3"] = {
+
+			Name = "Heart Piercer",
+
+			Description =
+			"A devastating focused strike.",
+
+			Animation = nil,
+
+		},
+
+
+
+		["4"] = {
+
+			Name = "Love Without Mercy",
+
+			Description =
+			"Nino releases her maximum fighting power.",
+
+			Animation = nil,
+
+		},
+
+
+	}
+
+}
+
+
+
+--========================================================--
+-- NINO COMBAT SYSTEM
+--========================================================--
+
+
+local NinoCombat = {
+
+	Active = false,
+
+}
+
+
+
+
+function NinoCombat.SpeedBoost()
+
+	if NinoCombat.Active then
+		return
+	end
+
+
+	NinoCombat.Active = true
+
+
+	local OldSpeed =
+	Humanoid.WalkSpeed
+
+
+	Humanoid.WalkSpeed = 32
+
+
+
+	local Highlight =
+	Instance.new("Highlight")
+
+
+	Highlight.Name =
+	"NinoCrimsonAura"
+
+
+	Highlight.FillColor =
+	Characters.Nino.ThemeColor
+
+
+	Highlight.OutlineColor =
+	Characters.Nino.SecondaryColor
+
+
+	Highlight.FillTransparency =
+	0.45
+
+
+	Highlight.Parent =
+	Character
+
+
+
+	task.wait(2)
+
+
+
+	Humanoid.WalkSpeed =
+	OldSpeed
+
+
+	Highlight:Destroy()
+
+
+	NinoCombat.Active = false
+
+end
+
+
+
+
+--========================================================--
+-- COUNTER SYSTEM
+--========================================================--
+
+
+local CounterActive = false
+
+
+
+function NinoCombat.Counter()
+
+
+	if CounterActive then
+		return
+	end
+
+
+	CounterActive = true
+
+
+	print(
+	"Nino Counter Activated"
+	)
+
+
+	task.wait(1.5)
+
+
+	CounterActive = false
+
+end
+
+
+
+
+--========================================================--
+-- NINO MOVE EXECUTION
+--========================================================--
+
+
+function UseNinoMove(Number)
+
+
+	local Move =
+	Characters.Nino.Moves[tostring(Number)]
+
+
+	if not Move then
+		return
+	end
+
+
+
+	print(
+	"[NINO]",
+	Move.Name
+	)
+
+
+
+	if Number == 2 then
+
+		NinoCombat.Counter()
+
+
+	elseif Number == 3 then
+
+		NinoCombat.SpeedBoost()
+
+
+	end
+
+
+end
+
+
+
+
+
+--========================================================--
+-- NINO ULTIMATE MODE
+--========================================================--
+
+
+function ActivateNinoUltimate()
+
+
+	print(
+	"💗 NINO CRIMSON HEART AWAKENING"
+	)
+
+
+
+	local Aura =
+	Instance.new("Highlight")
+
+
+	Aura.Name =
+	"NinoUltimateAura"
+
+
+	Aura.FillColor =
+	Color3.fromRGB(255,0,120)
+
+
+	Aura.OutlineColor =
+	Color3.fromRGB(255,180,220)
+
+
+	Aura.FillTransparency =
+	0.2
+
+
+	Aura.Parent =
+	Character
+
+
+
+	task.wait(15)
+
+
+	Aura:Destroy()
+
+
+end
+
+
+
+
+print(
+"[R4FIX] Nino Crimson Fighter Loaded 💗"
+)
+--========================================================--
+-- CHARACTER 3 : MIKU NAKANO
+-- PHANTOM HERO HUNTER SYSTEM
+--========================================================--
+
+
+Characters.Miku = {
+
+	Name = "Miku Nakano",
+
+	Title = "Phantom Hero Hunter",
+
+	ThemeColor = Color3.fromRGB(90,170,255),
+
+	SecondaryColor = Color3.fromRGB(190,120,255),
+
+	Icon = "rbxassetid://139310852089028",
+
+	Music = "TQQ5sisOPE",
+
+	UltimateName = "PHANTOM HUNTER AWAKENING",
+
+	AuraName = "Silent Blue Phantom",
+
+
+
+	--====================================================--
+	-- NORMAL MOVES
+	--====================================================--
+
+
+	Moves = {
+
+
+		["1"] = {
+
+			Name = "Phantom Blade Rush",
+
+			Description =
+			"Miku disappears briefly and strikes from the enemy's blind spot.",
+
+			Cooldown = 5,
+
+			Animation = nil,
+
+		},
+
+
+
+		["2"] = {
+
+			Name = "Hunter's Mark",
+
+			Description =
+			"Marks an enemy and increases tracking accuracy.",
+
+			Cooldown = 8,
+
+			Animation = nil,
+
+		},
+
+
+
+		["3"] = {
+
+			Name = "Silent Pursuit",
+
+			Description =
+			"Miku rapidly moves toward the closest target.",
+
+			Cooldown = 12,
+
+			Animation = nil,
+
+		},
+
+
+
+		["4"] = {
+
+			Name = "Phantom Execution",
+
+			Description =
+			"A powerful finishing strike using phantom energy.",
+
+			Cooldown = 15,
+
+			Animation = nil,
+
+		},
+
+
+	},
+
+
+
+	--====================================================--
+	-- ULTIMATE MOVES
+	--====================================================--
+
+
+	UltimateMoves = {
+
+
+		["1"] = {
+
+			Name = "Void Hunter Mode",
+
+			Description =
+			"Miku enters her maximum hunting state.",
+
+			Animation = nil,
+
+		},
+
+
+
+		["2"] = {
+
+			Name = "Infinite Phantom Steps",
+
+			Description =
+			Creates multiple afterimages attacking simultaneously.",
+
+			Animation = nil,
+
+		},
+
+
+
+		["3"] = {
+
+			Name = "Blue Eclipse",
+
+			Description =
+			A massive phantom energy explosion.",
+
+			Animation = nil,
+
+		},
+
+
+
+		["4"] = {
+
+			Name = "Final Hunter's Verdict",
+
+			Description =
+			Miku's ultimate finishing attack.",
+
+			Animation = nil,
+
+		},
+
+
+	}
+
+}
+
+
+
+
+
+--========================================================--
+-- MIKU HUNTER SYSTEM
+--========================================================--
+
+
+local MikuHunter = {
+
+	Active = false,
+
+	MarkedTarget = nil
+
+}
+
+
+
+
+
+--========================================================--
+-- FIND TARGET
+--========================================================--
+
+
+function MikuHunter.FindTarget()
+
+
+	local Target = nil
+
+	local Distance = math.huge
+
+
+
+	for _,PlayerObject in pairs(Players:GetPlayers()) do
+
+
+		if PlayerObject ~= Player
+		and PlayerObject.Character
+		and PlayerObject.Character:FindFirstChild("HumanoidRootPart")
+		then
+
+
+			local EnemyRoot =
+			PlayerObject.Character.HumanoidRootPart
+
+
+
+			local Dist =
+			(Root.Position - EnemyRoot.Position).Magnitude
+
+
+
+			if Dist < Distance then
+
+				Distance = Dist
+
+				Target =
+				PlayerObject.Character
+
 			end
+
+
+		end
+
+
+	end
+
+
+	return Target
+
+end
+
+
+
+
+
+--========================================================--
+-- PHANTOM MOVEMENT
+--========================================================--
+
+
+function MikuHunter.PhantomStep()
+
+
+	local Target =
+	MikuHunter.FindTarget()
+
+
+
+	if Target then
+
+
+		local TargetRoot =
+		Target:FindFirstChild("HumanoidRootPart")
+
+
+
+		if TargetRoot then
+
+
+			Root.CFrame =
+			TargetRoot.CFrame *
+			CFrame.new(0,0,5)
+
+
+
+		end
+
+
+	end
+
+
+
+end
+
+
+
+
+
+
+--========================================================--
+-- HUNTER MARK
+--========================================================--
+
+
+function MikuHunter.Mark()
+
+
+	local Target =
+	MikuHunter.FindTarget()
+
+
+
+	if Target then
+
+
+		MikuHunter.MarkedTarget =
+		Target
+
+
+
+		local Highlight =
+		Instance.new("Highlight")
+
+
+
+		Highlight.Name =
+		"MikuHunterMark"
+
+
+
+		Highlight.FillColor =
+		Color3.fromRGB(120,180,255)
+
+
+
+		Highlight.OutlineColor =
+		Color3.fromRGB(220,160,255)
+
+
+
+		Highlight.Parent =
+		Target
+
+
+
+		task.delay(5,function()
+
+
+			if Highlight then
+
+				Highlight:Destroy()
+
+			end
+
+
 		end)
+
+
+
 	end
 
-	-- try http.request
-	if not success and http and http.request then
-		pcall(function()
-			local res = http.request({Url = musicUrl, Method = "GET"})
-			if res and res.Body then
-				writefile(localName, res.Body)
-				success = true
-			end
-		end)
+
+end
+
+
+
+
+
+--========================================================--
+-- MIKU ULTIMATE
+--========================================================--
+
+
+function ActivateMikuUltimate()
+
+
+	MikuHunter.Active = true
+
+
+
+	print(
+	"💙 MIKU PHANTOM HUNTER AWAKENED"
+	)
+
+
+
+	local Aura =
+	Instance.new("Highlight")
+
+
+
+	Aura.Name =
+	"MikuPhantomAura"
+
+
+
+	Aura.FillColor =
+	Color3.fromRGB(100,150,255)
+
+
+
+	Aura.OutlineColor =
+	Color3.fromRGB(210,120,255)
+
+
+
+	Aura.FillTransparency =
+	0.2
+
+
+
+	Aura.Parent =
+	Character
+
+
+
+
+	task.wait(20)
+
+
+
+	if Aura then
+
+		Aura:Destroy()
+
 	end
 
-	-- fallback: write url literal (some runners accept this pattern)
-	if not success then
-		pcall(function() writefile(localName, musicUrl); success = true end)
+
+
+	MikuHunter.Active = false
+
+
+end
+
+
+
+
+
+--========================================================--
+-- MOVE EXECUTION
+--========================================================--
+
+
+function UseMikuMove(Number)
+
+
+	local Move =
+	Characters.Miku.Moves[tostring(Number)]
+
+
+	if not Move then
+		return
 	end
 
-	-- create Sound and play via getcustomasset
-	pcall(function()
-		local char = Player.Character or Player.CharacterAdded:Wait()
-		local s = Instance.new("Sound")
-		s.Name = "R4Fix_Background"
-		s.Looped = true
-		s.Volume = 0.75
-		if success and getcustomasset then
-			s.SoundId = getcustomasset(localName)
-		else
-			-- fallback: if the file couldn't be downloaded, try to use the repo raw url (may not work in Roblox)
-			s.SoundId = musicUrl
-		end
-		s.Parent = char
-		s:Play()
-	end)
-end
 
--- run the exploit audio setup in spawn so it doesn't block
-task.spawn(setupExploitAudio)
 
--- Tagging helper: mark created VFX so recolor only affects them
-local function TagVFX(inst)
-	pcall(function()
-		if inst and typeof(inst.SetAttribute) == "function" then
-			inst:SetAttribute("R4FixVFX", true)
-		end
-	end)
-end
+	print(
+	"[MIKU]",
+	Move.Name
+	)
 
--- Patch existing VFX creation helpers to tag
-local OldCyberBurst = CyberBurst
-CyberBurst = function(position, size, color)
-	local part = OldCyberBurst(position, size, color)
-	-- OldCyberBurst didn't return the part; try to create new if needed
-	-- We'll create our own burst to ensure tagging and return
-	if part == nil then
-		local p = Instance.new("Part")
-		p.Shape = Enum.PartType.Ball
-		p.Material = Enum.Material.Neon
-		p.Color = color or CYBER_YELLOW
-		p.Transparency = 0.15
-		p.Anchored = true
-		p.CanCollide = false
-		p.Size = Vector3.new(2,2,2)
-		p.CFrame = CFrame.new(position)
-		p.Parent = VFX_FOLDER
-		local light = Instance.new("PointLight")
-		light.Color = p.Color; light.Brightness = 4; light.Range = 15; light.Parent = p
-		TweenService:Create(p, TweenInfo.new(0.45, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {Size = Vector3.new(size,size,size), Transparency = 1}):Play()
-		Debris:AddItem(p, 1)
-		TagVFX(p)
-		return p
-	else
-		-- If original returned something, try to tag
-		pcall(function() TagVFX(part) end)
-		return part
+
+
+	if Number == 1 then
+
+		MikuHunter.PhantomStep()
+
+
+
+	elseif Number == 2 then
+
+		MikuHunter.Mark()
+
+
+
+	elseif Number == 3 then
+
+		MikuHunter.PhantomStep()
+
+
+
 	end
+
+
 end
 
-local OldCyberRing = CyberRing
-CyberRing = function(position, size, color)
-	local ring = OldCyberRing(position, size, color)
-	if not ring then
-		local r = Instance.new("Part")
-		r.Shape = Enum.PartType.Cylinder
-		r.Material = Enum.Material.Neon
-		r.Color = color or GOLD
-		r.Transparency = 0.25
-		r.Anchored = true
-		r.CanCollide = false
-		r.Size = Vector3.new(0.2,5,5)
-		r.CFrame = CFrame.new(position) * CFrame.Angles(0,0,math.rad(90))
-		r.Parent = VFX_FOLDER
-		TweenService:Create(r, TweenInfo.new(0.5, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {Size = Vector3.new(0.2, size, size), Transparency = 1}):Play()
-		Debris:AddItem(r, 0.9)
-		TagVFX(r)
-		return r
-	else
-		pcall(function() TagVFX(ring) end)
-		return ring
+
+
+
+
+print(
+"[R4FIX] Miku Phantom Hunter Loaded 💙"
+)
+--========================================================--
+-- CHARACTER 4 : YOTSUBA NAKANO
+-- LIMITLESS HERO SYSTEM
+--========================================================--
+
+
+Characters.Yotsuba = {
+
+	Name = "Yotsuba Nakano",
+
+	Title = "Limitless Hero",
+
+	ThemeColor = Color3.fromRGB(255,90,40),
+
+	SecondaryColor = Color3.fromRGB(255,200,50),
+
+	Icon = "rbxassetid://127206472590344",
+
+	Music = "TQQ5sisOPE",
+
+	UltimateName = "HERO LIMIT BREAK",
+
+	AuraName = "Solar Hero Flame",
+
+
+
+	--====================================================--
+	-- NORMAL MOVES
+	--====================================================--
+
+
+	Moves = {
+
+
+		["1"] = {
+
+			Name = "Hero Impact",
+
+			Description =
+			"Yotsuba throws a powerful punch creating a shockwave.",
+
+			Cooldown = 5,
+
+			Animation = nil,
+
+		},
+
+
+
+		["2"] = {
+
+			Name = "Meteor Rush",
+
+			Description =
+			"Yotsuba launches herself forward at incredible speed.",
+
+			Cooldown = 8,
+
+			Animation = nil,
+
+		},
+
+
+
+		["3"] = {
+
+			Name = "Unlimited Smash",
+
+			Description =
+			"A devastating ground slam that releases energy waves.",
+
+			Cooldown = 12,
+
+			Animation = nil,
+
+		},
+
+
+
+		["4"] = {
+
+			Name = "Solar Breaker",
+
+			Description =
+			"Yotsuba charges energy and releases a massive strike.",
+
+			Cooldown = 15,
+
+			Animation = nil,
+
+		},
+
+
+	},
+
+
+
+
+	--====================================================--
+	-- ULTIMATE MOVES
+	--====================================================--
+
+
+	UltimateMoves = {
+
+
+		["1"] = {
+
+			Name = "Hero Awakening",
+
+			Description =
+			"Yotsuba enters maximum hero output.",
+
+			Animation = nil,
+
+		},
+
+
+
+		["2"] = {
+
+			Name = "Flaming Meteor",
+
+			Description =
+			"Yotsuba launches a burning impact attack.",
+
+			Animation = nil,
+
+		},
+
+
+
+		["3"] = {
+
+			Name = "Infinite Strength",
+
+			Description =
+			"Every attack releases massive shockwaves.",
+
+			Animation = nil,
+
+		},
+
+
+
+		["4"] = {
+
+			Name = "Final Hero Punch",
+
+			Description =
+			"The strongest punch in Yotsuba's arsenal.",
+
+			Animation = nil,
+
+		},
+
+
+	}
+
+}
+
+
+
+
+--========================================================--
+-- YOTSUBA HERO SYSTEM
+--========================================================--
+
+
+local YotsubaHero = {
+
+	Active = false,
+
+}
+
+
+
+
+
+--========================================================--
+-- SHOCKWAVE EFFECT
+--========================================================--
+
+
+function YotsubaHero.CreateShockwave()
+
+
+	local Part =
+	Instance.new("Part")
+
+
+
+	Part.Name =
+	"HeroShockwave"
+
+
+
+	Part.Shape =
+	Enum.PartType.Ball
+
+
+
+	Part.Material =
+	Enum.Material.Neon
+
+
+
+	Part.Color =
+	Characters.Yotsuba.ThemeColor
+
+
+
+	Part.Transparency =
+	0.45
+
+
+
+	Part.Anchored =
+	true
+
+
+
+	Part.CanCollide =
+	false
+
+
+
+	Part.Size =
+	Vector3.new(3,3,3)
+
+
+
+	Part.Position =
+	Root.Position
+
+
+
+	Part.Parent =
+	workspace
+
+
+
+
+	local Tween =
+	TweenService:Create(
+
+		Part,
+
+		TweenInfo.new(
+			0.8,
+			Enum.EasingStyle.Quad
+		),
+
+		{
+
+			Size =
+			Vector3.new(35,35,35),
+
+			Transparency = 1
+
+		}
+
+	)
+
+
+
+	Tween:Play()
+
+
+
+	Debris:AddItem(
+		Part,
+		1
+	)
+
+
+
+end
+
+
+
+
+
+
+--========================================================--
+-- HERO SPEED MODE
+--========================================================--
+
+
+function YotsubaHero.HeroRush()
+
+
+	if YotsubaHero.Active then
+		return
 	end
+
+
+
+	YotsubaHero.Active = true
+
+
+
+	local OldSpeed =
+	Humanoid.WalkSpeed
+
+
+
+	Humanoid.WalkSpeed =
+	35
+
+
+
+	YotsubaHero.CreateShockwave()
+
+
+
+	task.wait(2)
+
+
+
+	Humanoid.WalkSpeed =
+	OldSpeed
+
+
+
+	YotsubaHero.Active = false
+
+
+
 end
 
--- Make recolor watcher only recolor tagged objects or local character/VFX folder descendants
--- override existing scan/makeYellow by checking the attribute
-local OrigScan = scan
-local function TaggedScan(object)
-	if not object then return end
-	pcall(function()
-		if object:GetAttribute and object:GetAttribute("R4FixVFX") then
-			makeYellow(object)
-		elseif isLocalVFX(object) then
-			makeYellow(object)
-		else
-			for _,child in ipairs(object:GetDescendants()) do
-				if child:GetAttribute and child:GetAttribute("R4FixVFX") then makeYellow(child) end
-				if isLocalVFX(child) then makeYellow(child) end
-			end
-		end
-	end)
+
+
+
+
+
+--========================================================--
+-- YOTSUBA ULTIMATE
+--========================================================--
+
+
+function ActivateYotsubaUltimate()
+
+
+	print(
+	"🔥 YOTSUBA HERO LIMIT BREAK"
+	)
+
+
+
+	YotsubaHero.Active = true
+
+
+
+	local Aura =
+	Instance.new("Highlight")
+
+
+
+	Aura.Name =
+	"YotsubaSolarAura"
+
+
+
+	Aura.FillColor =
+	Color3.fromRGB(255,80,20)
+
+
+
+	Aura.OutlineColor =
+	Color3.fromRGB(255,230,80)
+
+
+
+	Aura.FillTransparency =
+	0.15
+
+
+
+	Aura.Parent =
+	Character
+
+
+
+
+
+	for i = 1,5 do
+
+		YotsubaHero.CreateShockwave()
+
+		task.wait(0.2)
+
+	end
+
+
+
+
+
+	task.wait(20)
+
+
+
+	if Aura then
+
+		Aura:Destroy()
+
+	end
+
+
+
+	YotsubaHero.Active = false
+
+
+
 end
 
--- Replace watchers
-Workspace.DescendantAdded:Connect(function(obj)
-	task.defer(function()
-		TaggedScan(obj)
-		task.wait()
-		if obj and obj.Parent then TaggedScan(obj.Parent) end
-	end)
+
+
+
+
+--========================================================--
+-- MOVE EXECUTION
+--========================================================--
+
+
+function UseYotsubaMove(Number)
+
+
+	local Move =
+	Characters.Yotsuba.Moves[tostring(Number)]
+
+
+
+	if not Move then
+		return
+	end
+
+
+
+	print(
+	"[YOTSUBA]",
+	Move.Name
+	)
+
+
+
+	if Number == 2 then
+
+
+		YotsubaHero.HeroRush()
+
+
+
+	elseif Number == 3 then
+
+
+		YotsubaHero.CreateShockwave()
+
+
+
+	elseif Number == 4 then
+
+
+		YotsubaHero.CreateShockwave()
+
+
+
+	end
+
+
+
+end
+
+
+
+
+
+print(
+"[R4FIX] Yotsuba Limitless Hero Loaded 🔥"
+)
+-- ================================================================
+-- R4FIX QUINTESSENTIAL QUINTUPLETS MOVESYSTEM
+-- PART 5/5
+-- ITSUKI NAKANO
+-- ATOMIC BLADEMASTER
+-- ================================================================
+
+-- Theme:
+-- Red flames
+-- Atomic sword mastery
+-- Extreme speed
+-- Precision cutting
+-- Crimson awakening
+
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+
+local lp = Players.LocalPlayer
+local character = lp.Character or lp.CharacterAdded:Wait()
+local humanoid = character:WaitForChild("Humanoid")
+
+
+-- ================================================================
+-- ITSUKI CONFIG
+-- ================================================================
+
+
+local Itsuki = {
+
+    Name = "Itsuki Nakano",
+
+    ThemeColor = Color3.fromRGB(255,40,40),
+
+    SecondaryColor = Color3.fromRGB(255,170,0),
+
+    Decal = "115613783620344",
+
+
+    UltimateName = "ATOMIC FLAME: FIVE STAR EXECUTION",
+
+
+    Moves = {
+
+        ["1"] = {
+
+            Name = "Crimson Quick Draw",
+
+            Original = "18716871856",
+
+            Animation = "18716893399"
+
+        },
+
+
+        ["2"] = {
+
+            Name = "Atomic Moon Slash",
+
+            Original = "15290930205",
+
+            Animation = "15145462680"
+
+        },
+
+
+        ["3"] = {
+
+            Name = "Flame Divider",
+
+            Original = "18716884610",
+
+            Animation = "15520132233"
+
+        },
+
+
+        ["4"] = {
+
+            Name = "Five Star Execution",
+
+            Original = "15676072469",
+
+            Animation = "18716893399"
+
+        }
+
+    },
+
+
+    UltimateMoves = {
+
+        ["1"] = {
+
+            Name = "Atomic Sunrise",
+
+            Animation = "18716884610"
+
+        },
+
+
+        ["2"] = {
+
+            Name = "Crimson Thousand Cuts",
+
+            Animation = "18716893399"
+
+        },
+
+
+        ["3"] = {
+
+            Name = "Flame Horizon",
+
+            Animation = "15676072469"
+
+        },
+
+
+        ["4"] = {
+
+            Name = "Final Nakano Judgment",
+
+            Animation = "18716880183"
+
+        }
+
+    }
+
+}
+
+
+
+-- ================================================================
+-- ANIMATION REPLACEMENT
+-- ================================================================
+
+
+local function PlayAnimation(id)
+
+    if not id then
+        return
+    end
+
+
+    local anim = Instance.new("Animation")
+
+    anim.AnimationId = "rbxassetid://" .. id
+
+
+    local animator =
+        humanoid:FindFirstChildOfClass("Animator")
+        or humanoid:WaitForChild("Animator")
+
+
+    local track =
+        animator:LoadAnimation(anim)
+
+
+    track:Play()
+
+
+    return track
+
+end
+
+
+
+local function ReplaceAnimation(track)
+
+    local current =
+        track.Animation.AnimationId
+
+
+    for _,move in pairs(Itsuki.Moves) do
+
+
+        if current ==
+        "rbxassetid://" .. move.Original then
+
+
+            track:Stop()
+
+            PlayAnimation(move.Animation)
+
+        end
+
+    end
+
+end
+
+
+
+humanoid.AnimationPlayed:Connect(function(track)
+
+    ReplaceAnimation(track)
+
 end)
 
--- final print
-print("[R4FIX] Quintuplets exploit helpers injected. DEBUG="..tostring(DEBUG))
+
+
+-- ================================================================
+-- HOTBAR CHARACTER UPDATE
+-- ================================================================
+
+
+local function UpdateHotbar()
+
+
+    local gui =
+        lp.PlayerGui:FindFirstChild("Hotbar")
+
+
+    if not gui then
+        return
+    end
+
+
+    local backpack =
+        gui:FindFirstChild("Backpack")
+
+
+    local hotbar =
+        backpack and backpack:FindFirstChild("Hotbar")
+
+
+    if not hotbar then
+        return
+    end
+
+
+
+    local names = {
+
+        "Crimson Quick Draw",
+
+        "Atomic Moon Slash",
+
+        "Flame Divider",
+
+        "Five Star Execution"
+
+    }
+
+
+
+    for i = 1,4 do
+
+
+        local button =
+            hotbar:FindFirstChild(tostring(i))
+
+
+        local base =
+            button and button:FindFirstChild("Base")
+
+
+        local label =
+            base and base:FindFirstChild("ToolName")
+
+
+        if label then
+
+            label.Text =
+            names[i]
+
+        end
+
+
+    end
+
+
+end
+
+
+
+-- ================================================================
+-- ULTIMATE BAR
+-- ================================================================
+
+
+local function UpdateUltimate()
+
+
+    local bar =
+        lp.PlayerGui:FindFirstChild("Bar")
+
+
+    if not bar then
+        return
+    end
+
+
+    local magic =
+        bar:FindFirstChild("MagicHealth")
+
+
+    local label =
+        magic and magic:FindFirstChild("TextLabel")
+
+
+    if label then
+
+
+        label.Text =
+        "🔥 ATOMIC FLAME: FIVE STAR EXECUTION 🔥"
+
+
+        label.TextColor3 =
+        Itsuki.ThemeColor
+
+
+    end
+
+
+end
+
+
+
+-- ================================================================
+-- FLAME VFX COLOR OVERRIDE
+-- ================================================================
+
+
+local function ApplyItsukiVFX(obj)
+
+
+    pcall(function()
+
+
+        if obj:IsA("ParticleEmitter") then
+
+
+            obj.Color =
+            ColorSequence.new({
+
+                ColorSequenceKeypoint.new(
+                    0,
+                    Itsuki.ThemeColor
+                ),
+
+
+                ColorSequenceKeypoint.new(
+                    1,
+                    Itsuki.SecondaryColor
+                )
+
+            })
+
+
+            obj.LightEmission = 1
+
+
+        elseif obj:IsA("Trail") then
+
+
+            obj.Color =
+            ColorSequence.new(
+                Itsuki.ThemeColor
+            )
+
+
+            obj.LightEmission = 1
+
+
+        elseif obj:IsA("Beam") then
+
+
+            obj.Color =
+            ColorSequence.new(
+                Itsuki.ThemeColor
+            )
+
+        end
+
+
+    end)
+
+end
+
+
+
+for _,obj in pairs(workspace:GetDescendants()) do
+
+    ApplyItsukiVFX(obj)
+
+end
+
+
+
+workspace.DescendantAdded:Connect(function(obj)
+
+    task.wait()
+
+    ApplyItsukiVFX(obj)
+
+end)
+
+
+
+-- ================================================================
+-- ITSUKI AWAKENING
+-- ================================================================
+
+
+local awakened = false
+
+
+
+local function ActivateUltimate()
+
+
+    if awakened then
+        return
+    end
+
+
+    awakened = true
+
+
+    UpdateUltimate()
+
+
+    -- awakening animation
+
+    PlayAnimation(
+        "18716880183"
+    )
+
+
+    -- refresh hotbar
+
+    local gui =
+    lp.PlayerGui:FindFirstChild("Hotbar")
+
+
+    if gui then
+
+        local hotbar =
+        gui.Backpack.Hotbar
+
+
+        local ultNames = {
+
+            "Atomic Sunrise",
+
+            "Crimson Thousand Cuts",
+
+            "Flame Horizon",
+
+            "Final Nakano Judgment"
+
+        }
+
+
+        for i=1,4 do
+
+
+            local button =
+            hotbar:FindFirstChild(tostring(i))
+
+
+            local base =
+            button and button:FindFirstChild("Base")
+
+
+            local label =
+            base and base:FindFirstChild("ToolName")
+
+
+            if label then
+
+                label.Text =
+                ultNames[i]
+
+            end
+
+
+        end
+
+    end
+
+
+end
+
+
+
+-- ================================================================
+-- CONSTANT REFRESH
+-- ================================================================
+
+
+task.spawn(function()
+
+
+    while task.wait(.25) do
+
+
+        UpdateHotbar()
+
+        UpdateUltimate()
+
+
+    end
+
+
+end)
+
+
+
+print(
+"[R4FIX] ITSUKI NAKANO ATOMIC BLADEMASTER LOADED"
+)
+
+-- ================================================================
+-- END PART 5/5
+-- FINAL CHARACTER MODULE
+-- ================================================================
