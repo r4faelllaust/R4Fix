@@ -1,23 +1,24 @@
 --!strict
 -- ================================================================
--- ITSUKI NAKANO ❤️✨
+-- ITSUKI NAKANO ❤️⭐
 -- THE QUINTESSENTIAL QUINTUPLETS
--- R4FIX FINAL CHARACTER EDITION
+-- R4FIX ULTIMATE EDITION
 -- ================================================================
 --
--- TAB:
---     Itsuki
+-- CHARACTER:
+--     Itsuki Nakano
 --
 -- STYLE:
---     Determined leader
---     Food lover
---     Red aura combat style
+--     Determination / Leader / Star Power
 --
--- SYSTEM:
---     Animation replacement
---     VFX framework
---     Ultimate framework
---     UI replacement
+-- FEATURES:
+--     Custom UI
+--     Custom Hotbar
+--     Ultimate Transformation
+--     Aura
+--     VFX
+--     Animation Replacement
+--     Respawn Support
 --
 -- ================================================================
 
@@ -37,191 +38,122 @@ local PlayerGui = Player:WaitForChild("PlayerGui")
 -- IDENTITY
 -- ================================================================
 
-local MOVESET_NAME = "Itsuki"
 
-local DECAL_ID =
-	"https://create.roblox.com/store/asset/13394302362/Windystew123"
+local MOVESET_NAME = "Itsuki Nakano ❤️"
 
-
--- ================================================================
--- COLORS
--- ================================================================
-
-local RED =
-	Color3.fromRGB(
-		220,
-		40,
-		60
-	)
-
-local DARK_RED =
-	Color3.fromRGB(
-		120,
-		10,
-		20
-	)
-
-local WHITE =
-	Color3.fromRGB(
-		255,
-		255,
-		255
-	)
-
-local GOLD =
-	Color3.fromRGB(
-		255,
-		200,
-		70
-	)
-
-
--- ================================================================
--- CONFIG
--- ================================================================
 
 local CONFIG = {
 
-	Move1Name = "Star Punch",
+	CharacterName = "Itsuki",
 
-	Move2Name = "Nakano Rush",
+	MainColor =
+		Color3.fromRGB(
+			255,
+			80,
+			60
+		),
 
-	Move3Name = "Determined Strike",
+	SecondaryColor =
+		Color3.fromRGB(
+			255,
+			170,
+			60
+		),
 
-	Move4Name = "Five Star Combo",
-
-
-	SpecialName = "Study Mode",
-
-
-	Ult1Name = "Quintuplet Power",
-
-	Ult2Name = "Itsuki Awakening",
-
-	Ult3Name = "Nakano Finale",
-
-	Ult4Name = "Red Star Collapse",
+	LightColor =
+		Color3.fromRGB(
+			255,
+			230,
+			150
+		),
 
 
-	ComboWindow = 1.5,
+	Move1Name =
+		"⭐ Star Impact",
 
-	VFXCooldown = 0.08,
+	Move2Name =
+		"🍴 Determination Rush",
+
+	Move3Name =
+		"🔥 Nakano Spirit",
+
+	Move4Name =
+		"❤️ Leader's Command",
+
+
+	UltName =
+		"❤️ THE QUINTESSENTIAL LEADER ❤️",
+
+
+	UltMove1 =
+		"Starfall Judgment",
+
+	UltMove2 =
+		"Leader's Flame",
+
+	UltMove3 =
+		"Quintuple Power",
+
+	UltMove4 =
+		"Final Nakano Strike",
+
+
+	VFXCooldown =
+		0.05,
+
+
+	UltDuration =
+		30,
+
+
+	ComboWindow =
+		1.5,
 
 }
 
 
--- ================================================================
--- GAME TRIGGERS
---
--- Replace these with your game's actual move animations
--- ================================================================
-
-
-local SLOT1_ID =
-	"rbxassetid://12273188754"
-
-
-local SLOT2_ID =
-	"rbxassetid://12296113986"
-
-
-local SLOT3_ID =
-	"rbxassetid://12309835105"
-
-
-local SLOT4_ID =
-	"rbxassetid://12351854556"
-
-
-local SPECIAL_ID =
-	"rbxassetid://12460977270"
-
-
-
-local ULT1_TRIGGER =
-	"rbxassetid://12467789963"
-
-
-local ULT2_TRIGGER =
-	"rbxassetid://13630786846"
-
-
-local ULT3_TRIGGER =
-	"rbxassetid://14057231976"
-
-
 
 -- ================================================================
--- ITSUKI ANIMATIONS
+-- ANIMATION IDS
 -- ================================================================
 
+-- Replace these with your final Itsuki animations
 
-local MOVE1_ANIMATION =
-	"rbxassetid://18715812734"
-
-
-local MOVE2_ANIMATION =
-	"rbxassetid://18715817240"
-
-
-local MOVE3_ANIMATION =
-	"rbxassetid://18715818827"
-
-
-local MOVE4_ANIMATION =
-	"rbxassetid://18715820628"
-
-
-
-local SPECIAL_ANIMATION =
-	"rbxassetid://18715874793"
-
-
-
-local ULT1_ANIMATION =
-	"rbxassetid://18715881168"
-
-
-local ULT2_ANIMATION =
-	"rbxassetid://18715884857"
-
-
-local ULT3_ANIMATION =
-	"rbxassetid://18715898844"
-
-
-
-local SPAWN_ANIMATION =
-	"rbxassetid://18715800557"
-
-
-
-local IDLE_ANIMATION =
-	"rbxassetid://17268390209"
-
-
-
--- ================================================================
--- M1 SYSTEM
--- ================================================================
-
-
-local M1_TRIGGERS = {
+local M1_REPLACEMENTS = {
 
 	["rbxassetid://18715994424"] =
 		"rbxassetid://18715812734",
 
-
 	["rbxassetid://18715998497"] =
 		"rbxassetid://18715817240",
-
 
 	["rbxassetid://18715999597"] =
 		"rbxassetid://18715818827",
 
-
 	["rbxassetid://18716001119"] =
 		"rbxassetid://18715820628",
+
+}
+
+
+
+local MOVES = {
+
+	Move1 =
+		"rbxassetid://18715842262",
+
+	Move2 =
+		"rbxassetid://18715831781",
+
+	Move3 =
+		"rbxassetid://18715837899",
+
+	Move4 =
+		"rbxassetid://18715845645",
+
+
+	Ult =
+		"rbxassetid://18715898844",
 
 }
 
@@ -232,54 +164,52 @@ local M1_TRIGGERS = {
 -- ================================================================
 
 
-getgenv().ItsukiNakanoV1 =
-	getgenv().ItsukiNakanoV1 or {
+getgenv().ItsukiNakanoUltimate =
+	getgenv().ItsukiNakanoUltimate or {
 
 
-		Initialized = false,
+	Initialized = false,
 
 
-		Connections = {},
+	Connections = {},
+
+	CharacterConnections = {},
 
 
-		CharacterConnections = {},
+	CharacterToken = 0,
 
 
-		CharacterToken = 0,
+	IsUlted = false,
 
 
-		LastVFX = {},
+	Combo = 0,
+
+	LastHit = 0,
 
 
-		Combo = 0,
+	LastVFX = {},
 
 
-		LastHit = 0,
+	AuraObjects = {},
 
 
-		IsUlted = false,
-
-
-		AuraObjects = {},
-
-	}
+}
 
 
 
 local SESSION =
-	getgenv().ItsukiNakanoV1
+	getgenv().ItsukiNakanoUltimate
 
 
 
 -- ================================================================
--- CONNECTIONS
+-- CLEANUP
 -- ================================================================
 
 
 local function disconnect(list)
 
-
-	for _,connection in ipairs(list) do
+	for _, connection in ipairs(list) do
 
 		pcall(function()
 
@@ -298,7 +228,6 @@ end
 
 local function track(connection)
 
-
 	if connection then
 
 		table.insert(
@@ -316,11 +245,13 @@ end
 
 
 -- ================================================================
--- ANIMATION ENGINE
+-- ANIMATION SYSTEM
 -- ================================================================
 
 
-local function getAnimator(humanoid)
+local function getAnimator(
+	humanoid: Humanoid
+)
 
 
 	local animator =
@@ -331,16 +262,13 @@ local function getAnimator(humanoid)
 
 	if not animator then
 
-
 		animator =
 			Instance.new(
 				"Animator"
 			)
 
-
 		animator.Parent =
 			humanoid
-
 
 	end
 
@@ -348,7 +276,6 @@ local function getAnimator(humanoid)
 	return animator
 
 end
-
 
 
 
@@ -364,7 +291,6 @@ local function playAnimation(
 	end
 
 
-
 	local animation =
 		Instance.new(
 			"Animation"
@@ -376,16 +302,19 @@ local function playAnimation(
 
 
 
-	local success,trackResult =
+	local animator =
+		getAnimator(
+			humanoid
+		)
+
+
+
+	local success, result =
 		pcall(function()
 
-
-			return getAnimator(
-				humanoid
-			):LoadAnimation(
+			return animator:LoadAnimation(
 				animation
 			)
-
 
 		end)
 
@@ -395,30 +324,30 @@ local function playAnimation(
 
 
 
-	if success and trackResult then
-
-
-		trackResult.Priority =
-			priority
-			or Enum.AnimationPriority.Action
-
-
-		trackResult.Looped =
-			false
-
-
-		trackResult:Play(
-			0.05,
-			1,
-			1
-		)
-
-
-
-		return trackResult
-
+	if not success then
+		return
 	end
 
+
+
+	result.Priority =
+		priority
+		or Enum.AnimationPriority.Action
+
+
+
+	result.Looped =
+		false
+
+
+
+	result:Play(
+		0.05
+	)
+
+
+
+	return result
 
 end
 
@@ -434,26 +363,25 @@ local function getVFXFolder()
 
 	local folder =
 		workspace:FindFirstChild(
-			"Itsuki_VFX"
+			"ItsukiNakano_VFX"
 		)
+
 
 
 	if not folder then
 
-
 		folder =
 			Instance.new(
-				"Folder"
+				Folder
 			)
 
 
 		folder.Name =
-			"Itsuki_VFX"
+			"ItsukiNakano_VFX"
 
 
 		folder.Parent =
 			workspace
-
 
 	end
 
@@ -464,26 +392,20 @@ end
 
 
 
-print(
-	"[R4FIX] Itsuki Nakano Core Loaded ❤️"
-)
 -- ================================================================
--- ITSUKI VFX SYSTEM ❤️🔥
--- ================================================================
-
-
--- ================================================================
--- COOLDOWN SYSTEM
+-- COOLDOWN
 -- ================================================================
 
 
 local function allowed(
 	key,
-	cooldown
+	time
 )
+
 
 	local now =
 		os.clock()
+
 
 
 	local last =
@@ -491,15 +413,18 @@ local function allowed(
 		or 0
 
 
-	if now - last < cooldown then
+
+	if now-last < time then
 
 		return false
 
 	end
 
 
+
 	SESSION.LastVFX[key] =
 		now
+
 
 
 	return true
@@ -509,181 +434,24 @@ end
 
 
 -- ================================================================
--- RED ENERGY PARTICLES
+-- STAR BURST VFX
 -- ================================================================
 
 
-local function energyParticles(
-	parent,
-	amount,
+local function starBurst(
+	cframe,
+	size,
 	key
 )
 
 
-	if not parent then
+	if not allowed(
+		key,
+		CONFIG.VFXCooldown
+	) then
+
 		return
-	end
 
-
-	if key
-		and not allowed(
-			key,
-			CONFIG.VFXCooldown
-		)
-	then
-		return
-	end
-
-
-
-	local attachment =
-		Instance.new(
-			Attachment
-		)
-
-
-	attachment.Name =
-		"ItsukiEnergyAttachment"
-
-
-	attachment.Parent =
-		parent
-
-
-
-	local emitter =
-		Instance.new(
-			ParticleEmitter
-		)
-
-
-
-	emitter.Texture =
-		"rbxasset://textures/particles/sparkles_main.dds"
-
-
-
-	emitter.Color =
-		ColorSequence.new({
-
-			ColorSequenceKeypoint.new(
-				0,
-				WHITE
-			),
-
-			ColorSequenceKeypoint.new(
-				0.4,
-				RED
-			),
-
-			ColorSequenceKeypoint.new(
-				1,
-				DARK_RED
-			)
-
-		})
-
-
-
-	emitter.LightEmission =
-		1
-
-
-
-	emitter.Rate =
-		0
-
-
-
-	emitter.Lifetime =
-		NumberRange.new(
-			0.4,
-			1
-		)
-
-
-
-	emitter.Speed =
-		NumberRange.new(
-			4,
-			9
-		)
-
-
-
-	emitter.SpreadAngle =
-		Vector2.new(
-			360,
-			360
-		)
-
-
-
-	emitter.Size =
-		NumberSequence.new({
-
-			NumberSequenceKeypoint.new(
-				0,
-				0.35
-			),
-
-
-			NumberSequenceKeypoint.new(
-				0.5,
-				0.8
-			),
-
-
-			NumberSequenceKeypoint.new(
-				1,
-				0
-			)
-
-		})
-
-
-
-	emitter.Parent =
-		attachment
-
-
-
-	emitter:Emit(
-		amount
-	)
-
-
-
-	Debris:AddItem(
-		attachment,
-		1.2
-	)
-
-end
-
-
-
-
--- ================================================================
--- ENERGY BURST
--- ================================================================
-
-
-local function energyBurst(
-	cframe,
-	size,
-	key,
-	duration
-)
-
-
-	if key
-		and not allowed(
-			key,
-			CONFIG.VFXCooldown
-		)
-	then
-		return
 	end
 
 
@@ -695,7 +463,7 @@ local function energyBurst(
 
 
 	part.Name =
-		"ItsukiEnergyBurst"
+		"ItsukiStarImpact"
 
 
 
@@ -707,12 +475,9 @@ local function energyBurst(
 		false
 
 
-	part.CanTouch =
-		false
 
-
-	part.CanQuery =
-		false
+	part.Shape =
+		Enum.PartType.Ball
 
 
 
@@ -721,18 +486,13 @@ local function energyBurst(
 
 
 
-	part.Shape =
-		Enum.PartType.Ball
-
-
-
 	part.Color =
-		RED
+		CONFIG.MainColor
 
 
 
 	part.Transparency =
-		0.15
+		0.1
 
 
 
@@ -755,37 +515,12 @@ local function energyBurst(
 
 
 
-	local light =
-		Instance.new(
-			PointLight
-		)
-
-
-
-	light.Color =
-		RED
-
-
-	light.Brightness =
-		8
-
-
-	light.Range =
-		20
-
-
-	light.Parent =
-		part
-
-
-
-
 	TweenService:Create(
 
 		part,
 
 		TweenInfo.new(
-			duration or 0.35,
+			0.35,
 			Enum.EasingStyle.Quint,
 			Enum.EasingDirection.Out
 		),
@@ -799,28 +534,8 @@ local function energyBurst(
 					size
 				),
 
-
 			Transparency =
 				1
-
-		}
-
-	):Play()
-
-
-
-	TweenService:Create(
-
-		light,
-
-		TweenInfo.new(
-			0.4
-		),
-
-		{
-
-			Brightness = 0,
-			Range = 0
 
 		}
 
@@ -833,34 +548,185 @@ local function energyBurst(
 		0.5
 	)
 
+end
+
+
+
+-- ================================================================
+-- CONTINUED IN PART 2
+-- ================================================================
+-- ================================================================
+-- STAR PARTICLES
+-- ================================================================
+
+
+local function starParticles(
+	parent,
+	amount,
+	key
+)
+
+	if not parent then
+		return
+	end
+
+
+	if not allowed(
+		key,
+		CONFIG.VFXCooldown
+	) then
+		return
+	end
+
+
+	local attachment =
+		Instance.new(
+			Attachment
+		)
+
+
+	attachment.Name =
+		"ItsukiStarParticles"
+
+
+	attachment.Parent =
+		parent
+
+
+
+	local emitter =
+		Instance.new(
+			ParticleEmitter
+		)
+
+
+	emitter.Texture =
+		"rbxasset://textures/particles/sparkles_main.dds"
+
+
+	emitter.Color =
+		ColorSequence.new({
+
+			ColorSequenceKeypoint.new(
+				0,
+				CONFIG.LightColor
+			),
+
+			ColorSequenceKeypoint.new(
+				0.5,
+				CONFIG.SecondaryColor
+			),
+
+			ColorSequenceKeypoint.new(
+				1,
+				CONFIG.MainColor
+			)
+
+		})
+
+
+	emitter.LightEmission =
+		1
+
+
+	emitter.Rate =
+		0
+
+
+	emitter.Lifetime =
+		NumberRange.new(
+			0.4,
+			1
+		)
+
+
+	emitter.Speed =
+		NumberRange.new(
+			2,
+			7
+		)
+
+
+	emitter.SpreadAngle =
+		Vector2.new(
+			360,
+			360
+		)
+
+
+	emitter.Rotation =
+		NumberRange.new(
+			0,
+			360
+		)
+
+
+	emitter.RotSpeed =
+		NumberRange.new(
+			-180,
+			180
+		)
+
+
+	emitter.Size =
+		NumberSequence.new({
+
+			NumberSequenceKeypoint.new(
+				0,
+				0.4
+			),
+
+			NumberSequenceKeypoint.new(
+				0.5,
+				0.8
+			),
+
+			NumberSequenceKeypoint.new(
+				1,
+				0
+			)
+
+		})
+
+
+	emitter.Parent =
+		attachment
+
+
+
+	emitter:Emit(
+		amount
+	)
+
+
+
+	Debris:AddItem(
+		attachment,
+		1.5
+	)
 
 end
 
 
 
-
 -- ================================================================
--- RED SHOCKWAVE RING
+-- IMPACT RING
 -- ================================================================
 
 
-local function redRing(
+local function impactRing(
 	cframe,
-	startSize,
-	endSize,
+	size,
 	key
 )
 
 
-	if key
-		and not allowed(
-			key,
-			CONFIG.VFXCooldown
-		)
-	then
+	if not allowed(
+		key,
+		CONFIG.VFXCooldown
+	) then
 		return
 	end
-
 
 
 	local ring =
@@ -869,10 +735,8 @@ local function redRing(
 		)
 
 
-
 	ring.Name =
-		"ItsukiShockwave"
-
+		"ItsukiImpactRing"
 
 
 	ring.Anchored =
@@ -883,53 +747,41 @@ local function redRing(
 		false
 
 
-	ring.CanTouch =
+	ring.CastShadow =
 		false
-
-
-	ring.CanQuery =
-		false
-
-
-
-	ring.Shape =
-		Enum.PartType.Cylinder
-
 
 
 	ring.Material =
 		Enum.Material.Neon
 
 
+	ring.Shape =
+		Enum.PartType.Cylinder
+
 
 	ring.Color =
-		RED
-
+		CONFIG.SecondaryColor
 
 
 	ring.Transparency =
 		0.2
 
 
-
 	ring.Size =
 		Vector3.new(
-			0.1,
-			startSize,
-			startSize
+			0.2,
+			2,
+			2
 		)
 
 
-
 	ring.CFrame =
-		cframe
-		*
+		cframe *
 		CFrame.Angles(
 			0,
 			0,
 			math.rad(90)
 		)
-
 
 
 	ring.Parent =
@@ -942,7 +794,7 @@ local function redRing(
 		ring,
 
 		TweenInfo.new(
-			0.45,
+			0.5,
 			Enum.EasingStyle.Quint,
 			Enum.EasingDirection.Out
 		),
@@ -951,11 +803,10 @@ local function redRing(
 
 			Size =
 				Vector3.new(
-					0.1,
-					endSize,
-					endSize
+					0.2,
+					size,
+					size
 				),
-
 
 			Transparency =
 				1
@@ -975,94 +826,534 @@ end
 
 
 
-
 -- ================================================================
--- IMPACT EFFECT
+-- AURA
 -- ================================================================
 
 
-local function punchImpact(
-	root,
-	key
+local function createItsukiAura(
+	root
 )
 
 
-	if not root then
-		return
-	end
+	local attachment =
+		Instance.new(
+			Attachment
+		)
+
+
+	attachment.Name =
+		"ItsukiLeaderAura"
+
+
+	attachment.Parent =
+		root
 
 
 
-	energyBurst(
-		root.CFrame,
-		10,
-		key .. "_burst",
-		0.25
+	local emitter =
+		Instance.new(
+			ParticleEmitter
+		)
+
+
+
+	emitter.Texture =
+		"rbxasset://textures/particles/sparkles_main.dds"
+
+
+
+	emitter.Color =
+		ColorSequence.new({
+
+			ColorSequenceKeypoint.new(
+				0,
+				CONFIG.LightColor
+			),
+
+			ColorSequenceKeypoint.new(
+				0.5,
+				CONFIG.SecondaryColor
+			),
+
+			ColorSequenceKeypoint.new(
+				1,
+				CONFIG.MainColor
+			)
+
+		})
+
+
+
+	emitter.LightEmission =
+		0.8
+
+
+
+	emitter.Rate =
+		12
+
+
+
+	emitter.Lifetime =
+		NumberRange.new(
+			0.5,
+			1
+		)
+
+
+
+	emitter.Speed =
+		NumberRange.new(
+			0.5,
+			2
+		)
+
+
+
+	emitter.SpreadAngle =
+		Vector2.new(
+			360,
+			360
+		)
+
+
+
+	emitter.Size =
+		NumberSequence.new({
+
+			NumberSequenceKeypoint.new(
+				0,
+				0.25
+			),
+
+			NumberSequenceKeypoint.new(
+				0.5,
+				0.7
+			),
+
+			NumberSequenceKeypoint.new(
+				1,
+				0
+			)
+
+		})
+
+
+
+	emitter.Parent =
+		attachment
+
+
+
+	table.insert(
+		SESSION.AuraObjects,
+		attachment
 	)
 
 
 
-	redRing(
-		root.CFrame,
-		2,
-		25,
-		key .. "_ring"
-	)
-
-
-
-	energyParticles(
-		root,
-		35,
-		key .. "_particles"
-	)
-
+	return attachment
 
 end
 
 
 
-
-
 -- ================================================================
--- ULTIMATE EFFECT
+-- ARM GLOW
 -- ================================================================
 
 
-local function ultimateEffect(
-	root,
-	key
+local function createHandGlow(
+	character
 )
 
 
-	if not root then
+	for _, name in ipairs({
+
+		"Left Arm",
+		"Right Arm",
+		"LeftHand",
+		"RightHand",
+		"LeftLowerArm",
+		"RightLowerArm",
+
+	}) do
+
+
+		local limb =
+			character:FindFirstChild(
+				name
+			)
+
+
+
+		if limb and limb:IsA(
+			"BasePart"
+		) then
+
+
+			local highlight =
+				Instance.new(
+					Highlight
+				)
+
+
+
+			highlight.Name =
+				"ItsukiLeaderGlow"
+
+
+
+			highlight.Adornee =
+				limb
+
+
+
+			highlight.FillColor =
+				CONFIG.MainColor
+
+
+
+			highlight.OutlineColor =
+				CONFIG.LightColor
+
+
+
+			highlight.FillTransparency =
+				0.75
+
+
+
+			highlight.OutlineTransparency =
+				0.1
+
+
+
+			highlight.Parent =
+				limb
+
+
+
+			table.insert(
+				SESSION.AuraObjects,
+				highlight
+			)
+
+
+		end
+
+	end
+
+end
+-- ================================================================
+-- ARM TRAILS
+-- ================================================================
+
+
+local function createItsukiTrails(
+	character
+)
+
+	for _, limbName in ipairs({
+
+		"Left Arm",
+		"Right Arm",
+		"LeftHand",
+		"RightHand",
+
+	}) do
+
+
+		local limb =
+			character:FindFirstChild(
+				limbName
+			)
+
+
+
+		if limb and limb:IsA(
+			"BasePart"
+		) then
+
+
+			local a0 =
+				Instance.new(
+					Attachment
+				)
+
+
+			a0.Position =
+				Vector3.new(
+					0,
+					-0.4,
+					0
+				)
+
+
+			a0.Parent =
+				limb
+
+
+
+			local a1 =
+				Instance.new(
+					Attachment
+				)
+
+
+			a1.Position =
+				Vector3.new(
+					0,
+					0.4,
+					0
+				)
+
+
+			a1.Parent =
+				limb
+
+
+
+			local trail =
+				Instance.new(
+					Trail
+				)
+
+
+
+			trail.Name =
+				"ItsukiStarTrail"
+
+
+
+			trail.Attachment0 =
+				a0
+
+
+
+			trail.Attachment1 =
+				a1
+
+
+
+			trail.Lifetime =
+				0.35
+
+
+
+			trail.LightEmission =
+				0.8
+
+
+
+			trail.Color =
+				ColorSequence.new({
+
+					ColorSequenceKeypoint.new(
+						0,
+						CONFIG.LightColor
+					),
+
+					ColorSequenceKeypoint.new(
+						0.5,
+						CONFIG.SecondaryColor
+					),
+
+					ColorSequenceKeypoint.new(
+						1,
+						CONFIG.MainColor
+					)
+
+				})
+
+
+
+			trail.Transparency =
+				NumberSequence.new({
+
+					NumberSequenceKeypoint.new(
+						0,
+						0.1
+					),
+
+					NumberSequenceKeypoint.new(
+						1,
+						1
+					)
+
+				})
+
+
+
+			trail.Parent =
+				limb
+
+
+
+			table.insert(
+				SESSION.AuraObjects,
+				trail
+			)
+
+
+			table.insert(
+				SESSION.AuraObjects,
+				a0
+			)
+
+
+			table.insert(
+				SESSION.AuraObjects,
+				a1
+			)
+
+		end
+
+	end
+
+end
+
+
+
+-- ================================================================
+-- CLEAR EFFECTS
+-- ================================================================
+
+
+local function clearEffects()
+
+
+	for _, object in ipairs(
+		SESSION.AuraObjects
+	) do
+
+
+		if object
+			and object.Parent
+		then
+
+
+			pcall(function()
+
+				object:Destroy()
+
+			end)
+
+		end
+
+
+	end
+
+
+
+	table.clear(
+		SESSION.AuraObjects
+	)
+
+
+
+	local character =
+		Player.Character
+
+
+
+	if character then
+
+
+		for _, object in ipairs(
+			character:GetDescendants()
+		) do
+
+
+			if object.Name ==
+				"ItsukiLeaderGlow"
+				or object.Name ==
+				"ItsukiStarTrail"
+				or object.Name ==
+				"ItsukiLeaderAura"
+			then
+
+
+				pcall(function()
+
+					object:Destroy()
+
+				end)
+
+
+			end
+
+
+		end
+
+
+	end
+
+end
+
+
+
+-- ================================================================
+-- ULTIMATE TRANSFORMATION
+-- ================================================================
+
+
+local function ultimateTransformation(
+	character,
+	root
+)
+
+
+	if SESSION.IsUlted then
 		return
 	end
 
 
 
-	energyBurst(
-		root.CFrame,
-		35,
-		key .. "_burst",
-		0.8
+	SESSION.IsUlted =
+		true
+
+
+
+	createItsukiAura(
+		root
 	)
 
 
 
-	redRing(
-		root.CFrame,
-		5,
-		70,
-		key .. "_ring"
+	createHandGlow(
+		character
 	)
 
 
 
-	energyParticles(
+	createItsukiTrails(
+		character
+	)
+
+
+
+	starBurst(
+		root.CFrame,
+		28,
+		"ultimate_star"
+	)
+
+
+
+	impactRing(
+		root.CFrame,
+		55,
+		"ultimate_ring"
+	)
+
+
+
+	starParticles(
 		root,
 		120,
-		key .. "_particles"
+		"ultimate_particles"
 	)
 
 
@@ -1074,8 +1365,13 @@ local function ultimateEffect(
 
 
 
+	light.Name =
+		"ItsukiUltimateLight"
+
+
+
 	light.Color =
-		RED
+		CONFIG.MainColor
 
 
 
@@ -1099,13 +1395,13 @@ local function ultimateEffect(
 		light,
 
 		TweenInfo.new(
-			1
+			2,
+			Enum.EasingStyle.Quint
 		),
 
 		{
 
-			Brightness = 0,
-			Range = 0
+			Brightness = 5
 
 		}
 
@@ -1113,946 +1409,29 @@ local function ultimateEffect(
 
 
 
-	Debris:AddItem(
-		light,
-		1.2
-	)
-
-end
-
-
-
-
--- ================================================================
--- AURA SYSTEM
--- ================================================================
-
-
-local function createItsukiAura(
-	root
-)
-
-
-	if not root then
-		return
-	end
-
-
-
-	local attachment =
-		Instance.new(
-			Attachment
-		)
-
-
-
-	attachment.Name =
-		"ItsukiRedAura"
-
-
-
-	attachment.Parent =
-		root
-
-
-
-	local emitter =
-		Instance.new(
-			ParticleEmitter
-		)
-
-
-
-	emitter.Texture =
-		"rbxasset://textures/particles/sparkles_main.dds"
-
-
-
-	emitter.Color =
-		ColorSequence.new(
-		RED
-		)
-
-
-
-	emitter.LightEmission =
-		0.8
-
-
-
-	emitter.Rate =
-		10
-
-
-
-	emitter.Lifetime =
-		NumberRange.new(
-			0.5,
-			1
-		)
-
-
-
-	emitter.Speed =
-		NumberRange.new(
-			1,
-			3
-		)
-
-
-
-	emitter.SpreadAngle =
-		Vector2.new(
-			360,
-			360
-		)
-
-
-
-	emitter.Size =
-		NumberSequence.new({
-
-			NumberSequenceKeypoint.new(
-				0,
-				0.25
-			),
-
-			NumberSequenceKeypoint.new(
-				0.5,
-				0.6
-			),
-
-			NumberSequenceKeypoint.new(
-				1,
-				0
-			)
-
-		})
-
-
-
-	emitter.Parent =
-		attachment
-
-
-
 	table.insert(
 		SESSION.AuraObjects,
-		attachment
+		light
 	)
 
 
-end
 
+	task.delay(
+		CONFIG.UltDuration,
+		function()
 
 
+			SESSION.IsUlted =
+				false
 
-print(
-	"[R4FIX] Itsuki VFX System Loaded ❤️🔥"
-)
--- ================================================================
--- ITSUKI COMBAT CONTROLLER ❤️🔥
--- ================================================================
 
+			clearEffects()
 
--- ================================================================
--- COMBO SYSTEM
--- ================================================================
-
-
-local function registerCombo()
-
-
-	local now =
-		os.clock()
-
-
-
-	if now - SESSION.LastHit
-		<= CONFIG.ComboWindow
-	then
-
-		SESSION.Combo =
-			math.min(
-				SESSION.Combo + 1,
-				10
-			)
-
-	else
-
-		SESSION.Combo =
-			1
-
-	end
-
-
-
-	SESSION.LastHit =
-		now
-
-
-
-	return SESSION.Combo
-
-end
-
-
-
-
--- ================================================================
--- MOVE EXECUTION
--- ================================================================
-
-
-local function playMove(
-	humanoid,
-	animationId,
-	duration
-)
-
-
-	local trackResult =
-		playAnimation(
-			humanoid,
-			animationId,
-			Enum.AnimationPriority.Action
-		)
-
-
-
-	if trackResult and duration then
-
-
-		task.delay(
-			duration,
-			function()
-
-
-				pcall(function()
-
-					if trackResult.IsPlaying then
-
-						trackResult:Stop(
-							0.1
-						)
-
-					end
-
-				end)
-
-
-			end
-		)
-
-	end
-
-
-
-	return trackResult
-
-end
-
-
-
-
--- ================================================================
--- MOVE EFFECTS
--- ================================================================
-
-
-local function moveEffect(
-	root,
-	moveName
-)
-
-
-	if moveName == "Move1" then
-
-
-		punchImpact(
-			root,
-			"star_punch"
-		)
-
-
-
-	elseif moveName == "Move2" then
-
-
-		punchImpact(
-			root,
-			"rush"
-		)
-
-
-
-	elseif moveName == "Move3" then
-
-
-		energyBurst(
-			root.CFrame,
-			18,
-			"determined_strike",
-			0.4
-		)
-
-
-		redRing(
-			root.CFrame,
-			3,
-			40,
-			"determined_ring"
-		)
-
-
-
-	elseif moveName == "Move4" then
-
-
-		for i = 1,3 do
-
-
-			task.delay(
-				i * 0.1,
-				function()
-
-					punchImpact(
-						root,
-						"five_combo_"..i
-					)
-
-				end
-			)
 
 		end
-
-
-	end
+	)
 
 end
-
-
-
-
--- ================================================================
--- ANIMATION DETECTOR
--- ================================================================
-
-
-local function setupMoveHandler(
-	character,
-	humanoid,
-	root,
-	token
-)
-
-
-	track(
-
-		humanoid.AnimationPlayed:Connect(
-
-			function(animationTrack)
-
-
-				if token
-					~= SESSION.CharacterToken
-				then
-
-					return
-
-				end
-
-
-
-				if not animationTrack.Animation then
-					return
-				end
-
-
-
-				local id =
-					animationTrack.Animation.AnimationId
-
-
-
-
-				-- =================================================
-				-- M1 REPLACEMENT
-				-- =================================================
-
-
-				local replacement =
-					M1_TRIGGERS[id]
-
-
-
-				if replacement then
-
-
-					pcall(function()
-
-						animationTrack:Stop()
-
-					end)
-
-
-
-					playAnimation(
-						humanoid,
-						replacement,
-						Enum.AnimationPriority.Action
-					)
-
-
-
-					energyParticles(
-						root,
-						12,
-						"m1"
-					)
-
-
-
-					return
-
-				end
-
-
-
-
-				-- =================================================
-				-- MOVE 1
-				-- =================================================
-
-
-				if id == SLOT1_ID then
-
-
-					animationTrack:Stop()
-
-
-
-					playMove(
-						humanoid,
-						MOVE1_ANIMATION,
-						0.8
-					)
-
-
-
-					moveEffect(
-						root,
-						"Move1"
-					)
-
-
-
-					return
-
-				end
-
-
-
-
-				-- =================================================
-				-- MOVE 2
-				-- =================================================
-
-
-				if id == SLOT2_ID then
-
-
-					animationTrack:Stop()
-
-
-
-					playMove(
-						humanoid,
-						MOVE2_ANIMATION,
-						1
-					)
-
-
-
-					moveEffect(
-						root,
-						"Move2"
-					)
-
-
-
-					return
-
-				end
-
-
-
-
-				-- =================================================
-				-- MOVE 3
-				-- =================================================
-
-
-				if id == SLOT3_ID then
-
-
-					animationTrack:Stop()
-
-
-
-					playMove(
-						humanoid,
-						MOVE3_ANIMATION,
-						1
-					)
-
-
-
-					moveEffect(
-						root,
-						"Move3"
-					)
-
-
-
-					return
-
-				end
-
-
-
-
-				-- =================================================
-				-- MOVE 4
-				-- =================================================
-
-
-				if id == SLOT4_ID then
-
-
-					animationTrack:Stop()
-
-
-
-					playMove(
-						humanoid,
-						MOVE4_ANIMATION,
-						1.2
-					)
-
-
-
-					moveEffect(
-						root,
-						"Move4"
-					)
-
-
-
-					return
-
-				end
-
-
-
-
-				-- =================================================
-				-- SPECIAL
-				-- =================================================
-
-
-				if id == SPECIAL_ID then
-
-
-					animationTrack:Stop()
-
-
-
-					playMove(
-						humanoid,
-						SPECIAL_ANIMATION,
-						1
-					)
-
-
-
-					ultimateEffect(
-						root,
-						"study_mode"
-					)
-
-
-
-					return
-
-				end
-
-
-
-
-				-- =================================================
-				-- ULTIMATE 1
-				-- =================================================
-
-
-				if id == ULT1_TRIGGER then
-
-
-					animationTrack:Stop()
-
-
-
-					SESSION.IsUlted =
-						true
-
-
-
-					playMove(
-						humanoid,
-						ULT1_ANIMATION,
-						1.5
-					)
-
-
-
-					ultimateEffect(
-						root,
-						"quintuplet_power"
-					)
-
-
-
-					return
-
-				end
-
-
-
-
-				-- =================================================
-				-- ULTIMATE 2
-				-- =================================================
-
-
-				if id == ULT2_TRIGGER then
-
-
-					animationTrack:Stop()
-
-
-
-					playMove(
-						humanoid,
-						ULT2_ANIMATION,
-						1.5
-					)
-
-
-
-					ultimateEffect(
-						root,
-						"awakening"
-					)
-
-
-
-					return
-
-				end
-
-
-
-
-
-				-- =================================================
-				-- ULTIMATE 3
-				-- =================================================
-
-
-				if id == ULT3_TRIGGER then
-
-
-					animationTrack:Stop()
-
-
-
-					playMove(
-						humanoid,
-						ULT3_ANIMATION,
-						2
-					)
-
-
-
-					ultimateEffect(
-						root,
-						"finale"
-					)
-
-
-
-					return
-
-				end
-
-
-
-			end
-
-		)
-
-	)
-
-
-end
-
-
-
-
-print(
-	"[R4FIX] Itsuki Combat Controller Loaded ❤️🔥"
-)
--- ================================================================
--- ITSUKI CHARACTER SYSTEM ❤️🔥
--- ================================================================
-
-
--- ================================================================
--- CLEAR EFFECTS
--- ================================================================
-
-
-local function clearAura()
-
-
-	for _,object in ipairs(
-		SESSION.AuraObjects
-	) do
-
-
-		pcall(function()
-
-			if object then
-
-				object:Destroy()
-
-			end
-
-		end)
-
-
-	end
-
-
-
-	table.clear(
-		SESSION.AuraObjects
-	)
-
-
-end
-
-
-
-
--- ================================================================
--- SPAWN EFFECT
--- ================================================================
-
-
-local function spawnEffect(
-	character,
-	root
-)
-
-
-	energyBurst(
-		root.CFrame,
-		15,
-		"spawn",
-		0.5
-	)
-
-
-
-	redRing(
-		root.CFrame,
-		2,
-		30,
-		"spawn_ring"
-	)
-
-
-
-	energyParticles(
-		root,
-		60,
-		"spawn_particles"
-	)
-
-
-
-	local humanoid =
-		character:FindFirstChildOfClass(
-			"Humanoid"
-		)
-
-
-
-	if humanoid then
-
-
-		playAnimation(
-			humanoid,
-			SPAWN_ANIMATION,
-			Enum.AnimationPriority.Action2
-		)
-
-
-	end
-
-
-end
-
-
-
-
-
--- ================================================================
--- IDLE SYSTEM
--- ================================================================
-
-
-local function setupIdle(
-	character,
-	humanoid,
-	token
-)
-
-
-	local animation =
-		Instance.new(
-			"Animation"
-		)
-
-
-	animation.AnimationId =
-		IDLE_ANIMATION
-
-
-
-	local idleTrack
-
-
-	pcall(function()
-
-		idleTrack =
-			getAnimator(
-				humanoid
-			):LoadAnimation(
-				animation
-			)
-
-	end)
-
-
-
-	animation:Destroy()
-
-
-
-	if idleTrack then
-
-
-		idleTrack.Priority =
-			Enum.AnimationPriority.Idle
-
-
-
-		idleTrack.Looped =
-			true
-
-
-	end
-
-
-
-
-
-	track(
-
-		RunService.RenderStepped:Connect(
-
-			function()
-
-
-				if token
-					~= SESSION.CharacterToken
-				then
-
-					return
-
-				end
-
-
-
-				if not character.Parent then
-					return
-				end
-
-
-
-				local moving =
-					humanoid.MoveDirection.Magnitude
-					> 0.05
-
-
-
-				if idleTrack then
-
-
-					if moving then
-
-
-						if idleTrack.IsPlaying then
-
-							idleTrack:Stop(
-								0.2
-							)
-
-						end
-
-
-
-					else
-
-
-						if not idleTrack.IsPlaying then
-
-							idleTrack:Play(
-								0.2
-							)
-
-						end
-
-
-					end
-
-
-				end
-
-
-
-			end
-
-		)
-
-	)
-
-
-end
-
-
 
 
 
@@ -2061,7 +1440,9 @@ end
 -- ================================================================
 
 
-local function findSlot(number)
+local function findHotbarSlot(
+	number
+)
 
 
 	local hotbar =
@@ -2103,25 +1484,36 @@ local function findSlot(number)
 
 
 
-	return frame:FindFirstChild(
-		tostring(number)
-	)
+	local slot =
+		frame:FindFirstChild(
+			tostring(number)
+		)
 
+
+
+	if not slot then
+		return
+	end
+
+
+
+	return slot:FindFirstChild(
+		"Base"
+	)
+	or slot
 
 end
 
 
 
-
-
-local function setMoveName(
+local function styleSlot(
 	number,
 	name
 )
 
 
 	local slot =
-		findSlot(
+		findHotbarSlot(
 			number
 		)
 
@@ -2133,60 +1525,139 @@ local function setMoveName(
 
 
 
-	local label =
+	local text =
 		slot:FindFirstChild(
-			"ToolName",
-			true
+			"ToolName"
 		)
 
 
 
-	if label
-		and label:IsA("TextLabel")
+	if text
+		and text:IsA(
+			"TextLabel"
+		)
 	then
 
 
-		label.Text =
+		text.Text =
 			name
 
+
+
+		text.TextColor3 =
+			CONFIG.LightColor
+
+
+
+		text.TextStrokeColor3 =
+			CONFIG.MainColor
+
+
+
+		text.TextStrokeTransparency =
+			0
 
 	end
 
 
+
+	local stroke =
+		slot:FindFirstChild(
+			"ItsukiStroke"
+		)
+
+
+
+	if not stroke then
+
+
+		stroke =
+			Instance.new(
+				"UIStroke"
+			)
+
+
+		stroke.Name =
+			"ItsukiStroke"
+
+
+		stroke.Thickness =
+			2
+
+
+		stroke.Color =
+			CONFIG.MainColor
+
+
+		stroke.Parent =
+			slot
+
+
+	end
+
 end
 
 
 
-
-local function updateHotbar()
-
-
-	setMoveName(
-		1,
-		CONFIG.Move1Name
-	)
+local function refreshHotbar()
 
 
-	setMoveName(
-		2,
-		CONFIG.Move2Name
-	)
+	if SESSION.IsUlted then
 
 
-	setMoveName(
-		3,
-		CONFIG.Move3Name
-	)
+		styleSlot(
+			1,
+			"⭐ STARFALL JUDGMENT"
+		)
 
 
-	setMoveName(
-		4,
-		CONFIG.Move4Name
-	)
+		styleSlot(
+			2,
+			"🔥 LEADER'S FLAME"
+		)
 
+
+		styleSlot(
+			3,
+			"❤️ QUINTUPLE POWER"
+		)
+
+
+		styleSlot(
+			4,
+			"💥 FINAL NAKANO STRIKE"
+		)
+
+
+	else
+
+
+		styleSlot(
+			1,
+			CONFIG.Move1Name
+		)
+
+
+		styleSlot(
+			2,
+			CONFIG.Move2Name
+		)
+
+
+		styleSlot(
+			3,
+			CONFIG.Move3Name
+		)
+
+
+		styleSlot(
+			4,
+			CONFIG.Move4Name
+		)
+
+	end
 
 end
-
 
 
 
@@ -2195,118 +1666,382 @@ end
 -- ================================================================
 
 
-local function updateCharacterTab()
+local function fixCharacterTab()
 
 
-	local topbar =
-		PlayerGui:FindFirstChild(
-			"TopbarPlus"
-		)
-
-
-
-	if not topbar then
-		return
-	end
+	local gui =
+		PlayerGui
 
 
 
-
-	for _,obj in ipairs(
-		topbar:GetDescendants()
+	for _, object in ipairs(
+		gui:GetDescendants()
 	) do
 
 
+		if object:IsA(
+			"TextLabel"
+		) then
 
-		if obj:IsA("TextLabel") then
 
-
-			if obj.Text == "Hero Hunter"
-				or obj.Text == "Garou"
-				or obj.Text == "Character"
+			if object.Text ==
+				"Garou"
+				or object.Text ==
+				"Hero Hunter"
 			then
 
 
-				obj.Text =
+				object.Text =
 					MOVESET_NAME
 
 
+				object.TextColor3 =
+					CONFIG.LightColor
 
 			end
+
 
 		end
 
 
 	end
 
+end
+-- ================================================================
+-- MOVE EFFECT SYSTEM
+-- ================================================================
+
+
+local function moveImpact(
+	root,
+	name,
+	size
+)
+
+	if not root then
+		return
+	end
+
+
+	starBurst(
+		root.CFrame,
+		size,
+		name .. "_burst"
+	)
+
+
+	impactRing(
+		root.CFrame,
+		size * 2,
+		name .. "_ring"
+	)
+
+
+	starParticles(
+		root,
+		50,
+		name .. "_particles"
+	)
 
 end
 
 
 
-
 -- ================================================================
--- ULTIMATE BAR
+-- ANIMATION MOVE DETECTOR
 -- ================================================================
 
 
-local function updateUltimateBar()
+local function setupMoveSystem(
+	character,
+	humanoid,
+	root
+)
 
 
-	local bar =
-		PlayerGui:FindFirstChild(
-			"Bar"
+	track(
+		humanoid.AnimationPlayed:Connect(
+			function(animationTrack)
+
+
+				if not animationTrack
+					or not animationTrack.Animation
+				then
+					return
+				end
+
+
+				local id =
+					animationTrack.Animation.AnimationId
+
+
+
+				-- ====================================================
+				-- M1 REPLACEMENT
+				-- ====================================================
+
+
+				local replacement =
+					M1_REPLACEMENTS[id]
+
+
+				if replacement then
+
+
+					pcall(function()
+
+						animationTrack:Stop()
+
+					end)
+
+
+
+					playAnimation(
+						humanoid,
+						replacement,
+						Enum.AnimationPriority.Action
+					)
+
+
+
+					moveImpact(
+						root,
+						"Star_M1",
+						7
+					)
+
+
+					return
+
+				end
+
+
+
+				-- ====================================================
+				-- MOVE 1
+				-- ====================================================
+
+
+				if id == MOVES.Move1 then
+
+
+					pcall(function()
+
+						animationTrack:Stop()
+
+					end)
+
+
+
+					playAnimation(
+						humanoid,
+						MOVES.Move1,
+						Enum.AnimationPriority.Action
+					)
+
+
+
+					moveImpact(
+						root,
+						"Star_Impact",
+						16
+					)
+
+
+
+					return
+
+				end
+
+
+
+				-- ====================================================
+				-- MOVE 2
+				-- ====================================================
+
+
+				if id == MOVES.Move2 then
+
+
+					pcall(function()
+
+						animationTrack:Stop()
+
+					end)
+
+
+
+					playAnimation(
+						humanoid,
+						MOVES.Move2,
+						Enum.AnimationPriority.Action
+					)
+
+
+
+					for i = 1,3 do
+
+						task.delay(
+							i * 0.08,
+							function()
+
+								if root.Parent then
+
+									starBurst(
+										root.CFrame *
+										CFrame.new(
+											0,
+											0,
+											-i * 3
+										),
+										10,
+										"Rush_"..i
+									)
+
+								end
+
+							end
+						)
+
+					end
+
+
+					impactRing(
+						root.CFrame,
+						35,
+						"RushRing"
+					)
+
+
+					return
+
+				end
+
+
+
+				-- ====================================================
+				-- MOVE 3
+				-- ====================================================
+
+
+				if id == MOVES.Move3 then
+
+
+					pcall(function()
+
+						animationTrack:Stop()
+
+					end)
+
+
+
+					playAnimation(
+						humanoid,
+						MOVES.Move3,
+						Enum.AnimationPriority.Action
+					)
+
+
+
+					createItsukiAura(
+						root
+					)
+
+
+
+					moveImpact(
+						root,
+						"NakanoSpirit",
+						24
+					)
+
+
+
+					return
+
+				end
+
+
+
+				-- ====================================================
+				-- MOVE 4
+				-- ====================================================
+
+
+				if id == MOVES.Move4 then
+
+
+					pcall(function()
+
+						animationTrack:Stop()
+
+					end)
+
+
+
+					playAnimation(
+						humanoid,
+						MOVES.Move4,
+						Enum.AnimationPriority.Action
+					)
+
+
+
+					moveImpact(
+						root,
+						"LeaderCommand",
+						30
+					)
+
+
+
+					return
+
+				end
+
+
+
+				-- ====================================================
+				-- ULTIMATE
+				-- ====================================================
+
+
+				if id == MOVES.Ult then
+
+
+					pcall(function()
+
+						animationTrack:Stop()
+
+					end)
+
+
+
+					playAnimation(
+						humanoid,
+						MOVES.Ult,
+						Enum.AnimationPriority.Action4
+					)
+
+
+
+					ultimateTransformation(
+						character,
+						root
+					)
+
+
+
+					return
+
+				end
+
+
+			end
 		)
-
-
-
-	if not bar then
-		return
-	end
-
-
-
-	local magic =
-		bar:FindFirstChild(
-			"MagicHealth",
-			true
-		)
-
-
-
-	if not magic then
-		return
-	end
-
-
-
-	local label =
-		magic:FindFirstChild(
-			"TextLabel"
-		)
-
-
-
-	if label
-		and label:IsA("TextLabel")
-	then
-
-
-		label.Text =
-			"❤️ ITSUKI POWER ❤️"
-
-
-
-		label.TextColor3 =
-			RED
-
-
-	end
-
+	)
 
 end
-
-
 
 
 
@@ -2323,9 +2058,12 @@ local function setupCharacter(
 	SESSION.CharacterToken += 1
 
 
-	local token =
-		SESSION.CharacterToken
+	disconnect(
+		SESSION.CharacterConnections
+	)
 
+
+	clearEffects()
 
 
 	SESSION.IsUlted =
@@ -2333,40 +2071,17 @@ local function setupCharacter(
 
 
 
-	disconnect(
-		SESSION.CharacterConnections
-	)
-
-
-
-	clearAura()
-
-
-
 	local humanoid =
 		character:WaitForChild(
-			"Humanoid",
-			10
+			"Humanoid"
 		)
 
 
 
 	local root =
 		character:WaitForChild(
-			"HumanoidRootPart",
-			10
+			"HumanoidRootPart"
 		)
-
-
-
-	if not humanoid
-		or not root
-	then
-
-		return
-
-	end
-
 
 
 
@@ -2376,444 +2091,695 @@ local function setupCharacter(
 
 
 
-	spawnEffect(
+	createHandGlow(
+		character
+	)
+
+
+
+	createItsukiTrails(
+		character
+	)
+
+
+
+	setupMoveSystem(
 		character,
+		humanoid,
 		root
 	)
 
 
 
-	setupIdle(
-		character,
-		humanoid,
-		token
-	)
-
-
-
-	setupMoveHandler(
-		character,
-		humanoid,
-		root,
-		token
-	)
-
-
-
 	task.spawn(
-
 		function()
 
+			while character.Parent do
 
-			for i = 1,40 do
 
+				refreshHotbar()
 
-				updateHotbar()
-
-				updateCharacterTab()
-
-				updateUltimateBar()
+				fixCharacterTab()
 
 
 				task.wait(
-					0.15
+					0.5
 				)
-
 
 			end
 
-
 		end
-
 	)
 
 
 
 	humanoid.Died:Connect(
-
 		function()
-
 
 			SESSION.IsUlted =
 				false
 
 
+			clearEffects()
 
 		end
-
 	)
-
 
 end
-
-
-
-
 -- ================================================================
--- INITIALIZE CHARACTER
+-- UI ULTIMATE BAR SYSTEM
 -- ================================================================
 
 
-if Player.Character then
+local function createUltimateBar()
 
-
-	task.spawn(
-
-		function()
-
-			setupCharacter(
-				Player.Character
-			)
-
-		end
-
-	)
-
-
-end
-
-
-
-
-track(
-
-	Player.CharacterAdded:Connect(
-
-		function(character)
-
-
-			task.wait(
-				0.25
-			)
-
-
-			setupCharacter(
-				character
-			)
-
-
-		end
-
-	)
-
-)
-
-
-
-
-print(
-	"[R4FIX] Itsuki Character System Loaded ❤️🔥"
-)
--- ================================================================
--- ITSUKI NAKANO FINAL CHARACTER SECTION ❤️🔥
--- R4FIX COMPLETE EDITION
--- ================================================================
-
-
-
--- ================================================================
--- MUSIC SYSTEM
--- ================================================================
-
-
-local MUSIC_ID =
-	"rbxassetid://0"
--- Put your Itsuki theme/music here
-
-
-
-local function installMusic()
-
-
-	local existing =
+	local old =
 		PlayerGui:FindFirstChild(
-			"ItsukiTheme"
+			"ItsukiUltimateUI"
 		)
 
 
-
-	if existing then
-
-		return
-
+	if old then
+		old:Destroy()
 	end
 
 
-
-	local sound =
+	local gui =
 		Instance.new(
-			"Sound"
+			ScreenGui
 		)
 
 
-
-	sound.Name =
-		"ItsukiTheme"
-
+	gui.Name =
+		"ItsukiUltimateUI"
 
 
-	sound.SoundId =
-		MUSIC_ID
+	gui.ResetOnSpawn =
+		false
 
 
-
-	sound.Volume =
-		0.65
-
-
-
-	sound.Looped =
-		true
-
-
-
-	sound.Parent =
+	gui.Parent =
 		PlayerGui
 
 
 
-	if MUSIC_ID
-		~= "rbxassetid://0"
-	then
+	local frame =
+		Instance.new(
+			Frame
+		)
 
 
-		pcall(function()
-
-			sound:Play()
-
-		end)
+	frame.Name =
+		"UltimateFrame"
 
 
-	end
+	frame.AnchorPoint =
+		Vector2.new(
+			0.5,
+			1
+		)
+
+
+	frame.Position =
+		UDim2.new(
+			0.5,
+			0,
+			0.93,
+			0
+		)
+
+
+	frame.Size =
+		UDim2.new(
+			0.35,
+			0,
+					0.045,
+			0
+		)
+
+
+	frame.BackgroundColor3 =
+		Color3.fromRGB(
+			25,
+			10,
+			15
+		)
+
+
+	frame.BackgroundTransparency =
+		0.15
+
+
+	frame.Parent =
+		gui
+
+
+
+	local corner =
+		Instance.new(
+			UICorner
+		)
+
+
+	corner.CornerRadius =
+		UDim.new(
+			0,
+			15
+		)
+
+
+	corner.Parent =
+		frame
+
+
+
+	local stroke =
+		Instance.new(
+			UIStroke
+		)
+
+
+	stroke.Thickness =
+		3
+
+
+	stroke.Color =
+		CONFIG.MainColor
+
+
+	stroke.Parent =
+		frame
+
+
+
+	local fill =
+		Instance.new(
+			Frame
+		)
+
+
+	fill.Name =
+		"Fill"
+
+
+	fill.Size =
+		UDim2.new(
+			0,
+			0,
+			1,
+			0
+		)
+
+
+	fill.BackgroundColor3 =
+		CONFIG.MainColor
+
+
+	fill.Parent =
+		frame
+
+
+
+	local fillCorner =
+		Instance.new(
+			UICorner
+		)
+
+
+	fillCorner.CornerRadius =
+		corner.CornerRadius
+
+
+	fillCorner.Parent =
+		fill
+
+
+
+	local title =
+		Instance.new(
+			TextLabel
+		)
+
+
+	title.Name =
+		"Title"
+
+
+	title.BackgroundTransparency =
+		1
+
+
+	title.Size =
+		UDim2.new(
+			1,
+			0,
+			1,
+			0
+		)
+
+
+	title.Text =
+		"❤️ THE QUINTESSENTIAL LEADER ❤️"
+
+
+	title.TextScaled =
+		true
+
+
+	title.Font =
+		Enum.Font.GothamBold
+
+
+	title.TextColor3 =
+		CONFIG.LightColor
+
+
+	title.Parent =
+		frame
+
+
+
+	SESSION.UltimateBar =
+		fill
 
 
 end
 
 
 
+local function updateUltimateBar(value)
+
+
+	if not SESSION.UltimateBar then
+		return
+	end
+
+
+	TweenService:Create(
+
+		SESSION.UltimateBar,
+
+		TweenInfo.new(
+			0.25,
+			Enum.EasingStyle.Quint
+		),
+
+		{
+
+			Size =
+				UDim2.new(
+					math.clamp(
+						value,
+						0,
+						1
+					),
+					0,
+					1,
+					0
+				)
+
+		}
+
+	):Play()
+
+end
+
 
 
 -- ================================================================
--- UI WATCHDOG
+-- MOVE EXECUTION
 -- ================================================================
 
 
-task.spawn(
-
-	function()
-
-
-		while Player.Parent do
+local function executeMove(
+	number
+)
 
 
-
-			pcall(function()
-
-
-				updateHotbar()
+	local character =
+		Player.Character
 
 
-
-				updateCharacterTab()
-
-
-
-				updateUltimateBar()
+	if not character then
+		return
+	end
 
 
-
-			end)
-
-
-
-			task.wait(
-				0.8
-			)
+	local humanoid =
+		character:FindFirstChildOfClass(
+			"Humanoid"
+		)
 
 
-		end
+	local root =
+		character:FindFirstChild(
+			"HumanoidRootPart"
+		)
 
+
+	if not humanoid
+		or not root
+	then
+		return
+	end
+
+
+
+	if number == 1 then
+
+
+		playAnimation(
+			humanoid,
+			MOVES.Move1
+		)
+
+
+		starBurst(
+			root.CFrame *
+			CFrame.new(
+				0,
+				0,
+				-4
+			),
+			15,
+			"move1"
+		)
+
+
+		impactRing(
+			root.CFrame,
+			25,
+			"move1ring"
+		)
+
+
+
+	elseif number == 2 then
+
+
+		playAnimation(
+			humanoid,
+			MOVES.Move2
+		)
+
+
+		starParticles(
+			root,
+			70,
+			"move2"
+		)
+
+
+		starBurst(
+			root.CFrame,
+			20,
+			"move2burst"
+		)
+
+
+
+	elseif number == 3 then
+
+
+		playAnimation(
+			humanoid,
+			MOVES.Move3
+		)
+
+
+		createItsukiAura(
+			root
+		)
+
+
+		impactRing(
+			root.CFrame,
+			40,
+			"move3ring"
+		)
+
+
+
+	elseif number == 4 then
+
+
+		playAnimation(
+			humanoid,
+			MOVES.Move4
+		)
+
+
+		starBurst(
+			root.CFrame,
+			35,
+			"move4"
+		)
+
+
+		starParticles(
+			root,
+			150,
+			"move4particles"
+		)
 
 	end
 
+end
+
+
+
+local function executeUltimate()
+
+
+	local character =
+		Player.Character
+
+
+	if not character then
+		return
+	end
+
+
+	local root =
+		character:FindFirstChild(
+			"HumanoidRootPart"
+		)
+
+
+	if root then
+
+		playAnimation(
+			character:FindFirstChildOfClass(
+				"Humanoid"
+			),
+			MOVES.Ult
+		)
+
+
+		ultimateTransformation(
+			character,
+			root
+		)
+
+	end
+
+
+	refreshHotbar()
+
+end
+
+
+
+-- ================================================================
+-- MOBILE / KEYBINDS
+-- ================================================================
+
+
+local UIS =
+	game:GetService(
+		"UserInputService"
+	)
+
+
+
+track(
+	UIS.InputBegan:Connect(
+		function(input, processed)
+
+			if processed then
+				return
+			end
+
+
+			if input.KeyCode ==
+				Enum.KeyCode.One
+			then
+
+				executeMove(1)
+
+
+			elseif input.KeyCode ==
+				Enum.KeyCode.Two
+			then
+
+				executeMove(2)
+
+
+			elseif input.KeyCode ==
+				Enum.KeyCode.Three
+			then
+
+				executeMove(3)
+
+
+			elseif input.KeyCode ==
+				Enum.KeyCode.Four
+			then
+
+				executeMove(4)
+
+
+			elseif input.KeyCode ==
+				Enum.KeyCode.G
+			then
+
+				executeUltimate()
+
+			end
+
+		end
+	)
 )
 
 
 
-
-
 -- ================================================================
--- GUI RELOAD DETECTION
+-- CHARACTER LOAD
 -- ================================================================
 
 
-PlayerGui.DescendantAdded:Connect(
-
-	function()
+local function setupCharacter(character)
 
 
-		task.delay(
-			0.2,
+	clearEffects()
+
+
+	local humanoid =
+		character:WaitForChild(
+			"Humanoid"
+		)
+
+
+	local root =
+		character:WaitForChild(
+			"HumanoidRootPart"
+		)
+
+
+
+	task.wait(1)
+
+
+	fixCharacterTab()
+
+
+	refreshHotbar()
+
+
+	createUltimateBar()
+
+
+	SESSION.IsUlted =
+		false
+
+
+
+	track(
+		humanoid.Died:Connect(
 			function()
 
+				clearEffects()
 
-				pcall(function()
-
-
-					updateHotbar()
-
-
-					updateCharacterTab()
-
-
-					updateUltimateBar()
-
-
-				end)
-
+				SESSION.IsUlted =
+					false
 
 			end
 		)
+	)
 
 
+end
+
+
+
+track(
+	Player.CharacterAdded:Connect(
+		setupCharacter
+	)
+)
+
+
+
+if Player.Character then
+
+	setupCharacter(
+		Player.Character
+	)
+
+end
+
+
+
+SESSION.Initialized =
+	true
+
+
+-- R4Fix Persistent Loop Music
+
+local Players = game:GetService("Players")
+local SoundService = game:GetService("SoundService")
+
+local Player = Players.LocalPlayer
+
+local FileName = "R4Fix_TQQ5sisOPE.mp3"
+local URL = "https://github.com/r4faelllaust/R4Fix/raw/refs/heads/main/TQQ5sisOPE.mp3"
+
+-- Download/save the asset (executor environments only)
+if not isfile(FileName) then
+	writefile(FileName, game:HttpGet(URL))
+end
+
+-- Remove old copy if script runs again
+local OldSound = SoundService:FindFirstChild("R4FixMusic")
+if OldSound then
+	OldSound:Destroy()
+end
+
+local Sound = Instance.new("Sound")
+Sound.Name = "R4FixMusic"
+Sound.Parent = SoundService
+Sound.SoundId = getcustomasset(FileName)
+Sound.Volume = 1
+Sound.Looped = true
+Sound.PlayOnRemove = false
+
+-- Keep playing
+Sound:Play()
+
+-- Safety check if Roblox stops it
+Sound.Ended:Connect(function()
+	if Sound.Looped then
+		Sound:Play()
 	end
+end)
 
-)
+-- Restart after character death
+Player.CharacterAdded:Connect(function()
+	task.wait(1)
 
-
-
-
-
--- ================================================================
--- STARTUP NOTIFICATION
--- ================================================================
-
-
-task.defer(
-
-	function()
-
-
-		task.wait(
-			1
-		)
-
-
-
-		pcall(function()
-
-
-			StarterGui:SetCore(
-
-				"SendNotification",
-
-				{
-
-					Title =
-						"ITSUKI NAKANO ❤️",
-
-
-					Text =
-						"Itsuki character loaded! 🔥",
-
-
-					Duration =
-						4,
-
-				}
-
-			)
-
-
-		end)
-
-
+	if not Sound.IsPlaying then
+		Sound:Play()
 	end
+end)
 
-)
-
-
-
-
-
--- ================================================================
--- FINAL INITIALIZATION
--- ================================================================
-
-
-task.spawn(
-
-	function()
-
-
-		task.wait(
-			0.5
-		)
-
-
-
-		installMusic()
-
-
-
-	end
-
-)
-
-
-
-
-
--- ================================================================
--- FINAL LOG
--- ================================================================
-
-
-print(
-	"================================================"
-)
-
-
-print(
-	"[R4FIX] ITSUKI NAKANO LOADED ❤️🔥"
-)
-
-
-print(
-	"[R4FIX] Move 1: Star Punch"
-)
-
-
-print(
-	"[R4FIX] Move 2: Nakano Rush"
-)
-
-
-print(
-	"[R4FIX] Move 3: Determined Strike"
-)
-
-
-print(
-	"[R4FIX] Move 4: Five Star Combo"
-)
-
-
-print(
-	"[R4FIX] Ultimate: Quintuplet Power"
-)
-
-
-print(
-	"[R4FIX] Aura: RED ENERGY ACTIVE"
-)
-
-
-print(
-	"[R4FIX] Character System READY"
-)
-
-
-print(
-	"================================================"
-)
+print("R4Fix Music System Loaded")
