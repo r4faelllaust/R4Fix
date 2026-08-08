@@ -1,10 +1,28 @@
 --============================================================
--- KJ RESOURCE / ANIMATION DISCOVERY SCANNER
--- Read-only scanner
+-- KJ RESOURCE / ANIMATION DISCOVERY SCANNER V2
+-- Read-only runtime discovery scanner
+--
+-- PURPOSE:
+-- V1 found the KJ resources.
+-- V2 searches for the runtime wiring around those resources:
+--   * Animation instances / IDs
+--   * Animator objects
+--   * AnimationTracks currently visible to the client
+--   * KJ/UFW/Cutscene references exposed through instances
+--   * Attributes and values containing KJ/UFW/Ultimate references
+--   * Hotbar / skill information
+--   * Character information
+--   * KJ-related remotes
+--
+-- IMPORTANT:
+-- This does NOT pretend to decompile inaccessible scripts.
+-- It only reports information actually exposed to the client.
 --============================================================
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Workspace = game:GetService("Workspace")
+local StarterGui = game:GetService("StarterGui")
 
 local player = Players.LocalPlayer
 
@@ -14,14 +32,24 @@ local player = Players.LocalPlayer
 
 local function copyToClipboard(text)
     if setclipboard then
-        setclipboard(text)
-        return true
-    elseif toclipboard then
-        toclipboard(text)
-        return true
-    elseif syn and syn.write_clipboard then
-        syn.write_clipboard(text)
-        return true
+        local ok = pcall(setclipboard, text)
+        if ok then
+            return true
+        end
+    end
+
+    if toclipboard then
+        local ok = pcall(toclipboard, text)
+        if ok then
+            return true
+        end
+    end
+
+    if syn and syn.write_clipboard then
+        local ok = pcall(syn.write_clipboard, text)
+        if ok then
+            return true
+        end
     end
 
     return false
@@ -31,60 +59,105 @@ end
 -- HELPERS
 --============================================================
 
-local function getClassInfo(obj)
-    local ok, className = pcall(function()
-        return obj.ClassName
-    end)
-
-    if ok then
-        return className
-    end
-
-    return "Unknown"
-end
-
-local function getFullNameSafe(obj)
-    local ok, result = pcall(function()
-        return obj:GetFullName()
-    end)
+local function safeCall(callback, fallback)
+    local ok, result = pcall(callback)
 
     if ok then
         return result
     end
 
-    return "Unknown"
+    return fallback
+end
+
+local function getClassInfo(obj)
+    return safeCall(function()
+        return obj.ClassName
+    end, "Unknown")
+end
+
+local function getFullNameSafe(obj)
+    return safeCall(function()
+        return obj:GetFullName()
+    end, "Unknown")
+end
+
+local function getNameSafe(obj)
+    return safeCall(function()
+        return obj.Name
+    end, "Unknown")
 end
 
 local function getAnimationId(obj)
-    if not obj:IsA("Animation") then
+    if not obj or not obj:IsA("Animation") then
         return nil
     end
 
-    local ok, id = pcall(function()
+    return safeCall(function()
         return obj.AnimationId
-    end)
-
-    if ok and id and id ~= "" then
-        return id
-    end
-
-    return nil
+    end, nil)
 end
 
 local function getSoundId(obj)
-    if not obj:IsA("Sound") then
+    if not obj or not obj:IsA("Sound") then
         return nil
     end
 
-    local ok, id = pcall(function()
+    return safeCall(function()
         return obj.SoundId
-    end)
+    end, nil)
+end
 
-    if ok and id and id ~= "" then
-        return id
+local function contains(text, search)
+    text = string.lower(tostring(text or ""))
+    search = string.lower(tostring(search or ""))
+
+    return string.find(text, search, 1, true) ~= nil
+end
+
+local function interestingText(text)
+    text = string.lower(tostring(text or ""))
+
+    local keywords = {
+        "kj",
+        "ufw",
+        "ultimate",
+        "flex",
+        "cutscene",
+        "animation",
+        "animator",
+        "skill",
+        "moveset",
+        "move",
+        "cooldown",
+        "hotbar",
+        "character",
+        "switch",
+        "wall",
+        "throw",
+        "punch",
+        "slam",
+        "uppercut",
+        "barrage",
+    }
+
+    for _, keyword in ipairs(keywords) do
+        if string.find(text, keyword, 1, true) then
+            return true
+        end
     end
 
-    return nil
+    return false
+end
+
+local function isKJRelated(obj)
+    if not obj then
+        return false
+    end
+
+    local name = getNameSafe(obj)
+    local fullName = getFullNameSafe(obj)
+
+    return interestingText(name) or interestingText(fullName)
 end
 
 --============================================================
@@ -94,7 +167,7 @@ end
 local report = {}
 
 local function line(text)
-    table.insert(report, text)
+    table.insert(report, tostring(text))
 end
 
 local function section(name)
@@ -104,205 +177,429 @@ local function section(name)
     line("============================================================")
 end
 
+local function separator()
+    line("------------------------------------------------------------")
+end
+
 --============================================================
 -- BASIC INFORMATION
 --============================================================
 
-line("KJ RESOURCE DISCOVERY REPORT")
+line("KJ RESOURCE DISCOVERY REPORT V2")
 line("Player: " .. player.Name)
+line("UserId: " .. tostring(player.UserId))
 line("Generated: " .. os.date("%Y-%m-%d %H:%M:%S"))
 
---============================================================
--- SEARCH NAMES
---============================================================
+local character = player.Character
 
-local interestingNames = {
-    KJ = true,
-    KJEffects = true,
-    KJWallCombo = true,
-    KJThrow = true,
-    KJWallBreak = true,
-    KJBlack = true,
-    KJWhite = true,
-    PunchFX = true,
-    Everything = true,
-    RockJump = true,
-    Walls = true,
-    Wall = true,
-    KJDialogue = true,
-    TekrinnDialogue = true,
-    KJUI = true,
-    kjphone = true,
-    signkj = true,
-    ArmSlap = true,
-}
+if character then
+    line("Character: " .. getFullNameSafe(character))
+
+    local humanoid = character:FindFirstChildOfClass("Humanoid")
+
+    if humanoid then
+        line("Humanoid RigType: " .. tostring(humanoid.RigType))
+        line("Humanoid Health: " .. tostring(humanoid.Health))
+        line("Humanoid MaxHealth: " .. tostring(humanoid.MaxHealth))
+    end
+else
+    line("Character: NONE")
+end
 
 --============================================================
--- RECURSIVE INTERESTING OBJECT SCAN
+-- CHARACTER ANIMATORS
 --============================================================
 
-section("INTERESTING KJ OBJECTS")
+section("CURRENT CHARACTER ANIMATORS")
 
-local interestingResults = {}
+if character then
 
-for _, root in ipairs({
+    local foundAnimator = false
+
+    for _, obj in ipairs(character:GetDescendants()) do
+
+        if obj:IsA("Animator") then
+            foundAnimator = true
+
+            line("Animator: " .. getFullNameSafe(obj))
+
+            local tracks = safeCall(function()
+                return obj:GetPlayingAnimationTracks()
+            end, {})
+
+            line("Playing tracks: " .. tostring(#tracks))
+
+            for _, track in ipairs(tracks) do
+
+                separator()
+
+                line("TRACK NAME: " .. tostring(track.Name))
+                line("TRACK PRIORITY: " .. tostring(track.Priority))
+                line("TRACK LOOPED: " .. tostring(track.Looped))
+                line("TRACK PLAYING: " .. tostring(track.IsPlaying))
+                line("TRACK LENGTH: " .. tostring(track.Length))
+                line("TRACK TIME POSITION: " .. tostring(track.TimePosition))
+                line("TRACK SPEED: " .. tostring(track.Speed))
+
+                local animation = safeCall(function()
+                    return track.Animation
+                end, nil)
+
+                if animation then
+                    line("TRACK ANIMATION: " .. getFullNameSafe(animation))
+                    line("TRACK ANIMATION ID: " .. tostring(getAnimationId(animation)))
+                else
+                    line("TRACK ANIMATION: unavailable")
+                end
+            end
+        end
+
+    end
+
+    if not foundAnimator then
+        line("No Animator found inside current character.")
+    end
+
+else
+    line("No current character.")
+end
+
+--============================================================
+-- ALL ACCESSIBLE ANIMATION INSTANCES
+--============================================================
+
+section("ACCESSIBLE ANIMATION INSTANCES")
+
+local animationResults = {}
+local animationSeen = {}
+
+local roots = {
     ReplicatedStorage,
     player:FindFirstChild("PlayerGui"),
-    player:FindFirstChild("Backpack")
-}) do
+    player:FindFirstChild("Backpack"),
+    player.Character,
+    Workspace,
+}
+
+for _, root in ipairs(roots) do
 
     if root then
+
         for _, obj in ipairs(root:GetDescendants()) do
 
-            if interestingNames[obj.Name] then
-                table.insert(interestingResults, obj)
+            if obj:IsA("Animation") and not animationSeen[obj] then
+
+                animationSeen[obj] = true
+
+                local id = getAnimationId(obj)
+                local name = getNameSafe(obj)
+                local fullName = getFullNameSafe(obj)
+
+                local lowerFull = string.lower(fullName)
+                local lowerName = string.lower(name)
+
+                if
+                    string.find(lowerFull, "kj", 1, true)
+                    or string.find(lowerFull, "ufw", 1, true)
+                    or string.find(lowerFull, "ultimate", 1, true)
+                    or string.find(lowerName, "kj", 1, true)
+                    or string.find(lowerName, "ufw", 1, true)
+                    or string.find(lowerName, "ultimate", 1, true)
+                then
+
+                    table.insert(animationResults, {
+                        object = obj,
+                        id = id,
+                        path = fullName,
+                    })
+
+                end
             end
 
         end
-    end
-end
 
-if #interestingResults == 0 then
-    line("No exact-name matches found.")
-else
-    for _, obj in ipairs(interestingResults) do
-        line(
-            "[" ..
-            getClassInfo(obj) ..
-            "] " ..
-            getFullNameSafe(obj)
-        )
-    end
-end
-
---============================================================
--- ALL KJ-NAMED OBJECTS
---============================================================
-
-section("ALL OBJECTS CONTAINING 'KJ' IN NAME")
-
-local kjNameResults = {}
-
-for _, obj in ipairs(ReplicatedStorage:GetDescendants()) do
-
-    local lowerName = string.lower(obj.Name)
-
-    if string.find(lowerName, "kj", 1, true) then
-        table.insert(kjNameResults, obj)
-    end
-
-end
-
-if #kjNameResults == 0 then
-    line("No objects containing 'KJ' found.")
-else
-    for _, obj in ipairs(kjNameResults) do
-        line(
-            "[" ..
-            getClassInfo(obj) ..
-            "] " ..
-            getFullNameSafe(obj)
-        )
-    end
-end
-
---============================================================
--- ALL KJ ANIMATIONS
---============================================================
-
-section("KJ-NAMED ANIMATIONS")
-
-local animationResults = {}
-
-for _, obj in ipairs(ReplicatedStorage:GetDescendants()) do
-
-    if obj:IsA("Animation") then
-
-        local lowerName = string.lower(obj.Name)
-        local fullName = string.lower(getFullNameSafe(obj))
-
-        if
-            string.find(lowerName, "kj", 1, true)
-            or string.find(fullName, "kj", 1, true)
-        then
-
-            local id = getAnimationId(obj)
-
-            table.insert(animationResults, {
-                object = obj,
-                id = id
-            })
-
-        end
     end
 
 end
 
 if #animationResults == 0 then
-    line("No KJ-named Animation instances found.")
+    line("No accessible KJ/UFW/Ultimate Animation instances found.")
 else
+
     for _, data in ipairs(animationResults) do
 
-        line(
-            "NAME: " ..
-            data.object.Name
-        )
+        separator()
 
-        line(
-            "ID: " ..
-            tostring(data.id)
-        )
-
-        line(
-            "PATH: " ..
-            getFullNameSafe(data.object)
-        )
-
-        line("")
-
-    end
-end
-
---============================================================
--- ALL ANIMATIONS INSIDE KJ RESOURCE AREAS
---============================================================
-
-section("ANIMATIONS INSIDE KJ RESOURCE AREAS")
-
-local animationRoots = {}
-
-for _, obj in ipairs(ReplicatedStorage:GetDescendants()) do
-
-    local fullName = string.lower(getFullNameSafe(obj))
-
-    if
-        string.find(fullName, "kj", 1, true)
-        and obj:IsA("Animation")
-    then
-
-        table.insert(animationRoots, obj)
+        line("NAME: " .. getNameSafe(data.object))
+        line("ID: " .. tostring(data.id))
+        line("PATH: " .. data.path)
 
     end
 
 end
 
-local alreadyPrinted = {}
+--============================================================
+-- KNOWN KJ ANIMATION IDS
+--============================================================
 
-for _, animation in ipairs(animationRoots) do
+section("KNOWN KJ ANIMATION ID SEARCH")
 
-    if not alreadyPrinted[animation] then
+local knownAnimationIds = {
+    "18447913645",
+    "18447915110",
+}
 
-        alreadyPrinted[animation] = true
+local knownAnimationResults = {}
 
-        local id = getAnimationId(animation)
+for _, root in ipairs(roots) do
 
-        line(
-            animation.Name ..
-            " | " ..
-            tostring(id) ..
-            " | " ..
-            getFullNameSafe(animation)
-        )
+    if root then
+
+        for _, obj in ipairs(root:GetDescendants()) do
+
+            if obj:IsA("Animation") then
+
+                local id = tostring(getAnimationId(obj) or "")
+
+                for _, wantedId in ipairs(knownAnimationIds) do
+
+                    if string.find(id, wantedId, 1, true) then
+
+                        table.insert(
+                            knownAnimationResults,
+                            obj
+                        )
+
+                        line("FOUND ID: " .. wantedId)
+                        line("NAME: " .. getNameSafe(obj))
+                        line("PATH: " .. getFullNameSafe(obj))
+                        line("FULL ID: " .. id)
+                        separator()
+
+                    end
+
+                end
+
+            end
+
+        end
+
+    end
+
+end
+
+if #knownAnimationResults == 0 then
+    line("Known KJ animation IDs were not exposed as Animation instances.")
+end
+
+--============================================================
+-- KJ / UFW / ULTIMATE RESOURCE REFERENCES
+--============================================================
+
+section("KJ / UFW / ULTIMATE RESOURCE OBJECTS")
+
+local resourceKeywords = {
+    "KJEffects",
+    "KJThrow",
+    "KJWallCombo",
+    "UFW",
+    "Ultimate",
+    "Cutscenes",
+    "KJ",
+}
+
+local resourceSeen = {}
+
+for _, root in ipairs({
+    ReplicatedStorage,
+    player:FindFirstChild("PlayerGui"),
+}) do
+
+    if root then
+
+        for _, obj in ipairs(root:GetDescendants()) do
+
+            local fullName = getFullNameSafe(obj)
+            local lowerFull = string.lower(fullName)
+
+            local match = false
+
+            for _, keyword in ipairs(resourceKeywords) do
+
+                if string.find(
+                    lowerFull,
+                    string.lower(keyword),
+                    1,
+                    true
+                ) then
+
+                    match = true
+                    break
+
+                end
+
+            end
+
+            if match and not resourceSeen[obj] then
+
+                resourceSeen[obj] = true
+
+                local className = getClassInfo(obj)
+
+                if
+                    className == "Folder"
+                    or className == "Model"
+                    or className == "ModuleScript"
+                    or className == "ScreenGui"
+                    or className == "Animation"
+                    or className == "Sound"
+                then
+
+                    line(
+                        "[" ..
+                        className ..
+                        "] " ..
+                        fullName
+                    )
+
+                end
+
+            end
+
+        end
+
+    end
+
+end
+
+--============================================================
+-- ATTRIBUTES
+--============================================================
+
+section("KJ / UFW / ULTIMATE ATTRIBUTES")
+
+local attributeRoots = {
+    ReplicatedStorage,
+    player,
+    player:FindFirstChild("PlayerGui"),
+    player.Character,
+    Workspace,
+}
+
+local attributeSeen = {}
+
+for _, root in ipairs(attributeRoots) do
+
+    if root then
+
+        local objects = {root}
+
+        for _, obj in ipairs(root:GetDescendants()) do
+            table.insert(objects, obj)
+        end
+
+        for _, obj in ipairs(objects) do
+
+            if not attributeSeen[obj] then
+
+                attributeSeen[obj] = true
+
+                local attributes = safeCall(function()
+                    return obj:GetAttributes()
+                end, {})
+
+                for attributeName, attributeValue in pairs(attributes) do
+
+                    local combined =
+                        tostring(attributeName)
+                        .. " "
+                        .. tostring(attributeValue)
+
+                    if interestingText(combined) then
+
+                        line(
+                            "OBJECT: " ..
+                            getFullNameSafe(obj)
+                        )
+
+                        line(
+                            "ATTRIBUTE: " ..
+                            tostring(attributeName)
+                        )
+
+                        line(
+                            "VALUE: " ..
+                            tostring(attributeValue)
+                        )
+
+                        separator()
+
+                    end
+
+                end
+
+            end
+
+        end
+
+    end
+
+end
+
+--============================================================
+-- VALUE OBJECTS
+--============================================================
+
+section("KJ / UFW / ULTIMATE VALUE OBJECTS")
+
+local valueClasses = {
+    StringValue = true,
+    NumberValue = true,
+    IntValue = true,
+    BoolValue = true,
+    ObjectValue = true,
+}
+
+local valueSeen = {}
+
+for _, root in ipairs(attributeRoots) do
+
+    if root then
+
+        for _, obj in ipairs(root:GetDescendants()) do
+
+            if valueClasses[obj.ClassName] and not valueSeen[obj] then
+
+                valueSeen[obj] = true
+
+                local name = getNameSafe(obj)
+                local fullName = getFullNameSafe(obj)
+
+                if interestingText(name) or interestingText(fullName) then
+
+                    local value = safeCall(function()
+                        return obj.Value
+                    end, "<unavailable>")
+
+                    line(
+                        "[" ..
+                        obj.ClassName ..
+                        "] " ..
+                        fullName
+                    )
+
+                    line(
+                        "VALUE: " ..
+                        tostring(value)
+                    )
+
+                    separator()
+
+                end
+
+            end
+
+        end
 
     end
 
@@ -312,229 +609,104 @@ end
 -- KJ SOUNDS
 --============================================================
 
-section("KJ SOUNDS")
+section("KJ / UFW SOUNDS")
 
-local soundResults = {}
+local soundSeen = {}
+local soundCount = 0
 
-for _, obj in ipairs(ReplicatedStorage:GetDescendants()) do
+for _, root in ipairs(roots) do
 
-    if obj:IsA("Sound") then
+    if root then
 
-        local lowerName = string.lower(obj.Name)
-        local fullName = string.lower(getFullNameSafe(obj))
+        for _, obj in ipairs(root:GetDescendants()) do
 
-        if
-            string.find(lowerName, "kj", 1, true)
-            or string.find(fullName, "kj", 1, true)
-        then
+            if obj:IsA("Sound") and not soundSeen[obj] then
 
-            table.insert(soundResults, {
-                object = obj,
-                id = getSoundId(obj)
-            })
+                local name = getNameSafe(obj)
+                local fullName = getFullNameSafe(obj)
 
-        end
-    end
+                if
+                    contains(name, "kj")
+                    or contains(fullName, "kj")
+                    or contains(fullName, "ufw")
+                    or contains(fullName, "ultimate")
+                then
 
-end
+                    soundSeen[obj] = true
+                    soundCount += 1
 
-if #soundResults == 0 then
-    line("No KJ-related sounds found.")
-else
-    for _, data in ipairs(soundResults) do
+                    line("NAME: " .. name)
+                    line("ID: " .. tostring(getSoundId(obj)))
+                    line("PATH: " .. fullName)
+                    separator()
 
-        line(
-            "NAME: " ..
-            data.object.Name
-        )
+                end
 
-        line(
-            "ID: " ..
-            tostring(data.id)
-        )
-
-        line(
-            "PATH: " ..
-            getFullNameSafe(data.object)
-        )
-
-        line("")
-
-    end
-end
-
---============================================================
--- KJ PARTICLE / VFX OBJECTS
---============================================================
-
-section("KJ VFX OBJECTS")
-
-local vfxClasses = {
-    ParticleEmitter = true,
-    Beam = true,
-    Trail = true,
-    Smoke = true,
-    Fire = true,
-    Sparkles = true,
-    Highlight = true,
-    PointLight = true,
-    SpotLight = true,
-    SurfaceLight = true,
-}
-
-local vfxResults = {}
-
-for _, obj in ipairs(ReplicatedStorage:GetDescendants()) do
-
-    local fullName = string.lower(getFullNameSafe(obj))
-    local name = string.lower(obj.Name)
-
-    if vfxClasses[obj.ClassName] then
-
-        if
-            string.find(name, "kj", 1, true)
-            or string.find(fullName, "kj", 1, true)
-        then
-
-            table.insert(vfxResults, obj)
+            end
 
         end
+
     end
 
 end
 
-if #vfxResults == 0 then
-    line("No KJ-related VFX instances found.")
-else
-    for _, obj in ipairs(vfxResults) do
-
-        line(
-            "[" ..
-            obj.ClassName ..
-            "] " ..
-            getFullNameSafe(obj)
-        )
-
-    end
+if soundCount == 0 then
+    line("No accessible KJ/UFW/Ultimate sounds found.")
 end
 
 --============================================================
--- KJ MODELS / FOLDERS
+-- REMOTES
 --============================================================
 
-section("KJ MODELS / FOLDERS / PARTS")
+section("KJ / UFW / CHARACTER RELATED REMOTES")
+
+local remoteSeen = {}
+local remoteCount = 0
 
 for _, obj in ipairs(ReplicatedStorage:GetDescendants()) do
-
-    local name = string.lower(obj.Name)
 
     if
-        string.find(name, "kj", 1, true)
-        and (
-            obj:IsA("Model")
-            or obj:IsA("Folder")
-            or obj:IsA("Part")
-            or obj:IsA("MeshPart")
-            or obj:IsA("Attachment")
-        )
+        obj:IsA("RemoteEvent")
+        or obj:IsA("RemoteFunction")
     then
 
-        line(
-            "[" ..
-            obj.ClassName ..
-            "] " ..
-            getFullNameSafe(obj)
-        )
+        local name = getNameSafe(obj)
+        local fullName = getFullNameSafe(obj)
 
-    end
+        if
+            interestingText(name)
+            or interestingText(fullName)
+        then
 
-end
+            if not remoteSeen[obj] then
 
---============================================================
--- CUTSCENES
---============================================================
+                remoteSeen[obj] = true
+                remoteCount += 1
 
-section("KJ CUTSCENE DATA")
+                line(
+                    "[" ..
+                    obj.ClassName ..
+                    "] " ..
+                    fullName
+                )
 
-local cutscenes = ReplicatedStorage:FindFirstChild("Cutscenes")
-
-if cutscenes then
-
-    local kjCutscene = cutscenes:FindFirstChild("KJ")
-
-    if kjCutscene then
-
-        line("FOUND:")
-        line(getFullNameSafe(kjCutscene))
-        line("CLASS: " .. kjCutscene.ClassName)
-
-        for _, child in ipairs(kjCutscene:GetDescendants()) do
-
-            line(
-                "[" ..
-                child.ClassName ..
-                "] " ..
-                getFullNameSafe(child)
-            )
+            end
 
         end
 
-    else
-        line("Cutscenes.KJ NOT FOUND")
     end
 
-else
-    line("ReplicatedStorage.Cutscenes NOT FOUND")
+end
+
+if remoteCount == 0 then
+    line("No KJ/UFW/character-related remotes found by name/path.")
 end
 
 --============================================================
--- DIALOGUE
+-- KJ WALL
 --============================================================
 
-section("KJ DIALOGUE")
-
-local ufw = ReplicatedStorage:FindFirstChild("UFW")
-
-if ufw then
-
-    local dialogue = ufw:FindFirstChild("TekrinnDialogue")
-
-    if dialogue then
-
-        line(
-            "FOUND: " ..
-            getFullNameSafe(dialogue)
-        )
-
-        line(
-            "CLASS: " ..
-            dialogue.ClassName
-        )
-
-        for _, child in ipairs(dialogue:GetDescendants()) do
-
-            line(
-                "[" ..
-                child.ClassName ..
-                "] " ..
-                getFullNameSafe(child)
-            )
-
-        end
-
-    else
-        line("UFW.TekrinnDialogue NOT FOUND")
-    end
-
-else
-    line("ReplicatedStorage.UFW NOT FOUND")
-end
-
---============================================================
--- KJ WALL INFO
---============================================================
-
-section("KJ WALL INFO")
+section("KJ WALL RESOURCE DETAILS")
 
 local info = ReplicatedStorage:FindFirstChild("Info")
 
@@ -548,29 +720,32 @@ if info then
 
         if kjWall then
 
-            line("FOUND:")
-            line(getFullNameSafe(kjWall))
-            line("CLASS: " .. kjWall.ClassName)
+            line("FOUND: " .. getFullNameSafe(kjWall))
+            line("CLASS: " .. getClassInfo(kjWall))
 
             for _, child in ipairs(kjWall:GetDescendants()) do
 
                 line(
                     "[" ..
-                    child.ClassName ..
+                    getClassInfo(child) ..
                     "] " ..
                     getFullNameSafe(child)
                 )
 
                 if child:IsA("Animation") then
+
                     line(
                         "AnimationId: " ..
-                        tostring(child.AnimationId)
+                        tostring(getAnimationId(child))
                     )
+
                 elseif child:IsA("Sound") then
+
                     line(
                         "SoundId: " ..
-                        tostring(child.SoundId)
+                        tostring(getSoundId(child))
                     )
+
                 end
 
             end
@@ -588,132 +763,272 @@ else
 end
 
 --============================================================
--- REMOTES
+-- CUTSCENE KJ
 --============================================================
 
-section("KJ-RELATED REMOTES")
+section("CUTSCENES.KJ DETAILS")
 
-local remoteResults = {}
+local cutscenes = ReplicatedStorage:FindFirstChild("Cutscenes")
 
-for _, obj in ipairs(ReplicatedStorage:GetDescendants()) do
+if cutscenes then
 
-    if obj:IsA("RemoteEvent") or obj:IsA("RemoteFunction") then
+    local kjCutscene = cutscenes:FindFirstChild("KJ")
 
-        local name = string.lower(obj.Name)
-        local fullName = string.lower(getFullNameSafe(obj))
+    if kjCutscene then
 
-        if
-            string.find(name, "kj", 1, true)
-            or string.find(fullName, "kj", 1, true)
-        then
+        line("FOUND: " .. getFullNameSafe(kjCutscene))
+        line("CLASS: " .. getClassInfo(kjCutscene))
 
-            table.insert(remoteResults, obj)
-
-        end
-
-    end
-
-end
-
-if #remoteResults == 0 then
-    line("No KJ-named RemoteEvents/RemoteFunctions found.")
-else
-    for _, obj in ipairs(remoteResults) do
-
-        line(
-            "[" ..
-            obj.ClassName ..
-            "] " ..
-            getFullNameSafe(obj)
-        )
-
-    end
-end
-
---============================================================
--- EXISTING KNOWN IDs
---============================================================
-
-section("KNOWN KJ IDS")
-
-line("Wall Attacker Animation: rbxassetid://18447913645")
-line("Wall Victim Animation:   rbxassetid://18447915110")
-line("Character Sound:         rbxassetid://18443048724")
-line("Hit Sound:               rbxassetid://18443049348")
-
---============================================================
--- PLAYER GUI KJ OBJECTS
---============================================================
-
-section("PLAYERGUI KJ OBJECTS")
-
-local gui = player:FindFirstChild("PlayerGui")
-
-if gui then
-
-    for _, obj in ipairs(gui:GetDescendants()) do
-
-        local name = string.lower(obj.Name)
-
-        if
-            string.find(name, "kj", 1, true)
-        then
+        for _, child in ipairs(kjCutscene:GetDescendants()) do
 
             line(
                 "[" ..
-                obj.ClassName ..
+                getClassInfo(child) ..
                 "] " ..
-                getFullNameSafe(obj)
+                getFullNameSafe(child)
             )
 
         end
 
+    else
+        line("Cutscenes.KJ NOT FOUND")
     end
 
+else
+    line("ReplicatedStorage.Cutscenes NOT FOUND")
 end
 
 --============================================================
--- HOTBAR CURRENT STATE
+-- UFW DETAILS
+--============================================================
+
+section("UFW RESOURCE DETAILS")
+
+local ufw = ReplicatedStorage:FindFirstChild("UFW")
+
+if ufw then
+
+    line("UFW ROOT FOUND")
+    line(getFullNameSafe(ufw))
+
+    for _, child in ipairs(ufw:GetDescendants()) do
+
+        local fullName = getFullNameSafe(child)
+
+        line(
+            "[" ..
+            getClassInfo(child) ..
+            "] " ..
+            fullName
+        )
+
+        if child:IsA("Animation") then
+            line(
+                "AnimationId: " ..
+                tostring(getAnimationId(child))
+            )
+        elseif child:IsA("Sound") then
+            line(
+                "SoundId: " ..
+                tostring(getSoundId(child))
+            )
+        end
+
+    end
+
+else
+    line("ReplicatedStorage.UFW NOT FOUND")
+end
+
+--============================================================
+-- CURRENT BACKPACK TOOLS
+--============================================================
+
+section("CURRENT BACKPACK / SKILL TOOLS")
+
+local backpack = player:FindFirstChild("Backpack")
+
+if backpack then
+
+    for _, obj in ipairs(backpack:GetChildren()) do
+
+        if obj:IsA("Tool") then
+
+            line("TOOL: " .. obj.Name)
+            line("PATH: " .. getFullNameSafe(obj))
+
+            local attributes = safeCall(function()
+                return obj:GetAttributes()
+            end, {})
+
+            for attributeName, attributeValue in pairs(attributes) do
+
+                line(
+                    "ATTRIBUTE " ..
+                    tostring(attributeName) ..
+                    " = " ..
+                    tostring(attributeValue)
+                )
+
+            end
+
+            separator()
+
+        end
+
+    end
+
+else
+    line("Backpack not found.")
+end
+
+--============================================================
+-- CURRENT HOTBAR
 --============================================================
 
 section("CURRENT HOTBAR")
 
+local gui = player:FindFirstChild("PlayerGui")
 local hotbar = gui and gui:FindFirstChild("Hotbar")
 
 if hotbar then
 
-    local backpack = hotbar:FindFirstChild("Backpack")
+    local backpackGui = hotbar:FindFirstChild("Backpack")
 
-    if backpack then
+    if backpackGui then
 
-        local hotbarFrame = backpack:FindFirstChild("Hotbar")
+        local hotbarFrame = backpackGui:FindFirstChild("Hotbar")
 
         if hotbarFrame then
 
-            for i = 1, 5 do
+            for i = 1, 10 do
 
                 local slot = hotbarFrame:FindFirstChild(tostring(i))
 
                 if slot then
 
+                    line("SLOT " .. i)
+
+                    local toolName =
+                        slot:FindFirstChild("ToolName", true)
+
+                    if toolName and toolName:IsA("TextLabel") then
+
+                        line(
+                            "ToolName: " ..
+                            tostring(toolName.Text)
+                        )
+
+                    else
+
+                        line("ToolName: unavailable")
+
+                    end
+
                     local base = slot:FindFirstChild("Base")
 
                     if base then
 
-                        local toolName = base:FindFirstChild("ToolName")
-
-                        if toolName and toolName:IsA("TextLabel") then
-
-                            line(
-                                "SLOT " ..
-                                i ..
-                                ": " ..
-                                toolName.Text
-                            )
-
-                        end
+                        line(
+                            "Base: " ..
+                            getFullNameSafe(base)
+                        )
 
                     end
+
+                    separator()
+
+                end
+
+            end
+
+        else
+            line("Hotbar frame not found.")
+        end
+
+    else
+        line("Hotbar.Backpack not found.")
+    end
+
+else
+    line("PlayerGui.Hotbar not found.")
+end
+
+--============================================================
+-- TOPBAR KJ UI
+--============================================================
+
+section("TOPBAR KJ UI")
+
+if gui then
+
+    local topbar = gui:FindFirstChild("TopbarPlus")
+
+    if topbar then
+
+        for _, obj in ipairs(topbar:GetDescendants()) do
+
+            if contains(getNameSafe(obj), "kj") then
+
+                line(
+                    "[" ..
+                    getClassInfo(obj) ..
+                    "] " ..
+                    getFullNameSafe(obj)
+                )
+
+            end
+
+        end
+
+    else
+        line("TopbarPlus not found.")
+    end
+
+end
+
+--============================================================
+-- CHARACTER / MOVESet RELATED OBJECTS
+--============================================================
+
+section("CHARACTER / MOVESET RELATED OBJECTS")
+
+local characterSearchRoots = {
+    ReplicatedStorage,
+    player,
+    gui,
+    backpack,
+}
+
+local characterSeen = {}
+
+for _, root in ipairs(characterSearchRoots) do
+
+    if root then
+
+        for _, obj in ipairs(root:GetDescendants()) do
+
+            local name = getNameSafe(obj)
+            local fullName = getFullNameSafe(obj)
+
+            if
+                contains(name, "character")
+                or contains(name, "moveset")
+                or contains(name, "switch")
+                or contains(fullName, "character")
+                or contains(fullName, "moveset")
+            then
+
+                if not characterSeen[obj] then
+
+                    characterSeen[obj] = true
+
+                    line(
+                        "[" ..
+                        getClassInfo(obj) ..
+                        "] " ..
+                        fullName
+                    )
 
                 end
 
@@ -724,6 +1039,101 @@ if hotbar then
     end
 
 end
+
+--============================================================
+-- KNOWN RESOURCE PATH CONFIRMATION
+--============================================================
+
+section("KNOWN KJ RESOURCE PATH CONFIRMATION")
+
+local pathsToCheck = {
+    "Resources.KJEffects",
+    "Resources.KJThrow",
+    "Resources.KJEffects.KJWallCombo",
+    "Resources.UFW",
+    "Resources.UFW.vfx.Everything.KJ",
+    "Resources.UFW.vfx.PunchFX.KJ",
+    "Resources.UFW.BG.KJWallBreak",
+    "Cutscenes.KJ",
+    "Info.Walls.KJ Wall",
+}
+
+for _, path in ipairs(pathsToCheck) do
+
+    local current = ReplicatedStorage
+
+    for part in string.gmatch(path, "[^%.]+") do
+
+        current = current and current:FindFirstChild(part)
+
+        if not current then
+            break
+        end
+
+    end
+
+    if current then
+        line("FOUND: " .. path)
+        line("CLASS: " .. getClassInfo(current))
+        line("FULL PATH: " .. getFullNameSafe(current))
+    else
+        line("NOT FOUND: " .. path)
+    end
+
+end
+
+--============================================================
+-- KNOWN KJ IDS
+--============================================================
+
+section("KNOWN KJ IDS")
+
+line("Wall Attacker Animation: rbxassetid://18447913645")
+line("Wall Victim Animation:   rbxassetid://18447915110")
+line("Character Sound:         rbxassetid://18443048724")
+line("Hit Sound:               rbxassetid://18443049348")
+
+--============================================================
+-- EXECUTOR INSPECTION CAPABILITY
+--============================================================
+
+section("OPTIONAL INSPECTION CAPABILITY")
+
+local capabilities = {
+    "getgc",
+    "getscripts",
+    "getloadedmodules",
+    "getconnections",
+    "getconstants",
+    "getupvalues",
+    "getprotos",
+    "getscriptbytecode",
+}
+
+for _, name in ipairs(capabilities) do
+
+    local available = false
+
+    local ok, result = pcall(function()
+        return type(_G[name]) == "function"
+    end)
+
+    if ok and result then
+        available = true
+    end
+
+    line(
+        name ..
+        ": " ..
+        tostring(available)
+    )
+
+end
+
+line("")
+line("NOTE:")
+line("Capability detection is informational only.")
+line("The scanner does not execute decompilation or modify game state.")
 
 --============================================================
 -- FINALIZE
@@ -737,7 +1147,7 @@ print(finalReport)
 
 print("")
 print("============================================================")
-print("KJ SCAN FINISHED")
+print("KJ V2 SCAN FINISHED")
 print("============================================================")
 
 if copied then
