@@ -1,26 +1,46 @@
 local Players = game:GetService("Players")
+
 local player = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
 
-local function enableKJ()
-    local playerGui = player:WaitForChild("PlayerGui")
+local function keepKJVisible()
+    local topbar = playerGui:FindFirstChild("TopbarPlus")
+    if not topbar then return end
 
-    local topbar = playerGui:WaitForChild("TopbarPlus")
-    local container = topbar:WaitForChild("TopbarContainer")
-    local unnamedIcon = container:WaitForChild("UnnamedIcon")
-    local dropdown = unnamedIcon:WaitForChild("DropdownContainer")
-    local frame = dropdown:WaitForChild("DropdownFrame")
-    local kj = frame:WaitForChild("KJ")
+    local container = topbar:FindFirstChild("TopbarContainer")
+    if not container then return end
+
+    local unnamedIcon = container:FindFirstChild("UnnamedIcon")
+    if not unnamedIcon then return end
+
+    local dropdown = unnamedIcon:FindFirstChild("DropdownContainer")
+    if not dropdown then return end
+
+    local frame = dropdown:FindFirstChild("DropdownFrame")
+    if not frame then return end
+
+    local kj = frame:FindFirstChild("KJ")
+    if not kj then return end
 
     kj.Visible = true
 
     if kj:IsA("GuiButton") then
         kj.Active = true
+        kj.Selectable = true
     end
 end
 
-enableKJ()
+-- Initial
+keepKJVisible()
 
-player.CharacterAdded:Connect(function()
-    task.wait(1)
-    pcall(enableKJ)
+-- Keep forcing it back if the game's UI hides it
+task.spawn(function()
+    while task.wait(0.1) do
+        pcall(keepKJVisible)
+    end
+end)
+
+-- Also handle PlayerGui/UI being recreated
+playerGui.DescendantAdded:Connect(function()
+    task.defer(keepKJVisible)
 end)
