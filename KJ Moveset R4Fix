@@ -1,47 +1,96 @@
 --============================================================
--- KJ RUNTIME CAPTURE SCANNER
+-- KJ RUNTIME CAPTURE SCANNER V3
 -- READ-ONLY
 --
--- Run this while KJ is equipped in the private server.
--- Then activate the requested KJ move.
+-- PROCEDURE:
+-- 1. Run this script.
+-- 2. Wait for "CAPTURE READY".
+-- 3. Activate KJ Ultimate.
+-- 4. Use 21-21-21-21.
+-- 5. Let the entire sequence finish.
+-- 6. Press F8 to finalize the capture.
 --
--- The scanner captures objects that appear/change during
--- the capture window.
+-- The scanner does NOT modify game objects.
 --============================================================
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
+local UserInputService = game:GetService("UserInputService")
 
 local player = Players.LocalPlayer
 
+--============================================================
+-- SAFETY
+--============================================================
+
+if not player then
+    warn("KJ V3: LocalPlayer unavailable.")
+    return
+end
+
+--============================================================
+-- CLIPBOARD
+--============================================================
+
+local function copyToClipboard(text)
+    if setclipboard then
+        local ok = pcall(setclipboard, text)
+        if ok then
+            return true
+        end
+    end
+
+    if toclipboard then
+        local ok = pcall(toclipboard, text)
+        if ok then
+            return true
+        end
+    end
+
+    if syn and syn.write_clipboard then
+        local ok = pcall(syn.write_clipboard, text)
+        if ok then
+            return true
+        end
+    end
+
+    return false
+end
+
+--============================================================
+-- SAFE HELPERS
+--============================================================
+
 local function safe(fn, fallback)
     local ok, result = pcall(fn)
+
     if ok then
         return result
     end
+
     return fallback
 end
 
-local function fullName(obj)
-    return safe(function()
-        return obj:GetFullName()
-    end, "Unknown")
-end
-
-local function className(obj)
-    return safe(function()
-        return obj.ClassName
-    end, "Unknown")
-end
-
-local function objectName(obj)
+local function getName(obj)
     return safe(function()
         return obj.Name
     end, "Unknown")
 end
 
-local function animationId(obj)
+local function getClass(obj)
+    return safe(function()
+        return obj.ClassName
+    end, "Unknown")
+end
+
+local function getFullName(obj)
+    return safe(function()
+        return obj:GetFullName()
+    end, "Unknown")
+end
+
+local function getAnimationId(obj)
     if not obj or not obj:IsA("Animation") then
         return ""
     end
@@ -51,7 +100,7 @@ local function animationId(obj)
     end, "")
 end
 
-local function soundId(obj)
+local function getSoundId(obj)
     if not obj or not obj:IsA("Sound") then
         return ""
     end
@@ -61,67 +110,49 @@ local function soundId(obj)
     end, "")
 end
 
-local function copy(text)
-    if setclipboard then
-        return pcall(setclipboard, text)
-    end
+local function contains(text, keyword)
+    text = string.lower(tostring(text or ""))
+    keyword = string.lower(tostring(keyword or ""))
 
-    if toclipboard then
-        return pcall(toclipboard, text)
-    end
-
-    if syn and syn.write_clipboard then
-        return pcall(syn.write_clipboard, text)
-    end
-
-    return false
+    return string.find(text, keyword, 1, true) ~= nil
 end
 
-local function snapshot(root)
-    local result = {}
+--============================================================
+-- INTEREST FILTER
+--============================================================
 
-    if not root then
-        return result
-    end
+local keywords = {
+    "kj",
+    "ufw",
+    "ultimate",
+    "cutscene",
+    "wall",
+    "throw",
+    "slam",
+    "punch",
+    "barrage",
+    "21",
+    "everything",
+    "punchfx",
+    "effect",
+    "effects",
+    "vfx",
+    "animation",
+    "sound",
+    "dialogue",
+    "phone",
+    "sign",
+    "camera",
+    "impact",
+    "hit",
+}
 
-    result[root] = true
-
-    for _, obj in ipairs(root:GetDescendants()) do
-        result[obj] = true
-    end
-
-    return result
-end
-
-local function isInteresting(obj)
-    local name = string.lower(objectName(obj))
-    local path = string.lower(fullName(obj))
-
-    local keywords = {
-        "kj",
-        "ufw",
-        "ultimate",
-        "cutscene",
-        "wall",
-        "throw",
-        "slam",
-        "punch",
-        "barrage",
-        "everything",
-        "punchfx",
-        "effects",
-        "vfx",
-        "animation",
-        "sound",
-        "camera",
-        "dialogue",
-        "phone",
-        "sign",
-    }
+local function interesting(obj)
+    local name = getName(obj)
+    local path = getFullName(obj)
 
     for _, keyword in ipairs(keywords) do
-        if string.find(name, keyword, 1, true)
-        or string.find(path, keyword, 1, true) then
+        if contains(name, keyword) or contains(path, keyword) then
             return true
         end
     end
@@ -130,52 +161,565 @@ local function isInteresting(obj)
 end
 
 --============================================================
--- START
+-- ROOTS
 --============================================================
 
-print("")
-print("============================================================")
-print("KJ RUNTIME CAPTURE")
-print("============================================================")
-print("Player: " .. player.Name)
-print("")
-print("KJ CAPTURE IS READY.")
-print("")
-print("DO NOT ACTIVATE ANYTHING YET.")
-print("")
-print("I WILL GIVE YOU THE EXACT MOVE TO ACTIVATE.")
-print("============================================================")
+local function getRoots()
+    return {
+        ReplicatedStorage,
+        Workspace,
+        player,
+        player:FindFirstChild("PlayerGui"),
+        player:FindFirstChild("Backpack"),
+        player.Character,
+    }
+end
+
+--============================================================
+-- OBJECT SNAPSHOT
+--============================================================
+
+local function snapshot()
+    local result = {}
+
+    for _, root in ipairs(getRoots()) do
+        if root then
+
+            result[root] = true
+
+            for _, obj in ipairs(root:GetDescendants()) do
+                result[obj] = true
+            end
+
+        end
+    end
+
+    return result
+end
 
 --============================================================
 -- BASELINE
 --============================================================
 
-local roots = {
-    ReplicatedStorage,
-    Workspace,
-    player:FindFirstChild("PlayerGui"),
-    player:FindFirstChild("Backpack"),
-    player.Character,
-}
+print("")
+print("============================================================")
+print("KJ RUNTIME CAPTURE SCANNER V3")
+print("============================================================")
+print("Player: " .. player.Name)
+print("")
 
-local before = {}
+print("Taking baseline snapshot...")
 
-for _, root in ipairs(roots) do
-    if root then
-        before[root] = snapshot(root)
+local baseline = snapshot()
+
+local baselineCount = 0
+
+for _ in pairs(baseline) do
+    baselineCount += 1
+end
+
+print("Baseline objects: " .. tostring(baselineCount))
+
+print("")
+print("============================================================")
+print("CAPTURE READY")
+print("============================================================")
+print("")
+print("1. Activate KJ Ultimate.")
+print("2. Use 21-21-21-21.")
+print("3. Let the COMPLETE sequence finish.")
+print("4. Do NOT reset or switch characters.")
+print("5. Press F8 to finalize the scan.")
+print("")
+print("Waiting...")
+print("============================================================")
+
+--============================================================
+-- REPORT
+--============================================================
+
+local report = {}
+
+local function line(text)
+    table.insert(report, tostring(text))
+end
+
+local function section(text)
+    line("")
+    line("============================================================")
+    line(text)
+    line("============================================================")
+end
+
+local function separator()
+    line("------------------------------------------------------------")
+end
+
+--============================================================
+-- PLAYING TRACKS
+--============================================================
+
+local function captureTracks()
+    section("CURRENT PLAYING ANIMATION TRACKS")
+
+    local character = player.Character
+
+    if not character then
+        line("Character unavailable.")
+        return
+    end
+
+    local found = false
+
+    for _, obj in ipairs(character:GetDescendants()) do
+
+        if obj:IsA("Animator") then
+
+            found = true
+
+            line("ANIMATOR: " .. getFullName(obj))
+
+            local tracks = safe(function()
+                return obj:GetPlayingAnimationTracks()
+            end, {})
+
+            line("TRACK COUNT: " .. tostring(#tracks))
+
+            for _, track in ipairs(tracks) do
+
+                separator()
+
+                line("TRACK NAME: " .. tostring(track.Name))
+                line("PRIORITY: " .. tostring(track.Priority))
+                line("LOOPED: " .. tostring(track.Looped))
+                line("PLAYING: " .. tostring(track.IsPlaying))
+                line("TIME POSITION: " .. tostring(track.TimePosition))
+                line("LENGTH: " .. tostring(track.Length))
+                line("SPEED: " .. tostring(track.Speed))
+
+                local animation = safe(function()
+                    return track.Animation
+                end, nil)
+
+                if animation then
+                    line("ANIMATION PATH: " .. getFullName(animation))
+                    line("ANIMATION ID: " .. tostring(getAnimationId(animation)))
+                else
+                    line("ANIMATION: unavailable")
+                end
+
+            end
+        end
+    end
+
+    if not found then
+        line("No Animator found.")
     end
 end
 
 --============================================================
--- WAIT
+-- NEW OBJECTS
 --============================================================
 
+local function captureNewObjects()
+    section("NEWLY OBSERVED OBJECTS")
+
+    local after = snapshot()
+
+    local newObjects = {}
+
+    for obj in pairs(after) do
+        if not baseline[obj] then
+            table.insert(newObjects, obj)
+        end
+    end
+
+    table.sort(newObjects, function(a, b)
+        return getFullName(a) < getFullName(b)
+    end)
+
+    line("NEW OBJECT COUNT: " .. tostring(#newObjects))
+
+    local interestingCount = 0
+
+    for _, obj in ipairs(newObjects) do
+
+        if interesting(obj)
+        or obj:IsA("Animation")
+        or obj:IsA("Sound")
+        or obj:IsA("ParticleEmitter")
+        or obj:IsA("Beam")
+        or obj:IsA("Trail")
+        or obj:IsA("Highlight")
+        or obj:IsA("Attachment")
+        then
+
+            interestingCount += 1
+
+            separator()
+
+            line(
+                "[" ..
+                getClass(obj) ..
+                "] " ..
+                getFullName(obj)
+            )
+
+            if obj:IsA("Animation") then
+                line(
+                    "AnimationId: " ..
+                    tostring(getAnimationId(obj))
+                )
+            end
+
+            if obj:IsA("Sound") then
+                line(
+                    "SoundId: " ..
+                    tostring(getSoundId(obj))
+                )
+            end
+
+        end
+    end
+
+    line("")
+    line(
+        "INTERESTING NEW OBJECTS: " ..
+        tostring(interestingCount)
+    )
+end
+
+--============================================================
+-- ALL ACCESSIBLE KJ ANIMATIONS AFTER MOVE
+--============================================================
+
+local function captureAnimations()
+    section("ACCESSIBLE KJ / ULTIMATE ANIMATIONS")
+
+    local seen = {}
+    local count = 0
+
+    for _, root in ipairs(getRoots()) do
+
+        if root then
+
+            for _, obj in ipairs(root:GetDescendants()) do
+
+                if obj:IsA("Animation") and not seen[obj] then
+
+                    local path = getFullName(obj)
+                    local name = getName(obj)
+
+                    if
+                        contains(path, "kj")
+                        or contains(path, "ufw")
+                        or contains(path, "ultimate")
+                        or contains(name, "kj")
+                        or contains(name, "21")
+                        or contains(name, "ultimate")
+                    then
+
+                        seen[obj] = true
+                        count += 1
+
+                        separator()
+
+                        line("NAME: " .. name)
+                        line("ID: " .. tostring(getAnimationId(obj)))
+                        line("PATH: " .. path)
+
+                    end
+                end
+            end
+        end
+    end
+
+    line("")
+    line("MATCHING ANIMATIONS: " .. tostring(count))
+end
+
+--============================================================
+-- SOUNDS
+--============================================================
+
+local function captureSounds()
+    section("KJ / ULTIMATE SOUNDS")
+
+    local seen = {}
+    local count = 0
+
+    for _, root in ipairs(getRoots()) do
+
+        if root then
+
+            for _, obj in ipairs(root:GetDescendants()) do
+
+                if obj:IsA("Sound") and not seen[obj] then
+
+                    local name = getName(obj)
+                    local path = getFullName(obj)
+
+                    if
+                        contains(name, "kj")
+                        or contains(path, "kj")
+                        or contains(path, "ufw")
+                        or contains(path, "ultimate")
+                        or contains(name, "21")
+                    then
+
+                        seen[obj] = true
+                        count += 1
+
+                        separator()
+
+                        line("NAME: " .. name)
+                        line("ID: " .. tostring(getSoundId(obj)))
+                        line("PATH: " .. path)
+
+                    end
+                end
+            end
+        end
+    end
+
+    line("")
+    line("MATCHING SOUNDS: " .. tostring(count))
+end
+
+--============================================================
+-- KJ RESOURCE PATHS
+--============================================================
+
+local function checkPath(path)
+    local current = ReplicatedStorage
+
+    for part in string.gmatch(path, "[^%.]+") do
+
+        current = current and current:FindFirstChild(part)
+
+        if not current then
+            return nil
+        end
+
+    end
+
+    return current
+end
+
+local function captureKnownResources()
+    section("KNOWN KJ RESOURCE PATHS")
+
+    local paths = {
+        "Resources",
+        "Resources.KJEffects",
+        "Resources.KJThrow",
+        "Resources.KJEffects.KJWallCombo",
+        "Resources.UFW",
+        "Resources.UFW.vfx",
+        "Resources.UFW.vfx.Everything",
+        "Resources.UFW.vfx.Everything.KJ",
+        "Resources.UFW.vfx.PunchFX",
+        "Resources.UFW.vfx.PunchFX.KJ",
+        "Resources.UFW.BG",
+        "Resources.UFW.BG.KJWallBreak",
+        "Cutscenes",
+        "Cutscenes.KJ",
+        "Info",
+        "Info.Walls",
+        "Info.Walls.KJ Wall",
+    }
+
+    for _, path in ipairs(paths) do
+
+        local obj = checkPath(path)
+
+        if obj then
+            line("FOUND: " .. path)
+            line("CLASS: " .. getClass(obj))
+            line("FULL PATH: " .. getFullName(obj))
+        else
+            line("NOT FOUND: " .. path)
+        end
+
+    end
+end
+
+--============================================================
+-- REMOTES
+--============================================================
+
+local function captureRemotes()
+    section("KJ / UFW RELATED REMOTES")
+
+    local count = 0
+
+    for _, obj in ipairs(ReplicatedStorage:GetDescendants()) do
+
+        if
+            obj:IsA("RemoteEvent")
+            or obj:IsA("RemoteFunction")
+        then
+
+            if interesting(obj) then
+
+                count += 1
+
+                line(
+                    "[" ..
+                    getClass(obj) ..
+                    "] " ..
+                    getFullName(obj)
+                )
+
+            end
+        end
+    end
+
+    line("")
+    line("MATCHING REMOTES: " .. tostring(count))
+end
+
+--============================================================
+-- HOTBAR
+--============================================================
+
+local function captureHotbar()
+    section("CURRENT HOTBAR")
+
+    local gui = player:FindFirstChild("PlayerGui")
+
+    if not gui then
+        line("PlayerGui unavailable.")
+        return
+    end
+
+    local hotbar = gui:FindFirstChild("Hotbar")
+
+    if not hotbar then
+        line("Hotbar not found.")
+        return
+    end
+
+    local backpack = hotbar:FindFirstChild("Backpack")
+
+    if not backpack then
+        line("Hotbar.Backpack not found.")
+        return
+    end
+
+    local frame = backpack:FindFirstChild("Hotbar")
+
+    if not frame then
+        line("Hotbar.Backpack.Hotbar not found.")
+        return
+    end
+
+    for i = 1, 10 do
+
+        local slot = frame:FindFirstChild(tostring(i))
+
+        if slot then
+
+            local toolName = slot:FindFirstChild("ToolName", true)
+
+            if toolName and toolName:IsA("TextLabel") then
+
+                line(
+                    "SLOT " ..
+                    tostring(i) ..
+                    ": " ..
+                    tostring(toolName.Text)
+                )
+
+            else
+
+                line(
+                    "SLOT " ..
+                    tostring(i) ..
+                    ": ToolName unavailable"
+                )
+
+            end
+        end
+    end
+end
+
+--============================================================
+-- FINALIZE
+--============================================================
+
+local finished = false
+
+local function finalize()
+    if finished then
+        return
+    end
+
+    finished = true
+
+    print("")
+    print("============================================================")
+    print("FINALIZING KJ CAPTURE...")
+    print("============================================================")
+
+    line("KJ RUNTIME CAPTURE SCANNER V3")
+    line("Player: " .. player.Name)
+    line("UserId: " .. tostring(player.UserId))
+    line("Generated: " .. os.date("%Y-%m-%d %H:%M:%S"))
+
+    captureNewObjects()
+    captureTracks()
+    captureAnimations()
+    captureSounds()
+    captureKnownResources()
+    captureRemotes()
+    captureHotbar()
+
+    section("KNOWN KJ IDS")
+
+    line("Wall Attacker Animation: rbxassetid://18447913645")
+    line("Wall Victim Animation:   rbxassetid://18447915110")
+    line("Character Sound:         rbxassetid://18443048724")
+    line("Hit Sound:               rbxassetid://18443049348")
+
+    section("END OF REPORT")
+
+    local finalReport = table.concat(report, "\n")
+
+    print("")
+    print(finalReport)
+    print("")
+    print("============================================================")
+    print("KJ V3 CAPTURE FINISHED")
+    print("============================================================")
+
+    if copyToClipboard(finalReport) then
+        print("REPORT COPIED TO CLIPBOARD.")
+    else
+        warn("Clipboard API unavailable.")
+        warn("Copy the report from the console.")
+    end
+end
+
+--============================================================
+-- F8 FINALIZE
+--============================================================
+
+UserInputService.InputBegan:Connect(function(input, processed)
+
+    if processed then
+        return
+    end
+
+    if input.KeyCode == Enum.KeyCode.F8 then
+        finalize()
+    end
+
+end)
+
 print("")
-print("BASELINE CAPTURED.")
-print("WAITING FOR MOVE...")
+print("CAPTURE IS ACTIVE.")
 print("============================================================")
-
--- We intentionally wait here.
--- Stop the script after the requested move has played.
-
-task.wait(999999)
+print("After Ultimate -> 21-21-21-21 completely finishes,")
+print("press F8.")
+print("============================================================")
