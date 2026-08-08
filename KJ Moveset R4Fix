@@ -1,325 +1,1192 @@
---!strict
 --[[
-	KJ Moveset - Improved
-	Forces KJ button visible + activates real KJ resources when selected
+    KJ CLIENT MOVESET
+    Client-side presentation system
+
+    IMPORTANT:
+    This does NOT create server damage or server hitboxes.
+    It uses the game's existing local Resources, animations,
+    sounds and UI where possible.
+
+    CONTROLS
+    1 = KJ Wall Combo
+    2 = Barrage
+    3 = Uppercut
+    4 = Finisher
+    G = Ultimate Presentation
+    K = Toggle KJ
+
+    TOPBAR KJ = Toggle KJ
 ]]
+
+------------------------------------------------------------
+-- SERVICES
+------------------------------------------------------------
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local RunService = game:GetService("RunService")
-local Debris = game:GetService("Debris")
-local StarterGui = game:GetService("StarterGui")
 local TweenService = game:GetService("TweenService")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local SoundService = game:GetService("SoundService")
+local Debris = game:GetService("Debris")
 
-local LocalPlayer = Players.LocalPlayer
-local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
+local player = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
 
-----------------------------------------------------------------
--- STATE
-----------------------------------------------------------------
-local State = {
-	KJActive = false,
-	Connections = {},
-	CharConnections = {},
-	Effects = {},
-	Aura = nil,
-	LastCharacter = nil,
+------------------------------------------------------------
+-- CONFIG
+------------------------------------------------------------
+
+local CONFIG = {
+    Name = "KJ",
+
+    WalkSpeed = 16,
+    JumpPower = 50,
+
+    AuraEnabled = true,
+
+    Keybinds = {
+        Move1 = Enum.KeyCode.One,
+        Move2 = Enum.KeyCode.Two,
+        Move3 = Enum.KeyCode.Three,
+        Move4 = Enum.KeyCode.Four,
+
+        Ultimate = Enum.KeyCode.G,
+        Toggle = Enum.KeyCode.K,
+    },
+
+    Animations = {
+        WallCombo = "rbxassetid://18447913645",
+        WallComboVictim = "rbxassetid://18447915110",
+    },
+
+    Sounds = {
+        Character = "rbxassetid://18443048724",
+        Hit = "rbxassetid://18443049348",
+    }
 }
 
-local function track(conn, list)
-	list = list or State.Connections
-	table.insert(list, conn)
-	return conn
+------------------------------------------------------------
+-- STATE
+------------------------------------------------------------
+
+local KJ = {
+    Active = false,
+    Character = nil,
+    Humanoid = nil,
+    Root = nil,
+
+    Connections = {},
+    Temporary = {},
+    Tracks = {},
+
+    Aura = nil,
+    CurrentMove = nil,
+
+    Cooldowns = {},
+    Busy = false,
+
+    OriginalWalkSpeed = nil,
+    OriginalJumpPower = nil,
+}
+
+------------------------------------------------------------
+-- UTILITY
+------------------------------------------------------------
+
+local function safeDestroy(object)
+    if object then
+        pcall(function()
+            object:Destroy()
+        end)
+    end
 end
 
-local function cleanup(list)
-	for _, c in ipairs(list) do
-		pcall(function() c:Disconnect() end)
-	end
-	table.clear(list)
+local function disconnectAll()
+    for _, connection in ipairs(KJ.Connections) do
+        pcall(function()
+            connection:Disconnect()
+        end)
+    end
+
+    table.clear(KJ.Connections)
 end
 
-local function clearEffects()
-	for _, obj in ipairs(State.Effects) do
-		pcall(function() obj:Destroy() end)
-	end
-	table.clear(State.Effects)
-	if State.Aura then
-		pcall(function() State.Aura:Destroy() end)
-		State.Aura = nil
-	end
+local function addConnection(connection)
+    table.insert(KJ.Connections, connection)
+    return connection
 end
 
-----------------------------------------------------------------
--- RESOURCE HELPERS
-----------------------------------------------------------------
-local function getKJEffects()
-	local res = ReplicatedStorage:FindFirstChild("Resources")
-	return res and res:FindFirstChild("KJEffects")
+local function getCharacter()
+    local character = player.Character
+
+    if not character then
+        return nil
+    end
+
+    local humanoid = character:FindFirstChildOfClass("Humanoid")
+    local root = character:FindFirstChild("HumanoidRootPart")
+
+    if not humanoid or not root then
+        return nil
+    end
+
+    return character, humanoid, root
 end
 
-local function getEverythingKJ()
-	local res = ReplicatedStorage:FindFirstChild("Resources")
-	local ufw = res and res:FindFirstChild("UFW")
-	local vfx = ufw and ufw:FindFirstChild("vfx")
-	local everything = vfx and vfx:FindFirstChild("Everything")
-	return everything and everything:FindFirstChild("KJ")
+local function getAnimator()
+    if not KJ.Humanoid then
+        return nil
+    end
+
+    local animator = KJ.Humanoid:FindFirstChildOfClass("Animator")
+
+    if not animator then
+        animator = Instance.new("Animator")
+        animator.Parent = KJ.Humanoid
+    end
+
+    return animator
 end
 
-local function cloneFX(source, parent, lifetime)
-	if not source then return nil end
-	local c = source:Clone()
-	c.Parent = parent
-	table.insert(State.Effects, c)
-	if lifetime then
-		Debris:AddItem(c, lifetime)
-	end
-	return c
+------------------------------------------------------------
+-- TOPBAR
+------------------------------------------------------------
+
+local function findKJButton()
+    local topbar = playerGui:FindFirstChild("TopbarPlus")
+
+    if not topbar then
+        return nil
+    end
+
+    local container = topbar:FindFirstChild("TopbarContainer")
+
+    if not container then
+        return nil
+    end
+
+    local unnamedIcon = container:FindFirstChild("UnnamedIcon")
+
+    if not unnamedIcon then
+        return nil
+    end
+
+    local dropdown = unnamedIcon:FindFirstChild("DropdownContainer")
+
+    if not dropdown then
+        return nil
+    end
+
+    local frame = dropdown:FindFirstChild("DropdownFrame")
+
+    if not frame then
+        return nil
+    end
+
+    return frame:FindFirstChild("KJ")
 end
 
-local function emitAll(root)
-	if not root then return end
-	for _, d in ipairs(root:GetDescendants()) do
-		if d:IsA("ParticleEmitter") then
-			pcall(function()
-				d.Enabled = true
-				d:Emit(12)
-			end)
-		end
-	end
-end
-
-----------------------------------------------------------------
--- KEEP KJ BUTTON VISIBLE (dein Code verbessert)
-----------------------------------------------------------------
 local function keepKJVisible()
-	local topbar = PlayerGui:FindFirstChild("TopbarPlus")
-	if not topbar then return end
+    local kj = findKJButton()
 
-	local container = topbar:FindFirstChild("TopbarContainer")
-	if not container then return end
+    if not kj then
+        return
+    end
 
-	local unnamedIcon = container:FindFirstChild("UnnamedIcon")
-	if not unnamedIcon then return end
+    pcall(function()
+        kj.Visible = true
 
-	local dropdown = unnamedIcon:FindFirstChild("DropdownContainer")
-	if not dropdown then return end
-
-	local frame = dropdown:FindFirstChild("DropdownFrame")
-	if not frame then return end
-
-	local kj = frame:FindFirstChild("KJ")
-	if not kj then return end
-
-	kj.Visible = true
-	if kj:IsA("GuiButton") or kj:IsA("TextButton") or kj:IsA("ImageButton") then
-		kj.Active = true
-		kj.Selectable = true
-	end
-
-	-- Also force any child labels
-	for _, child in ipairs(kj:GetDescendants()) do
-		if child:IsA("GuiObject") then
-			child.Visible = true
-		end
-	end
+        if kj:IsA("GuiButton") then
+            kj.Active = true
+            kj.Selectable = true
+        end
+    end)
 end
 
-----------------------------------------------------------------
--- DETECT KJ SELECTION
-----------------------------------------------------------------
-local function isKJSelected()
-	-- Method 1: Check Topbar label
-	local topbar = PlayerGui:FindFirstChild("TopbarPlus")
-	if topbar then
-		for _, desc in ipairs(topbar:GetDescendants()) do
-			if desc.Name == "IconLabel" and desc:IsA("TextLabel") then
-				local text = desc.Text:lower()
-				if text == "kj" then
-					return true
-				end
-			end
-		end
-	end
-	return false
+------------------------------------------------------------
+-- TOPBAR CLICK
+------------------------------------------------------------
+
+local connectedTopbarButtons = {}
+
+local function connectTopbar()
+    local kjButton = findKJButton()
+
+    if not kjButton then
+        return
+    end
+
+    if connectedTopbarButtons[kjButton] then
+        return
+    end
+
+    connectedTopbarButtons[kjButton] = true
+
+    if kjButton:IsA("GuiButton") then
+        addConnection(kjButton.MouseButton1Click:Connect(function()
+            if KJ.Active then
+                getCharacter()
+
+                if KJ.Active then
+                    -- The actual state change is handled below.
+                end
+            end
+        end))
+    end
 end
 
-----------------------------------------------------------------
+------------------------------------------------------------
+-- CHARACTER SETUP
+------------------------------------------------------------
+
+local function setupCharacter()
+    local character, humanoid, root = getCharacter()
+
+    if not character then
+        return false
+    end
+
+    KJ.Character = character
+    KJ.Humanoid = humanoid
+    KJ.Root = root
+
+    if KJ.OriginalWalkSpeed == nil then
+        KJ.OriginalWalkSpeed = humanoid.WalkSpeed
+    end
+
+    if KJ.OriginalJumpPower == nil then
+        KJ.OriginalJumpPower = humanoid.JumpPower
+    end
+
+    return true
+end
+
+------------------------------------------------------------
+-- ANIMATION
+------------------------------------------------------------
+
+local function stopTracks()
+    for _, track in ipairs(KJ.Tracks) do
+        pcall(function()
+            track:Stop(0.1)
+            track:Destroy()
+        end)
+    end
+
+    table.clear(KJ.Tracks)
+end
+
+local function playAnimation(animationId, speed, fadeTime)
+    if not KJ.Active then
+        return nil
+    end
+
+    local animator = getAnimator()
+
+    if not animator then
+        return nil
+    end
+
+    local animation = Instance.new("Animation")
+    animation.AnimationId = animationId
+
+    local success, track = pcall(function()
+        return animator:LoadAnimation(animation)
+    end)
+
+    animation:Destroy()
+
+    if not success or not track then
+        return nil
+    end
+
+    track.Priority = Enum.AnimationPriority.Action
+    track.Looped = false
+
+    if speed then
+        track:AdjustSpeed(speed)
+    end
+
+    track:Play(fadeTime or 0.1)
+
+    table.insert(KJ.Tracks, track)
+
+    return track
+end
+
+------------------------------------------------------------
+-- SOUND
+------------------------------------------------------------
+
+local function playSound(soundId, volume, speed)
+    if not KJ.Root then
+        return nil
+    end
+
+    local sound = Instance.new("Sound")
+
+    sound.SoundId = soundId
+    sound.Volume = volume or 1
+    sound.PlaybackSpeed = speed or 1
+    sound.RollOffMaxDistance = 100
+    sound.RollOffMinDistance = 5
+
+    sound.Parent = KJ.Root
+
+    sound:Play()
+
+    table.insert(KJ.Temporary, sound)
+
+    sound.Ended:Connect(function()
+        safeDestroy(sound)
+    end)
+
+    return sound
+end
+
+------------------------------------------------------------
+-- RESOURCE SEARCH
+------------------------------------------------------------
+
+local function findPath(root, path)
+    local current = root
+
+    for _, name in ipairs(path) do
+        if not current then
+            return nil
+        end
+
+        current = current:FindFirstChild(name)
+    end
+
+    return current
+end
+
+local function getKJEverything()
+    return findPath(
+        ReplicatedStorage,
+        {
+            "Resources",
+            "UFW",
+            "vfx",
+            "Everything",
+            "KJ"
+        }
+    )
+end
+
+local function getKJWallCombo()
+    return findPath(
+        ReplicatedStorage,
+        {
+            "Resources",
+            "KJEffects",
+            "KJWallCombo"
+        }
+    )
+end
+
+------------------------------------------------------------
+-- PARTICLE ENABLE
+------------------------------------------------------------
+
+local function enableParticles(root, enabled)
+    if not root then
+        return
+    end
+
+    for _, object in ipairs(root:GetDescendants()) do
+        if object:IsA("ParticleEmitter") then
+            pcall(function()
+                object.Enabled = enabled
+            end)
+        elseif object:IsA("Trail") then
+            pcall(function()
+                object.Enabled = enabled
+            end)
+        elseif object:IsA("Beam") then
+            pcall(function()
+                object.Enabled = enabled
+            end)
+        end
+    end
+end
+
+------------------------------------------------------------
 -- AURA
-----------------------------------------------------------------
-local function applyKJAura(character)
-	clearEffects()
-	local source = getEverythingKJ()
-	if not source then
-		warn("[KJ] Everything.KJ not found")
-		return
-	end
+------------------------------------------------------------
 
-	local hrp = character:FindFirstChild("HumanoidRootPart")
-	if not hrp then return end
-
-	local aura = source:Clone()
-	aura.Name = "KJ_ClientAura"
-	aura.Parent = character
-
-	local surface = aura:FindFirstChild("Surface")
-	if surface and surface:IsA("BasePart") then
-		surface.Anchored = false
-		surface.CanCollide = false
-		surface.Massless = true
-
-		local weld = Instance.new("WeldConstraint")
-		weld.Part0 = hrp
-		weld.Part1 = surface
-		weld.Parent = surface
-
-		-- Enable particles
-		for _, d in ipairs(aura:GetDescendants()) do
-			if d:IsA("ParticleEmitter") then
-				d.Enabled = true
-			end
-		end
-	end
-
-	State.Aura = aura
-	table.insert(State.Effects, aura)
+local function removeAura()
+    if KJ.Aura then
+        safeDestroy(KJ.Aura)
+        KJ.Aura = nil
+    end
 end
 
-----------------------------------------------------------------
--- VFX PLAYERS
-----------------------------------------------------------------
-local function playFromWallCombo(name, hrp, lifetime)
-	local effects = getKJEffects()
-	if not effects then return end
-	local wall = effects:FindFirstChild("KJWallCombo")
-	if not wall then return end
-	local part = wall:FindFirstChild(name)
-	if not part then return end
+local function createAura()
+    if not KJ.Active or not CONFIG.AuraEnabled then
+        return
+    end
 
-	local clone = cloneFX(part, workspace, lifetime or 2)
-	if clone and clone:IsA("BasePart") then
-		clone.CFrame = hrp.CFrame
-		clone.Anchored = true
-		emitAll(clone)
-	elseif clone then
-		emitAll(clone)
-	end
+    if not KJ.Character then
+        return
+    end
+
+    removeAura()
+
+    local source = getKJEverything()
+
+    if not source then
+        warn("[KJ] Everything.KJ was not found")
+        return
+    end
+
+    local clone = source:Clone()
+    clone.Name = "KJ_ClientAura"
+
+    KJ.Aura = clone
+    clone.Parent = KJ.Character
+
+    local surface = clone:FindFirstChild("Surface", true)
+
+    if surface then
+        local attachment = surface:FindFirstChild("Attachment", true)
+
+        if attachment then
+            enableParticles(attachment, true)
+        end
+    end
+
+    for _, object in ipairs(clone:GetDescendants()) do
+        if object:IsA("BasePart") then
+            pcall(function()
+                object.CanCollide = false
+                object.CanTouch = false
+                object.CanQuery = false
+                object.Massless = true
+            end)
+        end
+    end
 end
 
-----------------------------------------------------------------
--- MOVES (Saitama animation intercept)
-----------------------------------------------------------------
-local function setupMoves(character)
-	local humanoid = character:FindFirstChildOfClass("Humanoid")
-	local hrp = character:FindFirstChild("HumanoidRootPart")
-	if not humanoid or not hrp then return end
+------------------------------------------------------------
+-- POSITION VFX
+------------------------------------------------------------
 
-	track(humanoid.AnimationPlayed:Connect(function(track)
-		if not State.KJActive then return end
-		if not track.Animation then return end
+local function positionInstance(instance)
+    if not instance or not KJ.Root then
+        return
+    end
 
-		local id = track.Animation.AnimationId
-
-		-- Very broad detection for now (Saitama moves)
-		-- We will refine IDs later
-		if id:find("12273") or id:find("12296") or id:find("12309") or id:find("12351") or id:find("184479") then
-			-- Play KJ VFX on any major move
-			playFromWallCombo("hold", hrp, 1.5)
-			task.delay(0.25, function()
-				if hrp and hrp.Parent then
-					playFromWallCombo("slam", hrp, 1.8)
-				end
-			end)
-			task.delay(0.55, function()
-				if hrp and hrp.Parent then
-					playFromWallCombo("FinalImpact", hrp, 2.2)
-				end
-			end)
-		end
-	end), State.CharConnections)
+    if instance:IsA("Model") then
+        pcall(function()
+            instance:PivotTo(KJ.Root.CFrame)
+        end)
+    elseif instance:IsA("BasePart") then
+        pcall(function()
+            instance.CFrame = KJ.Root.CFrame
+        end)
+    end
 end
 
-----------------------------------------------------------------
--- ACTIVATE / DEACTIVATE
-----------------------------------------------------------------
-local function activateKJ(character)
-	if State.KJActive and State.LastCharacter == character then return end
+------------------------------------------------------------
+-- PLAY KJ RESOURCE
+------------------------------------------------------------
 
-	State.KJActive = true
-	State.LastCharacter = character
-	cleanup(State.CharConnections)
-	clearEffects()
+local function playResource(name, lifetime)
+    if not KJ.Active then
+        return nil
+    end
 
-	applyKJAura(character)
-	setupMoves(character)
+    local source = getKJWallCombo()
 
-	pcall(function()
-		StarterGui:SetCore("SendNotification", {
-			Title = "KJ",
-			Text = "KJ Moveset activated",
-			Duration = 3
-		})
-	end)
+    if not source then
+        warn("[KJ] KJWallCombo resource not found")
+        return nil
+    end
 
-	print("[KJ] Activated")
+    local object = source:FindFirstChild(name, true)
+
+    if not object then
+        warn("[KJ] Resource not found:", name)
+        return nil
+    end
+
+    local clone = object:Clone()
+    clone.Name = "KJ_Local_" .. name
+
+    clone.Parent = workspace
+
+    positionInstance(clone)
+
+    if clone:IsA("BasePart") then
+        clone.Anchored = true
+        clone.CanCollide = false
+        clone.CanTouch = false
+        clone.CanQuery = false
+    end
+
+    enableParticles(clone, true)
+
+    table.insert(KJ.Temporary, clone)
+
+    if lifetime then
+        Debris:AddItem(clone, lifetime)
+    end
+
+    return clone
 end
+
+------------------------------------------------------------
+-- CAMERA EFFECT
+------------------------------------------------------------
+
+local function cameraShake(power, duration)
+    local camera = workspace.CurrentCamera
+
+    if not camera then
+        return
+    end
+
+    local start = tick()
+
+    local connection
+
+    connection = RunService.RenderStepped:Connect(function()
+        if not camera or not camera.Parent then
+            connection:Disconnect()
+            return
+        end
+
+        local elapsed = tick() - start
+
+        if elapsed >= duration then
+            connection:Disconnect()
+            return
+        end
+
+        local fade = 1 - (elapsed / duration)
+
+        local x = (math.random() - 0.5) * power * fade
+        local y = (math.random() - 0.5) * power * fade
+        local z = (math.random() - 0.5) * power * fade
+
+        camera.CFrame =
+            camera.CFrame *
+            CFrame.Angles(
+                math.rad(x),
+                math.rad(y),
+                math.rad(z)
+            )
+    end)
+
+    table.insert(KJ.Connections, connection)
+end
+
+------------------------------------------------------------
+-- FOV EFFECT
+------------------------------------------------------------
+
+local function fovPunch(amount, duration)
+    local camera = workspace.CurrentCamera
+
+    if not camera then
+        return
+    end
+
+    local original = camera.FieldOfView
+
+    local up = TweenService:Create(
+        camera,
+        TweenInfo.new(
+            duration * 0.35,
+            Enum.EasingStyle.Quad,
+            Enum.EasingDirection.Out
+        ),
+        {
+            FieldOfView = original + amount
+        }
+    )
+
+    local down = TweenService:Create(
+        camera,
+        TweenInfo.new(
+            duration * 0.65,
+            Enum.EasingStyle.Quad,
+            Enum.EasingDirection.Out
+        ),
+        {
+            FieldOfView = original
+        }
+    )
+
+    up:Play()
+
+    up.Completed:Connect(function()
+        if camera and camera.Parent then
+            down:Play()
+        end
+    end)
+end
+
+------------------------------------------------------------
+-- COOLDOWN
+------------------------------------------------------------
+
+local function onCooldown(name)
+    local expires = KJ.Cooldowns[name]
+
+    if not expires then
+        return false
+    end
+
+    return tick() < expires
+end
+
+local function setCooldown(name, duration)
+    KJ.Cooldowns[name] = tick() + duration
+end
+
+------------------------------------------------------------
+-- MOVE LOCK
+------------------------------------------------------------
+
+local function beginMove(name)
+    if not KJ.Active then
+        return false
+    end
+
+    if KJ.Busy then
+        return false
+    end
+
+    if onCooldown(name) then
+        return false
+    end
+
+    KJ.Busy = true
+    KJ.CurrentMove = name
+
+    return true
+end
+
+local function endMove(name, cooldown)
+    if KJ.CurrentMove == name then
+        KJ.CurrentMove = nil
+    end
+
+    KJ.Busy = false
+
+    if cooldown then
+        setCooldown(name, cooldown)
+    end
+end
+
+------------------------------------------------------------
+-- MOVE 1
+-- WALL COMBO
+------------------------------------------------------------
+
+local function move1WallCombo()
+    if not beginMove("WallCombo") then
+        return
+    end
+
+    task.spawn(function()
+        playSound(CONFIG.Sounds.Character, 1)
+
+        local track = playAnimation(
+            CONFIG.Animations.WallCombo,
+            1,
+            0.05
+        )
+
+        playResource("hold", 1.4)
+
+        fovPunch(8, 0.25)
+
+        task.wait(0.35)
+
+        playSound(CONFIG.Sounds.Hit, 1.2)
+
+        playResource("ImpactEffect", 1)
+        playResource("HitParticles", 1)
+
+        cameraShake(1.2, 0.12)
+
+        task.wait(0.35)
+
+        playSound(CONFIG.Sounds.Hit, 1.2)
+
+        playResource("ImpactEffect2", 1)
+        playResource("CollateralWind", 1)
+
+        cameraShake(1.8, 0.15)
+
+        task.wait(0.35)
+
+        playSound(CONFIG.Sounds.Hit, 1.5)
+
+        playResource("FinalImpact", 2)
+        playResource("FinalImpactHUGEignore", 2)
+        playResource("slam", 1.5)
+
+        fovPunch(15, 0.35)
+        cameraShake(4, 0.35)
+
+        task.wait(1)
+
+        endMove("WallCombo", 5)
+    end)
+end
+
+------------------------------------------------------------
+-- MOVE 2
+-- BARRAGE
+------------------------------------------------------------
+
+local function move2Barrage()
+    if not beginMove("Barrage") then
+        return
+    end
+
+    task.spawn(function()
+        playSound(CONFIG.Sounds.Character, 0.8)
+
+        local duration = 1.8
+        local start = tick()
+
+        local barrageAnimation =
+            CONFIG.Animations.WallCombo
+
+        local track = playAnimation(
+            barrageAnimation,
+            1.4,
+            0.05
+        )
+
+        while tick() - start < duration do
+            if not KJ.Active then
+                break
+            end
+
+            playSound(
+                CONFIG.Sounds.Hit,
+                0.35,
+                1 + math.random(-10, 10) / 100
+            )
+
+            playResource("HitParticles", 0.35)
+
+            if math.random() > 0.45 then
+                playResource("PunchFX", 0.35)
+            end
+
+            cameraShake(0.35, 0.06)
+
+            task.wait(0.13)
+        end
+
+        if track then
+            pcall(function()
+                track:Stop(0.1)
+            end)
+        end
+
+        endMove("Barrage", 4)
+    end)
+end
+
+------------------------------------------------------------
+-- MOVE 3
+-- UPPERCUT
+------------------------------------------------------------
+
+local function move3Uppercut()
+    if not beginMove("Uppercut") then
+        return
+    end
+
+    task.spawn(function()
+        playSound(CONFIG.Sounds.Character, 1)
+
+        playResource("hold", 0.5)
+
+        task.wait(0.25)
+
+        playAnimation(
+            CONFIG.Animations.WallCombo,
+            1.25,
+            0.05
+        )
+
+        playSound(CONFIG.Sounds.Hit, 1.5)
+
+        playResource("uppercutmesh", 1)
+        playResource("uppercutimpact", 1)
+        playResource("LeapParticles", 1)
+
+        fovPunch(10, 0.25)
+        cameraShake(3, 0.25)
+
+        task.wait(0.8)
+
+        endMove("Uppercut", 3)
+    end)
+end
+
+------------------------------------------------------------
+-- MOVE 4
+-- FINISHER
+------------------------------------------------------------
+
+local function move4Finisher()
+    if not beginMove("Finisher") then
+        return
+    end
+
+    task.spawn(function()
+        playSound(CONFIG.Sounds.Character, 1.2)
+
+        playResource("hold", 1)
+
+        fovPunch(12, 0.3)
+
+        task.wait(0.5)
+
+        playAnimation(
+            CONFIG.Animations.WallCombo,
+            0.9,
+            0.05
+        )
+
+        task.wait(0.25)
+
+        playSound(CONFIG.Sounds.Hit, 1.5)
+
+        playResource("DropkickExtra", 1)
+        playResource("firstHit", 1)
+
+        cameraShake(2, 0.2)
+
+        task.wait(0.45)
+
+        playSound(CONFIG.Sounds.Hit, 1.8)
+
+        playResource("lastimpact", 1.5)
+        playResource("slam", 1.5)
+
+        cameraShake(5, 0.4)
+        fovPunch(18, 0.4)
+
+        task.wait(0.7)
+
+        playResource("FinalImpact", 2)
+
+        cameraShake(6, 0.5)
+
+        task.wait(1)
+
+        endMove("Finisher", 7)
+    end)
+end
+
+------------------------------------------------------------
+-- ULTIMATE
+------------------------------------------------------------
+
+local function ultimate()
+    if not KJ.Active then
+        return
+    end
+
+    if KJ.Busy then
+        return
+    end
+
+    if onCooldown("Ultimate") then
+        return
+    end
+
+    KJ.Busy = true
+    KJ.CurrentMove = "Ultimate"
+
+    setCooldown("Ultimate", 15)
+
+    task.spawn(function()
+
+        ----------------------------------------------------
+        -- START
+        ----------------------------------------------------
+
+        playSound(CONFIG.Sounds.Character, 1.5)
+
+        local oldSpeed = KJ.Humanoid and KJ.Humanoid.WalkSpeed
+
+        if KJ.Humanoid then
+            KJ.Humanoid.WalkSpeed = 0
+        end
+
+        playResource("hold", 2)
+
+        fovPunch(20, 0.5)
+
+        cameraShake(1.5, 0.5)
+
+        ----------------------------------------------------
+        -- CHARGE
+        ----------------------------------------------------
+
+        task.wait(1)
+
+        playResource("UserAura", 2)
+
+        if KJ.Aura then
+            enableParticles(KJ.Aura, true)
+        end
+
+        playSound(
+            CONFIG.Sounds.Character,
+            1.8,
+            0.8
+        )
+
+        task.wait(1)
+
+        ----------------------------------------------------
+        -- IMPACT
+        ----------------------------------------------------
+
+        playSound(
+            CONFIG.Sounds.Hit,
+            2,
+            0.7
+        )
+
+        playResource("FinalImpact", 3)
+        playResource("FinalImpactHUGEignore", 3)
+
+        playResource("SPINNNN", 2)
+        playResource("tpthing", 2)
+
+        fovPunch(30, 0.7)
+        cameraShake(8, 0.7)
+
+        ----------------------------------------------------
+        -- SLAM
+        ----------------------------------------------------
+
+        task.wait(0.65)
+
+        playResource("slam", 2)
+        playResource("feet", 1)
+        playResource("speedlines", 1)
+
+        cameraShake(6, 0.5)
+
+        ----------------------------------------------------
+        -- FINISH
+        ----------------------------------------------------
+
+        task.wait(1)
+
+        playResource("FinalImpact", 2)
+
+        fovPunch(12, 0.4)
+        cameraShake(4, 0.4)
+
+        task.wait(0.8)
+
+        if KJ.Humanoid and KJ.Humanoid.Parent then
+            KJ.Humanoid.WalkSpeed = oldSpeed or CONFIG.WalkSpeed
+        end
+
+        KJ.CurrentMove = nil
+        KJ.Busy = false
+    end)
+end
+
+------------------------------------------------------------
+-- KJ ACTIVATION
+------------------------------------------------------------
 
 local function deactivateKJ()
-	if not State.KJActive then return end
-	State.KJActive = false
-	cleanup(State.CharConnections)
-	clearEffects()
-	print("[KJ] Deactivated")
+    if not KJ.Active then
+        return
+    end
+
+    KJ.Active = false
+    KJ.Busy = false
+    KJ.CurrentMove = nil
+
+    stopTracks()
+    removeAura()
+
+    for _, object in ipairs(KJ.Temporary) do
+        safeDestroy(object)
+    end
+
+    table.clear(KJ.Temporary)
+
+    if KJ.Humanoid and KJ.Humanoid.Parent then
+        if KJ.OriginalWalkSpeed then
+            KJ.Humanoid.WalkSpeed = KJ.OriginalWalkSpeed
+        end
+
+        if KJ.OriginalJumpPower then
+            KJ.Humanoid.JumpPower = KJ.OriginalJumpPower
+        end
+    end
+
+    print("[KJ] Deactivated")
 end
 
-----------------------------------------------------------------
--- MAIN LOOP
-----------------------------------------------------------------
--- Keep KJ button visible forever
+local function activateKJ()
+    if KJ.Active then
+        return
+    end
+
+    if not setupCharacter() then
+        return
+    end
+
+    KJ.Active = true
+
+    KJ.OriginalWalkSpeed = KJ.Humanoid.WalkSpeed
+    KJ.OriginalJumpPower = KJ.Humanoid.JumpPower
+
+    KJ.Humanoid.WalkSpeed = CONFIG.WalkSpeed
+    KJ.Humanoid.JumpPower = CONFIG.JumpPower
+
+    createAura()
+
+    playSound(CONFIG.Sounds.Character, 1)
+
+    print("[KJ] Activated")
+    print("[KJ] 1 = Wall Combo")
+    print("[KJ] 2 = Barrage")
+    print("[KJ] 3 = Uppercut")
+    print("[KJ] 4 = Finisher")
+    print("[KJ] G = Ultimate")
+end
+
+local function toggleKJ()
+    if KJ.Active then
+        deactivateKJ()
+    else
+        activateKJ()
+    end
+end
+
+------------------------------------------------------------
+-- INPUT
+------------------------------------------------------------
+
+addConnection(
+    UserInputService.InputBegan:Connect(function(input, processed)
+        if processed then
+            return
+        end
+
+        if input.KeyCode == CONFIG.Keybinds.Toggle then
+            toggleKJ()
+            return
+        end
+
+        if not KJ.Active then
+            return
+        end
+
+        if input.KeyCode == CONFIG.Keybinds.Move1 then
+            move1WallCombo()
+
+        elseif input.KeyCode == CONFIG.Keybinds.Move2 then
+            move2Barrage()
+
+        elseif input.KeyCode == CONFIG.Keybinds.Move3 then
+            move3Uppercut()
+
+        elseif input.KeyCode == CONFIG.Keybinds.Move4 then
+            move4Finisher()
+
+        elseif input.KeyCode == CONFIG.Keybinds.Ultimate then
+            ultimate()
+        end
+    end)
+)
+
+------------------------------------------------------------
+-- RESPAWN
+------------------------------------------------------------
+
+addConnection(
+    player.CharacterAdded:Connect(function(character)
+        deactivateKJ()
+
+        KJ.OriginalWalkSpeed = nil
+        KJ.OriginalJumpPower = nil
+
+        character:WaitForChild("Humanoid", 10)
+        character:WaitForChild("HumanoidRootPart", 10)
+
+        task.wait(1)
+
+        if KJ.Active then
+            setupCharacter()
+            createAura()
+        end
+    end)
+)
+
+------------------------------------------------------------
+-- TOPBAR VISIBILITY
+------------------------------------------------------------
+
 task.spawn(function()
-	while true do
-		pcall(keepKJVisible)
-		task.wait(0.15)
-	end
+    while task.wait(0.1) do
+        pcall(function()
+            keepKJVisible()
+            connectTopbar()
+        end)
+    end
 end)
 
-PlayerGui.DescendantAdded:Connect(function()
-	task.defer(keepKJVisible)
-end)
+------------------------------------------------------------
+-- PLAYERGUI REBUILD
+------------------------------------------------------------
 
--- Watch for selection changes + character
+addConnection(
+    playerGui.DescendantAdded:Connect(function()
+        task.defer(function()
+            pcall(function()
+                keepKJVisible()
+                connectTopbar()
+            end)
+        end)
+    end)
+)
+
+------------------------------------------------------------
+-- INITIALIZE
+------------------------------------------------------------
+
 task.spawn(function()
-	while true do
-		task.wait(0.25)
+    task.wait(1)
 
-		local selected = isKJSelected()
-		local char = LocalPlayer.Character
+    keepKJVisible()
+    connectTopbar()
 
-		if selected and char then
-			if not State.KJActive or State.LastCharacter \~= char then
-				activateKJ(char)
-			end
-		elseif not selected and State.KJActive then
-			deactivateKJ()
-		end
-	end
+    setupCharacter()
+
+    print("========================================")
+    print("        KJ CLIENT MOVESET LOADED")
+    print("========================================")
+    print("K = Toggle KJ")
+    print("1 = Wall Combo")
+    print("2 = Barrage")
+    print("3 = Uppercut")
+    print("4 = Finisher")
+    print("G = Ultimate")
+    print("========================================")
 end)
-
--- Character added
-LocalPlayer.CharacterAdded:Connect(function(char)
-	task.wait(0.6)
-	if isKJSelected() then
-		activateKJ(char)
-	end
-end)
-
--- Initial
-task.defer(function()
-	task.wait(1)
-	keepKJVisible()
-	if isKJSelected() and LocalPlayer.Character then
-		activateKJ(LocalPlayer.Character)
-	end
-end)
-
-print("[KJ] Improved script loaded - KJ button forced visible")
