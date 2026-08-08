@@ -1,1537 +1,2686 @@
 --============================================================
--- KJ CLIENT MOVESSET
--- Client-side presentation / prototype
+-- KJ CLIENT CONVERSION
 --============================================================
+-- Real KJ animation conversion for the existing Saitama kit.
+--
+-- This is CLIENT-SIDE.
+--
+-- It:
+--   * Uses the existing KJ Topbar button
+--   * Replaces Saitama animations with real KJ animations
+--   * Uses existing KJ resources from ReplicatedStorage
+--   * Uses the existing hotbar instead of creating another UI
+--   * Adds KJ aura/VFX locally
+--   * Handles respawns
+--   * Cleans up connections/effects
+--
+-- Known KJ animations from the supplied animation document:
+--
+-- M1:
+-- 17325510002
+-- 17325513870
+-- 17325522388
+-- 17325537719
+--
+-- Ravage:
+-- 16945550029
+--
+-- Swift Sweep:
+-- 16944345619
+--
+-- Collateral Ruin:
+-- 17325254223
+--
+-- Spiraling Storm:
+-- 81827172076105
+--
+-- 20 Series:
+-- 17140902079
+--
+-- Stoic Bomb:
+-- 17141153099
+--
+-- 20-20-20 Dropkick:
+-- 17420452843
+--
+-- Five Seasons:
+-- 18462894593
+--
+-- Unlimited Flex Works:
+-- 77727115892579
+--
+-- Wall Combo:
+-- 18447913645
+--
+-- Wall Combo Victim:
+-- 18447915110
+--
+-- Character sound:
+-- 18443048724
+--
+-- Hit sound:
+-- 18443049348
+--============================================================
+
+
+------------------------------------------------------------
+-- SERVICES
+------------------------------------------------------------
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 local SoundService = game:GetService("SoundService")
 
-local player = Players.LocalPlayer
-local playerGui = player:WaitForChild("PlayerGui")
 
---============================================================
--- CONFIG
---============================================================
+------------------------------------------------------------
+-- PLAYER
+------------------------------------------------------------
 
-local CONFIG = {
+local Player = Players.LocalPlayer
 
-	Animations = {
+if not Player then
+    return
+end
 
-		WallAttacker = "rbxassetid://18447913645",
-		WallVictim = "rbxassetid://18447915110",
+local PlayerGui = Player:WaitForChild("PlayerGui")
 
-		SaitamaM1 = {
-			"rbxassetid://18715812734",
-			"rbxassetid://18715817240",
-			"rbxassetid://18715818827",
-			"rbxassetid://18715820628",
-		},
 
-		SaitamaNormalPunch = "rbxassetid://18715842262",
-		SaitamaUppercut = "rbxassetid://18715837899",
-		SaitamaShove = "rbxassetid://18715845645",
-
-		Awakening = "rbxassetid://12447707844",
-	},
-
-	Sounds = {
-		Character = "rbxassetid://18443048724",
-		Hit = "rbxassetid://18443049348",
-	},
-
-	UltimateDuration = 20,
-
-	NormalWalkSpeed = 16,
-	UltimateWalkSpeed = 20,
-
-	CameraFOV = 70,
-	UltimateFOV = 82,
-}
-
---============================================================
--- STATE
---============================================================
+------------------------------------------------------------
+-- GLOBAL STATE
+------------------------------------------------------------
 
 local State = {
-	Enabled = false,
-	UltimateActive = false,
-	Busy = false,
+    Active = false,
+    Ultimate = false,
+    Busy = false,
 
-	Character = nil,
-	Humanoid = nil,
-	RootPart = nil,
+    Character = nil,
+    Humanoid = nil,
+    Root = nil,
 
-	Connections = {},
-	CharacterConnections = {},
-	Effects = {},
-	Animations = {},
-	Sounds = {},
+    Connections = {},
+    CharacterConnections = {},
+    Effects = {},
+    Tracks = {},
 
-	OriginalUI = {},
-	OriginalCameraFOV = nil,
+    OriginalNames = {},
+    OriginalFonts = {},
 
-	M1Index = 0,
-	M1Debounce = false,
+    KJButtonConnection = nil,
+
+    Aura = nil,
+    CurrentReplacement = nil,
+
+    Destroyed = false
 }
 
---============================================================
--- UTILITIES
---============================================================
+
+------------------------------------------------------------
+-- CONFIG
+------------------------------------------------------------
+
+local Config = {
+
+    Font = {
+        Enabled = true,
+        Font = Enum.Font.Sarpanch,
+        Weight = Enum.FontWeight.Thin,
+        Style = Enum.FontStyle.Normal
+    },
+
+    Sounds = {
+        Character = "rbxassetid://18443048724",
+        Hit = "rbxassetid://18443049348"
+    },
+
+    Animations = {
+
+        ----------------------------------------------------
+        -- KJ M1
+        ----------------------------------------------------
+
+        M1 = {
+            [1] = "rbxassetid://17325510002",
+            [2] = "rbxassetid://17325513870",
+            [3] = "rbxassetid://17325522388",
+            [4] = "rbxassetid://17325537719"
+        },
+
+        ----------------------------------------------------
+        -- KJ BASE MOVES
+        ----------------------------------------------------
+
+        Ravage = "rbxassetid://16945550029",
+
+        SwiftSweep = "rbxassetid://16944345619",
+
+        CollateralRuin = "rbxassetid://17325254223",
+
+        SpiralingStorm = "rbxassetid://81827172076105",
+
+        ----------------------------------------------------
+        -- WALL COMBO
+        ----------------------------------------------------
+
+        WallCombo = "rbxassetid://18447913645",
+
+        WallComboVictim = "rbxassetid://18447915110",
+
+        ----------------------------------------------------
+        -- KJ ULT
+        ----------------------------------------------------
+
+        Awakening = "rbxassetid://17140902079",
+
+        StoicBomb = "rbxassetid://17141153099",
+
+        Dropkick = "rbxassetid://17420452843",
+
+        FiveSeasons = "rbxassetid://18462894593",
+
+        UnlimitedFlexworks = "rbxassetid://77727115892579"
+    },
+
+    Hotbar = {
+
+        Normal = {
+            ["1"] = {
+                Original = "Normal Punch",
+                New = "Ravage"
+            },
+
+            ["2"] = {
+                Original = "Consecutive Punches",
+                New = "Swift Sweep"
+            },
+
+            ["3"] = {
+                Original = "Shove",
+                New = "Collateral Ruin"
+            },
+
+            ["4"] = {
+                Original = "Uppercut",
+                New = "Spiraling Storm"
+            }
+        },
+
+        Ultimate = {
+
+            ["1"] = {
+                Original = "Death Counter",
+                New = "Stoic Bomb"
+            },
+
+            ["2"] = {
+                Original = "Table Flip",
+                New = "20-20-20 Dropkick"
+            },
+
+            ["3"] = {
+                Original = "Serious Punch",
+                New = "Five Seasons"
+            },
+
+            ["4"] = {
+                Original = "Omni Directional Punch",
+                New = "Unlimited Flex Works"
+            }
+        }
+    },
+
+    --------------------------------------------------------
+    -- Saitama animation IDs that should be intercepted.
+    --------------------------------------------------------
+
+    Saitama = {
+
+        M1 = {
+            [18715812734] = 1,
+            [18715817240] = 2,
+            [18715818827] = 3,
+            [18715820628] = 4
+        },
+
+        Moves = {
+
+            [18715842262] = "Ravage",
+            [18715831781] = "SwiftSweep",
+            [18715845645] = "CollateralRuin",
+            [18715837899] = "SpiralingStorm",
+
+            ------------------------------------------------
+            -- Older animation IDs commonly encountered by
+            -- Saitama scripts.
+            ------------------------------------------------
+
+            [10468665991] = "Ravage",
+            [10466974800] = "SwiftSweep",
+            [10471336737] = "CollateralRuin",
+            [12510170988] = "SpiralingStorm",
+
+            ------------------------------------------------
+            -- Saitama awakening.
+            ------------------------------------------------
+
+            [12447707844] = "Awakening",
+
+            [18715881168] = "StoicBomb",
+            [18715884857] = "Dropkick",
+            [18715898844] = "FiveSeasons",
+            [18715891164] = "UnlimitedFlexworks",
+
+            ------------------------------------------------
+            -- Older awakening IDs from your script.
+            ------------------------------------------------
+
+            [11343318134] = "StoicBomb",
+            [11365563255] = "Dropkick",
+            [12983333733] = "FiveSeasons",
+            [13927612951] = "UnlimitedFlexworks"
+        }
+    }
+}
+
+
+------------------------------------------------------------
+-- UTILITY
+------------------------------------------------------------
+
+local function safeDestroy(object)
+
+    if not object then
+        return
+    end
+
+    pcall(function()
+        object:Destroy()
+    end)
+end
+
 
 local function disconnect(connection)
-	if connection then
-		pcall(function()
-			connection:Disconnect()
-		end)
-	end
+
+    if not connection then
+        return
+    end
+
+    pcall(function()
+        connection:Disconnect()
+    end)
 end
 
-local function disconnectList(list)
-	for i, connection in ipairs(list) do
-		disconnect(connection)
-		list[i] = nil
-	end
+
+local function trackConnection(connection)
+
+    if connection then
+        table.insert(State.Connections, connection)
+    end
+
+    return connection
 end
 
-local function destroyObject(object)
-	if object then
-		pcall(function()
-			object:Destroy()
-		end)
-	end
+
+local function trackCharacterConnection(connection)
+
+    if connection then
+        table.insert(State.CharacterConnections, connection)
+    end
+
+    return connection
 end
 
-local function trackConnection(connection, list)
-	table.insert(list or State.Connections, connection)
-	return connection
-end
 
 local function trackEffect(object)
-	if object then
-		table.insert(State.Effects, object)
-	end
 
-	return object
+    if object then
+        table.insert(State.Effects, object)
+    end
+
+    return object
 end
 
-local function trackAnimation(track)
-	if track then
-		table.insert(State.Animations, track)
-	end
 
-	return track
+------------------------------------------------------------
+-- ANIMATION ID PARSER
+------------------------------------------------------------
+
+local function getAnimationId(animation)
+
+    if not animation then
+        return nil
+    end
+
+    local ok, result = pcall(function()
+
+        local id = animation.AnimationId
+
+        if not id or id == "" then
+            return nil
+        end
+
+        return tonumber(string.match(id, "%d+"))
+
+    end)
+
+    if ok then
+        return result
+    end
+
+    return nil
 end
 
-local function trackSound(sound)
-	if sound then
-		table.insert(State.Sounds, sound)
-	end
 
-	return sound
-end
-
---============================================================
--- RECURSIVE RESOURCE SEARCH
---============================================================
-
-local function findRecursive(root, name)
-	if not root then
-		return nil
-	end
-
-	local direct = root:FindFirstChild(name, true)
-
-	return direct
-end
-
-local function findAllRecursive(root, name)
-	local results = {}
-
-	if not root then
-		return results
-	end
-
-	for _, object in ipairs(root:GetDescendants()) do
-		if object.Name == name then
-			table.insert(results, object)
-		end
-	end
-
-	return results
-end
-
---============================================================
--- CHARACTER
---============================================================
+------------------------------------------------------------
+-- CHARACTER SETUP
+------------------------------------------------------------
 
 local function getCharacter()
-	local character = player.Character
 
-	if not character then
-		return nil
-	end
+    local character = Player.Character
 
-	local humanoid = character:FindFirstChildOfClass("Humanoid")
-	local root = character:FindFirstChild("HumanoidRootPart")
+    if not character then
+        return nil
+    end
 
-	if not humanoid or not root then
-		return nil
-	end
+    local humanoid = character:FindFirstChildOfClass("Humanoid")
 
-	return character, humanoid, root
+    local root = character:FindFirstChild("HumanoidRootPart")
+
+    if not humanoid or not root then
+        return nil
+    end
+
+    return character, humanoid, root
 end
 
-local function refreshCharacterReferences()
-	local character, humanoid, root = getCharacter()
 
-	State.Character = character
-	State.Humanoid = humanoid
-	State.RootPart = root
+------------------------------------------------------------
+-- FIND RECURSIVE
+------------------------------------------------------------
 
-	return character, humanoid, root
+local function findRecursive(root, name)
+
+    if not root then
+        return nil
+    end
+
+    local ok, result = pcall(function()
+        return root:FindFirstChild(name, true)
+    end)
+
+    if ok then
+        return result
+    end
+
+    return nil
 end
 
---============================================================
--- TOPBAR
---============================================================
+
+------------------------------------------------------------
+-- FIND ALL
+------------------------------------------------------------
+
+local function findAll(root, name)
+
+    local results = {}
+
+    if not root then
+        return results
+    end
+
+    pcall(function()
+
+        for _, object in ipairs(root:GetDescendants()) do
+
+            if object.Name == name then
+                table.insert(results, object)
+            end
+
+        end
+
+    end)
+
+    return results
+end
+
+
+------------------------------------------------------------
+-- RESOURCE ROOT
+------------------------------------------------------------
+
+local Resources = ReplicatedStorage:FindFirstChild("Resources")
+
+
+------------------------------------------------------------
+-- KJ RESOURCE SEARCH
+------------------------------------------------------------
+
+local function findKJResource(name)
+
+    --------------------------------------------------------
+    -- First try Resources.KJEffects
+    --------------------------------------------------------
+
+    if Resources then
+
+        local kjEffects = Resources:FindFirstChild("KJEffects")
+
+        if kjEffects then
+
+            local result = findRecursive(kjEffects, name)
+
+            if result then
+                return result
+            end
+
+        end
+
+        ----------------------------------------------------
+        -- Then search all Resources.
+        ----------------------------------------------------
+
+        local result = findRecursive(Resources, name)
+
+        if result then
+            return result
+        end
+    end
+
+    --------------------------------------------------------
+    -- Finally search ReplicatedStorage.
+    --------------------------------------------------------
+
+    return findRecursive(ReplicatedStorage, name)
+end
+
+
+------------------------------------------------------------
+-- PRINT KJ RESOURCES
+------------------------------------------------------------
+
+local function inspectKJResources()
+
+    local names = {
+
+        "KJEffects",
+        "KJWallCombo",
+        "KJThrow",
+        "PunchFX",
+        "Everything",
+        "KJ",
+        "KJBlack",
+        "KJWhite",
+        "KJWallBreak",
+        "RockJump",
+        "Walls",
+        "KJDialogue"
+    }
+
+    print("==============================================")
+    print("KJ RESOURCE CHECK")
+    print("==============================================")
+
+    for _, name in ipairs(names) do
+
+        local result = findKJResource(name)
+
+        if result then
+
+            print(
+                "[KJ FOUND]",
+                name,
+                result:GetFullName(),
+                "[" .. result.ClassName .. "]"
+            )
+
+        else
+
+            print("[KJ MISSING]", name)
+
+        end
+
+    end
+
+    print("==============================================")
+
+end
+
+
+------------------------------------------------------------
+-- HOTBAR
+------------------------------------------------------------
+
+local function getHotbar()
+
+    local hotbar = PlayerGui:FindFirstChild("Hotbar")
+
+    if not hotbar then
+        return nil
+    end
+
+    local backpack = hotbar:FindFirstChild("Backpack")
+
+    if not backpack then
+        return nil
+    end
+
+    local frame = backpack:FindFirstChild("Hotbar")
+
+    if not frame then
+        return nil
+    end
+
+    return frame
+end
+
+
+------------------------------------------------------------
+-- GET TOOL NAME
+------------------------------------------------------------
+
+local function getToolName(button)
+
+    if not button then
+        return nil
+    end
+
+    return button:FindFirstChild("ToolName")
+end
+
+
+------------------------------------------------------------
+-- APPLY FONT
+------------------------------------------------------------
+
+local function applyFont(label)
+
+    if not Config.Font.Enabled then
+        return
+    end
+
+    if not label:IsA("TextLabel") then
+        return
+    end
+
+    pcall(function()
+
+        if not State.OriginalFonts[label] then
+
+            State.OriginalFonts[label] = {
+                Font = label.Font,
+                FontFace = label.FontFace
+            }
+
+        end
+
+        label.FontFace = Font.new(
+            label.FontFace.Family,
+            Config.Font.Weight,
+            Config.Font.Style
+        )
+
+        label.Font = Config.Font.Font
+
+    end)
+
+end
+
+
+------------------------------------------------------------
+-- RESTORE FONT
+------------------------------------------------------------
+
+local function restoreFonts()
+
+    for label, data in pairs(State.OriginalFonts) do
+
+        if label and label.Parent then
+
+            pcall(function()
+
+                label.Font = data.Font
+                label.FontFace = data.FontFace
+
+            end)
+
+        end
+
+    end
+
+    table.clear(State.OriginalFonts)
+
+end
+
+
+------------------------------------------------------------
+-- SET HOTBAR NAME
+------------------------------------------------------------
+
+local function setHotbarName(buttonNumber, originalName, newName)
+
+    local hotbar = getHotbar()
+
+    if not hotbar then
+        return
+    end
+
+    local button = hotbar:FindFirstChild(buttonNumber)
+
+    if not button then
+        return
+    end
+
+    local base = button:FindFirstChild("Base")
+
+    if not base then
+        return
+    end
+
+    local toolName = getToolName(base)
+
+    if not toolName then
+        return
+    end
+
+    if not State.OriginalNames[toolName] then
+
+        State.OriginalNames[toolName] = toolName.Text
+
+    end
+
+    if toolName.Text == originalName
+        or toolName.Text == newName then
+
+        toolName.Text = newName
+
+        applyFont(toolName)
+
+    end
+
+end
+
+
+------------------------------------------------------------
+-- UPDATE HOTBAR
+------------------------------------------------------------
+
+local function updateHotbar()
+
+    if not State.Active then
+        return
+    end
+
+    local hotbar = getHotbar()
+
+    if not hotbar then
+        return
+    end
+
+    --------------------------------------------------------
+    -- NORMAL
+    --------------------------------------------------------
+
+    for buttonNumber, data in pairs(Config.Hotbar.Normal) do
+
+        setHotbarName(
+            buttonNumber,
+            data.Original,
+            data.New
+        )
+
+    end
+
+    --------------------------------------------------------
+    -- ULT
+    --------------------------------------------------------
+
+    for buttonNumber, data in pairs(Config.Hotbar.Ultimate) do
+
+        setHotbarName(
+            buttonNumber,
+            data.Original,
+            data.New
+        )
+
+    end
+
+end
+
+
+------------------------------------------------------------
+-- RESTORE HOTBAR
+------------------------------------------------------------
+
+local function restoreHotbar()
+
+    for label, originalText in pairs(State.OriginalNames) do
+
+        if label and label.Parent then
+
+            pcall(function()
+                label.Text = originalText
+            end)
+
+        end
+
+    end
+
+    table.clear(State.OriginalNames)
+
+    restoreFonts()
+
+end
+
+
+------------------------------------------------------------
+-- TOPBAR PATH
+------------------------------------------------------------
 
 local function getKJButton()
-	local topbar = playerGui:FindFirstChild("TopbarPlus")
 
-	if not topbar then
-		return nil
-	end
+    local topbar = PlayerGui:FindFirstChild("TopbarPlus")
 
-	local container = topbar:FindFirstChild("TopbarContainer")
+    if not topbar then
+        return nil
+    end
 
-	if not container then
-		return nil
-	end
+    local container = topbar:FindFirstChild("TopbarContainer")
 
-	local unnamedIcon = container:FindFirstChild("UnnamedIcon")
+    if not container then
+        return nil
+    end
 
-	if not unnamedIcon then
-		return nil
-	end
+    local unnamedIcon = container:FindFirstChild("UnnamedIcon")
 
-	local dropdown = unnamedIcon:FindFirstChild("DropdownContainer")
+    if not unnamedIcon then
+        return nil
+    end
 
-	if not dropdown then
-		return nil
-	end
+    local dropdown = unnamedIcon:FindFirstChild("DropdownContainer")
 
-	local frame = dropdown:FindFirstChild("DropdownFrame")
+    if not dropdown then
+        return nil
+    end
 
-	if not frame then
-		return nil
-	end
+    local frame = dropdown:FindFirstChild("DropdownFrame")
 
-	return frame:FindFirstChild("KJ")
+    if not frame then
+        return nil
+    end
+
+    return frame:FindFirstChild("KJ")
+
 end
+
+
+------------------------------------------------------------
+-- KEEP KJ VISIBLE
+------------------------------------------------------------
 
 local function keepKJVisible()
-	local kj = getKJButton()
 
-	if not kj then
-		return
-	end
+    local kj = getKJButton()
 
-	if kj:IsA("GuiObject") then
-		kj.Visible = true
-	end
+    if not kj then
+        return
+    end
 
-	if kj:IsA("GuiButton") then
-		kj.Active = true
-		kj.Selectable = true
-	end
+    pcall(function()
+
+        kj.Visible = true
+
+        if kj:IsA("GuiButton") then
+
+            kj.Active = true
+            kj.Selectable = true
+
+        end
+
+        local iconButton = kj:FindFirstChild("IconButton")
+
+        if iconButton and iconButton:IsA("GuiButton") then
+
+            iconButton.Visible = true
+            iconButton.Active = true
+            iconButton.Selectable = true
+
+        end
+
+    end)
+
 end
 
---============================================================
--- TOPBAR VISUALS
---============================================================
 
-local function inspectGuiObject(root)
-	if not root then
-		return
-	end
+------------------------------------------------------------
+-- FIND BUTTON INSIDE KJ FRAME
+------------------------------------------------------------
 
-	for _, object in ipairs(root:GetDescendants()) do
+local function getKJClickable()
 
-		if object:IsA("TextLabel") or object:IsA("TextButton") then
+    local kj = getKJButton()
 
-			local lowerName = string.lower(object.Name)
+    if not kj then
+        return nil
+    end
 
-			if string.find(lowerName, "name", 1, true)
-				or string.find(lowerName, "caption", 1, true)
-				or string.find(lowerName, "title", 1, true) then
+    if kj:IsA("GuiButton") then
+        return kj
+    end
 
-				if State.OriginalUI[object] == nil then
-					State.OriginalUI[object] = {
-						Text = object.Text
-					}
-				end
+    local iconButton = kj:FindFirstChild("IconButton", true)
 
-				pcall(function()
-					object.Text = "KJ"
-				end)
-			end
-		end
-	end
+    if iconButton and iconButton:IsA("GuiButton") then
+        return iconButton
+    end
+
+    return kj:FindFirstChildWhichIsA("GuiButton", true)
+
 end
 
-local function setKJUI()
-	keepKJVisible()
 
-	local kj = getKJButton()
+------------------------------------------------------------
+-- STOP ALL CUSTOM TRACKS
+------------------------------------------------------------
 
-	if not kj then
-		return
-	end
+local function stopCustomTracks()
 
-	inspectGuiObject(kj)
+    for _, track in ipairs(State.Tracks) do
+
+        pcall(function()
+            track:Stop(0.05)
+        end)
+
+    end
+
+    table.clear(State.Tracks)
+
 end
 
-local function restoreUI()
-	for object, data in pairs(State.OriginalUI) do
 
-		if object and object.Parent then
+------------------------------------------------------------
+-- STOP SENSIBLE Saitama TRACK
+------------------------------------------------------------
 
-			pcall(function()
-				if data.Text ~= nil then
-					object.Text = data.Text
-				end
-			end)
+local function stopTrack(track)
 
-		end
-	end
+    if not track then
+        return
+    end
 
-	State.OriginalUI = {}
+    pcall(function()
+        track:Stop(0.05)
+    end)
 
-	keepKJVisible()
 end
 
---============================================================
--- AURA
---============================================================
 
-local function enableParticle(object)
-	if object:IsA("ParticleEmitter") then
+------------------------------------------------------------
+-- PLAY KJ ANIMATION
+------------------------------------------------------------
 
-		pcall(function()
-			object.Enabled = true
-		end)
+local function playKJAnimation(animationId, speed)
 
-	elseif object:IsA("Trail") then
+    local humanoid = State.Humanoid
 
-		pcall(function()
-			object.Enabled = true
-		end)
+    if not humanoid then
+        return nil
+    end
 
-	elseif object:IsA("Beam") then
+    if humanoid.Health <= 0 then
+        return nil
+    end
 
-		pcall(function()
-			object.Enabled = true
-		end)
+    local animation = Instance.new("Animation")
 
-	elseif object:IsA("Light") then
+    animation.AnimationId = animationId
 
-		pcall(function()
-			object.Enabled = true
-		end)
-	end
+    local ok, track = pcall(function()
+        return humanoid:LoadAnimation(animation)
+    end)
+
+    if not ok or not track then
+
+        safeDestroy(animation)
+
+        return nil
+
+    end
+
+    track.Priority = Enum.AnimationPriority.Action
+
+    track:Play(0.05, 1, speed or 1)
+
+    table.insert(State.Tracks, track)
+
+    track.Stopped:Connect(function()
+
+        for i = #State.Tracks, 1, -1 do
+
+            if State.Tracks[i] == track then
+                table.remove(State.Tracks, i)
+                break
+            end
+
+        end
+
+        safeDestroy(animation)
+
+    end)
+
+    return track
+
 end
 
-local function attachObjectToCharacter(object, attachmentPart)
-	if not object or not attachmentPart then
-		return nil
-	end
 
-	local clone
+------------------------------------------------------------
+-- CHARACTER SOUND
+------------------------------------------------------------
 
-	local success = pcall(function()
-		clone = object:Clone()
-	end)
+local function playCharacterSound()
 
-	if not success or not clone then
-		return nil
-	end
+    local root = State.Root
 
-	clone.Parent = attachmentPart
+    if not root then
+        return
+    end
 
-	return trackEffect(clone)
+    local sound = Instance.new("Sound")
+
+    sound.Name = "KJCharacterSound"
+
+    sound.SoundId = Config.Sounds.Character
+
+    sound.Volume = 1
+
+    sound.RollOffMaxDistance = 100
+
+    sound.Parent = root
+
+    trackEffect(sound)
+
+    pcall(function()
+        sound:Play()
+    end)
+
+    task.delay(8, function()
+
+        if sound then
+            safeDestroy(sound)
+        end
+
+    end)
+
 end
+
+
+------------------------------------------------------------
+-- HIT SOUND
+------------------------------------------------------------
+
+local function playHitSound(parent)
+
+    if not parent then
+        parent = State.Root
+    end
+
+    if not parent then
+        return
+    end
+
+    local sound = Instance.new("Sound")
+
+    sound.Name = "KJHitSound"
+
+    sound.SoundId = Config.Sounds.Hit
+
+    sound.Volume = 1
+
+    sound.RollOffMaxDistance = 100
+
+    sound.Parent = parent
+
+    trackEffect(sound)
+
+    pcall(function()
+        sound:Play()
+    end)
+
+    task.delay(5, function()
+
+        if sound then
+            safeDestroy(sound)
+        end
+
+    end)
+
+end
+
+
+------------------------------------------------------------
+-- GET BASEPART
+------------------------------------------------------------
+
+local function getBasePart(object)
+
+    if not object then
+        return nil
+    end
+
+    if object:IsA("BasePart") then
+        return object
+    end
+
+    if object:IsA("Model") then
+
+        if object.PrimaryPart then
+            return object.PrimaryPart
+        end
+
+        return object:FindFirstChildWhichIsA(
+            "BasePart",
+            true
+        )
+
+    end
+
+    return object:FindFirstChildWhichIsA(
+        "BasePart",
+        true
+    )
+
+end
+
+
+------------------------------------------------------------
+-- POSITION OBJECT
+------------------------------------------------------------
+
+local function positionObject(object, cframe)
+
+    if not object then
+        return
+    end
+
+    pcall(function()
+
+        if object:IsA("Model") then
+
+            if not object.PrimaryPart then
+
+                local primary =
+                    object:FindFirstChildWhichIsA(
+                        "BasePart",
+                        true
+                    )
+
+                if primary then
+                    object.PrimaryPart = primary
+                end
+
+            end
+
+            if object.PrimaryPart then
+
+                object:PivotTo(cframe)
+
+            end
+
+        elseif object:IsA("BasePart") then
+
+            object.CFrame = cframe
+
+        end
+
+    end)
+
+end
+
+
+------------------------------------------------------------
+-- ENABLE PARTICLES
+------------------------------------------------------------
+
+local function enableParticles(root)
+
+    if not root then
+        return
+    end
+
+    pcall(function()
+
+        for _, object in ipairs(root:GetDescendants()) do
+
+            if object:IsA("ParticleEmitter") then
+
+                object.Enabled = true
+
+            elseif object:IsA("Beam") then
+
+                object.Enabled = true
+
+            elseif object:IsA("Trail") then
+
+                object.Enabled = true
+
+            end
+
+        end
+
+    end)
+
+end
+
+
+------------------------------------------------------------
+-- ATTACH KJ EFFECT TO CHARACTER
+------------------------------------------------------------
+
+local function attachKJEffect(resource, name)
+
+    if not resource then
+        return nil
+    end
+
+    local character = State.Character
+
+    local root = State.Root
+
+    if not character or not root then
+        return nil
+    end
+
+    local clone
+
+    local ok = pcall(function()
+
+        clone = resource:Clone()
+
+    end)
+
+    if not ok or not clone then
+        return nil
+    end
+
+    clone.Name = name or "KJEffect"
+
+    --------------------------------------------------------
+    -- Model / Part
+    --------------------------------------------------------
+
+    if clone:IsA("Model") then
+
+        clone.Parent = workspace
+
+        positionObject(
+            clone,
+            root.CFrame
+        )
+
+    elseif clone:IsA("BasePart") then
+
+        clone.Parent = workspace
+
+        clone.CFrame = root.CFrame
+
+    else
+
+        clone.Parent = root
+
+    end
+
+    --------------------------------------------------------
+    -- Weld / attach parts when possible.
+    --------------------------------------------------------
+
+    local primary = getBasePart(clone)
+
+    if primary then
+
+        pcall(function()
+
+            primary.Anchored = false
+
+            primary.CanCollide = false
+
+            primary.CanTouch = false
+
+            primary.CanQuery = false
+
+        end)
+
+        ----------------------------------------------------
+        -- Weld the primary part to HRP.
+        ----------------------------------------------------
+
+        if primary ~= root then
+
+            local weld = Instance.new("WeldConstraint")
+
+            weld.Part0 = root
+
+            weld.Part1 = primary
+
+            weld.Parent = primary
+
+        end
+
+    end
+
+    enableParticles(clone)
+
+    trackEffect(clone)
+
+    return clone
+
+end
+
+
+------------------------------------------------------------
+-- KJ AURA
+------------------------------------------------------------
 
 local function createKJAura()
-	local character = State.Character
 
-	if not character then
-		return
-	end
+    if State.Aura then
+        safeDestroy(State.Aura)
+        State.Aura = nil
+    end
 
-	local root = State.RootPart
+    local resource = findKJResource("KJ")
 
-	if not root then
-		return
-	end
+    if not resource then
 
-	local resources = ReplicatedStorage:FindFirstChild("Resources")
+        resource = findKJResource("Everything")
 
-	if not resources then
-		return
-	end
+    end
 
-	----------------------------------------------------------
-	-- Everything.KJ
-	----------------------------------------------------------
+    if not resource then
 
-	local ufw = resources:FindFirstChild("UFW")
+        warn("[KJ] No Everything/KJ aura resource found.")
 
-	if ufw then
+        return
 
-		local vfx = ufw:FindFirstChild("vfx")
+    end
 
-		if vfx then
-
-			local everything = vfx:FindFirstChild("Everything")
-
-			if everything then
-
-				local kj = everything:FindFirstChild("KJ")
-
-				if kj then
-
-					local clone = kj:Clone()
-
-					clone.Parent = character
-
-					trackEffect(clone)
-
-					--------------------------------------------------
-					-- Try to place the effect around the root.
-					--------------------------------------------------
-
-					if clone:IsA("Model") then
-
-						pcall(function()
-							clone:PivotTo(root.CFrame)
-						end)
-
-						for _, object in ipairs(clone:GetDescendants()) do
-
-							if object:IsA("BasePart") then
-								object.CanCollide = false
-								object.CanTouch = false
-								object.CanQuery = false
-								object.Massless = true
-
-								local weld = Instance.new("WeldConstraint")
-								weld.Part0 = root
-								weld.Part1 = object
-								weld.Parent = object
-							end
-
-							enableParticle(object)
-						end
-
-					elseif clone:IsA("BasePart") then
-
-						clone.CFrame = root.CFrame
-						clone.CanCollide = false
-						clone.CanTouch = false
-						clone.CanQuery = false
-
-						local weld = Instance.new("WeldConstraint")
-						weld.Part0 = root
-						weld.Part1 = clone
-						weld.Parent = clone
-
-					end
-				end
-			end
-		end
-	end
-
-	----------------------------------------------------------
-	-- KJBlack / KJWhite
-	----------------------------------------------------------
-
-	local black = findRecursive(resources, "KJBlack")
-	local white = findRecursive(resources, "KJWhite")
-
-	if black then
-		attachObjectToCharacter(black, root)
-	end
-
-	if white then
-		attachObjectToCharacter(white, root)
-	end
-end
-
---============================================================
--- GENERIC KJ VFX
---============================================================
-
-local function spawnKJResource(resourceName, position)
-	local resources = ReplicatedStorage:FindFirstChild("Resources")
-
-	if not resources then
-		return nil
-	end
-
-	local object = findRecursive(resources, resourceName)
-
-	if not object then
-		return nil
-	end
-
-	local clone
-
-	local success = pcall(function()
-		clone = object:Clone()
-	end)
-
-	if not success or not clone then
-		return nil
-	end
-
-	clone.Parent = workspace
-
-	if position then
-
-		if clone:IsA("Model") then
-
-			pcall(function()
-				clone:PivotTo(CFrame.new(position))
-			end)
-
-		elseif clone:IsA("BasePart") then
-
-			clone.CFrame = CFrame.new(position)
-
-		end
-	end
-
-	trackEffect(clone)
-
-	for _, child in ipairs(clone:GetDescendants()) do
-		enableParticle(child)
-	end
-
-	enableParticle(clone)
-
-	return clone
-end
-
---============================================================
--- SOUND
---============================================================
-
-local function playSound(id, volume, speed)
-	local character = State.Character
-	local root = State.RootPart
-
-	if not character or not root then
-		return nil
-	end
-
-	local sound = Instance.new("Sound")
-
-	sound.SoundId = id
-	sound.Volume = volume or 1
-	sound.PlaybackSpeed = speed or 1
-	sound.RollOffMaxDistance = 100
-	sound.Parent = root
-
-	trackSound(sound)
-
-	sound:Play()
-
-	sound.Ended:Connect(function()
-		destroyObject(sound)
-	end)
-
-	return sound
-end
-
---============================================================
--- ANIMATION
---============================================================
-
-local function getAnimator()
-	local humanoid = State.Humanoid
-
-	if not humanoid then
-		return nil
-	end
-
-	local animator = humanoid:FindFirstChildOfClass("Animator")
-
-	if not animator then
-		animator = Instance.new("Animator")
-		animator.Parent = humanoid
-	end
-
-	return animator
-end
-
-local function playAnimation(id, priority, speed)
-	local animator = getAnimator()
-
-	if not animator then
-		return nil
-	end
-
-	local animation = Instance.new("Animation")
-
-	animation.AnimationId = id
-
-	local success, track = pcall(function()
-		return animator:LoadAnimation(animation)
-	end)
-
-	destroyObject(animation)
-
-	if not success or not track then
-		return nil
-	end
-
-	track.Priority = priority or Enum.AnimationPriority.Action
-	track:Play(0.08, 1, speed or 1)
-
-	trackAnimation(track)
-
-	return track
-end
-
---============================================================
--- STOP KJ ANIMATIONS
---============================================================
-
-local function stopAnimations()
-	for _, track in ipairs(State.Animations) do
-
-		if track then
-			pcall(function()
-				track:Stop(0.1)
-				track:Destroy()
-			end)
-		end
-	end
-
-	State.Animations = {}
-end
-
---============================================================
--- MOVE 1
---============================================================
-
-local function move1()
-	if not State.Enabled then
-		return
-	end
-
-	if State.Busy or State.UltimateActive then
-		return
-	end
-
-	State.Busy = true
-
-	local character = State.Character
-
-	if not character then
-		State.Busy = false
-		return
-	end
-
-	playAnimation(CONFIG.Animations.SaitamaNormalPunch)
-
-	playSound(CONFIG.Sounds.Hit, 1)
-
-	local root = State.RootPart
-
-	if root then
-		spawnKJResource("PunchFX", root.Position + root.CFrame.LookVector * 3)
-	end
-
-	task.delay(0.45, function()
-		State.Busy = false
-	end)
-end
-
---============================================================
--- MOVE 2
---============================================================
-
-local function move2()
-	if not State.Enabled then
-		return
-	end
-
-	if State.Busy or State.UltimateActive then
-		return
-	end
-
-	State.Busy = true
-
-	playAnimation(CONFIG.Animations.SaitamaUppercut, Enum.AnimationPriority.Action2, 1)
-
-	playSound(CONFIG.Sounds.Hit, 1.1)
-
-	local root = State.RootPart
-
-	if root then
-		spawnKJResource("PunchFX", root.Position + root.CFrame.LookVector * 4)
-	end
-
-	task.delay(0.75, function()
-		State.Busy = false
-	end)
-end
-
---============================================================
--- MOVE 3
---============================================================
-
-local function move3()
-	if not State.Enabled then
-		return
-	end
-
-	if State.Busy or State.UltimateActive then
-		return
-	end
-
-	State.Busy = true
-
-	local root = State.RootPart
-
-	if root then
-		spawnKJResource("KJThrow", root.Position + root.CFrame.LookVector * 4)
-	end
-
-	playAnimation(CONFIG.Animations.SaitamaShove)
-
-	playSound(CONFIG.Sounds.Hit, 1.2)
-
-	task.delay(1, function()
-		State.Busy = false
-	end)
-end
-
---============================================================
--- WALL COMBO
---============================================================
-
-local function wallCombo()
-	if not State.Enabled then
-		return
-	end
-
-	if State.Busy or State.UltimateActive then
-		return
-	end
-
-	State.Busy = true
-
-	local root = State.RootPart
-
-	----------------------------------------------------------
-	-- Attacker animation
-	----------------------------------------------------------
-
-	playAnimation(
-		CONFIG.Animations.WallAttacker,
-		Enum.AnimationPriority.Action4,
-		1
-	)
-
-	----------------------------------------------------------
-	-- Character sound
-	----------------------------------------------------------
-
-	playSound(
-		CONFIG.Sounds.Character,
-		1
-	)
-
-	----------------------------------------------------------
-	-- Existing KJWallCombo
-	----------------------------------------------------------
-
-	if root then
-
-		local effect = spawnKJResource(
-			"KJWallCombo",
-			root.Position
-		)
-
-		if effect then
-
-			task.delay(0.5, function()
-
-				if not effect or not effect.Parent then
-					return
-				end
-
-				for _, object in ipairs(effect:GetDescendants()) do
-
-					if object:IsA("ParticleEmitter") then
-
-						pcall(function()
-							object:Emit(object:GetAttribute("EmitCount") or 10)
-						end)
-
-					elseif object:IsA("Beam") then
-
-						pcall(function()
-							object.Enabled = true
-						end)
-
-					elseif object:IsA("Light") then
-
-						pcall(function()
-							object.Enabled = true
-						end)
-
-					end
-				end
-			end)
-		end
-	end
-
-	----------------------------------------------------------
-	-- Hit 1
-	----------------------------------------------------------
-
-	task.delay(0.25, function()
-
-		if not State.Enabled then
-			return
-		end
-
-		playSound(CONFIG.Sounds.Hit, 1)
-
-		if State.RootPart then
-			spawnKJResource(
-				"PunchFX",
-				State.RootPart.Position + State.RootPart.CFrame.LookVector * 3
-			)
-		end
-	end)
-
-	----------------------------------------------------------
-	-- Hit 2
-	----------------------------------------------------------
-
-	task.delay(0.7, function()
-
-		if not State.Enabled then
-			return
-		end
-
-		playSound(CONFIG.Sounds.Hit, 1.05)
-
-		if State.RootPart then
-			spawnKJResource(
-				"PunchFX",
-				State.RootPart.Position + State.RootPart.CFrame.LookVector * 4
-			)
-		end
-	end)
-
-	----------------------------------------------------------
-	-- Final
-	----------------------------------------------------------
-
-	task.delay(1.15, function()
-
-		if not State.Enabled then
-			return
-		end
-
-		playSound(CONFIG.Sounds.Hit, 1.25)
-
-		if State.RootPart then
-
-			spawnKJResource(
-				"KJWallBreak",
-				State.RootPart.Position + State.RootPart.CFrame.LookVector * 5
-			)
-
-			spawnKJResource(
-				"PunchFX",
-				State.RootPart.Position + State.RootPart.CFrame.LookVector * 5
-			)
-
-		end
-	end)
-
-	task.delay(2.2, function()
-		State.Busy = false
-	end)
-end
-
---============================================================
--- M1
---============================================================
-
-local function m1()
-	if not State.Enabled then
-		return
-	end
-
-	if State.Busy or State.UltimateActive then
-		return
-	end
-
-	if State.M1Debounce then
-		return
-	end
-
-	State.M1Debounce = true
-
-	State.M1Index += 1
-
-	if State.M1Index > #CONFIG.Animations.SaitamaM1 then
-		State.M1Index = 1
-	end
-
-	local animationId = CONFIG.Animations.SaitamaM1[State.M1Index]
-
-	playAnimation(
-		animationId,
-		Enum.AnimationPriority.Action,
-		1
-	)
-
-	playSound(
-		CONFIG.Sounds.Hit,
-		0.8
-	)
-
-	local root = State.RootPart
-
-	if root then
-		spawnKJResource(
-			"PunchFX",
-			root.Position + root.CFrame.LookVector * 3
-		)
-	end
-
-	task.delay(0.25, function()
-		State.M1Debounce = false
-	end)
-end
-
---============================================================
--- CAMERA
---============================================================
-
-local function getCamera()
-	return workspace.CurrentCamera
-end
-
-local function setFOV(value, duration)
-	local camera = getCamera()
-
-	if not camera then
-		return
-	end
-
-	TweenService:Create(
-		camera,
-		TweenInfo.new(
-			duration or 0.3,
-			Enum.EasingStyle.Quad,
-			Enum.EasingDirection.Out
-		),
-		{
-			FieldOfView = value
-		}
-	):Play()
-end
-
-local function cameraShake(duration, magnitude)
-	local camera = getCamera()
-
-	if not camera then
-		return
-	end
-
-	local start = tick()
-
-	while tick() - start < duration do
-
-		if not State.Enabled then
-			break
-		end
-
-		local elapsed = tick() - start
-		local alpha = 1 - math.clamp(elapsed / duration, 0, 1)
-
-		local x = (math.random() - 0.5) * 2
-		local y = (math.random() - 0.5) * 2
-		local z = (math.random() - 0.5) * 2
-
-		camera.CFrame =
-			camera.CFrame
-			* CFrame.new(
-				x * magnitude * alpha,
-				y * magnitude * alpha,
-				z * magnitude * alpha
-			)
-
-		RunService.RenderStepped:Wait()
-	end
-end
-
---============================================================
--- ULTIMATE
---============================================================
-
-local function ultimate()
-	if not State.Enabled then
-		return
-	end
-
-	if State.UltimateActive then
-		return
-	end
-
-	if State.Busy then
-		return
-	end
-
-	local character = State.Character
-
-	if not character then
-		return
-	end
-
-	State.Busy = true
-	State.UltimateActive = true
-
-	----------------------------------------------------------
-	-- Camera
-	----------------------------------------------------------
-
-	local camera = getCamera()
-
-	if camera then
-		State.OriginalCameraFOV = camera.FieldOfView
-	end
-
-	setFOV(CONFIG.UltimateFOV, 0.45)
-
-	----------------------------------------------------------
-	-- Ultimate animation
-	----------------------------------------------------------
-
-	playAnimation(
-		CONFIG.Animations.Awakening,
-		Enum.AnimationPriority.Action4,
-		1
-	)
-
-	----------------------------------------------------------
-	-- Aura
-	----------------------------------------------------------
-
-	createKJAura()
-
-	----------------------------------------------------------
-	-- Sound
-	----------------------------------------------------------
-
-	playSound(
-		CONFIG.Sounds.Character,
-		1.3,
-		0.8
-	)
-
-	----------------------------------------------------------
-	-- Strong initial effect
-	----------------------------------------------------------
-
-	if State.RootPart then
-
-		spawnKJResource(
-			"KJWallBreak",
-			State.RootPart.Position
-		)
-
-		spawnKJResource(
-			"PunchFX",
-			State.RootPart.Position
-		)
-
-	end
-
-	----------------------------------------------------------
-	-- Camera shake
-	----------------------------------------------------------
-
-	task.spawn(function()
-		cameraShake(1.2, 0.45)
-	end)
-
-	----------------------------------------------------------
-	-- Ultimate duration
-	----------------------------------------------------------
-
-	task.delay(CONFIG.UltimateDuration, function()
-
-		if not State.UltimateActive then
-			return
-		end
-
-		State.UltimateActive = false
-		State.Busy = false
-
-		stopAnimations()
-
-		local targetFOV =
-			State.OriginalCameraFOV
-			or CONFIG.CameraFOV
-
-		setFOV(targetFOV, 0.5)
-
-	end)
-end
-
---============================================================
--- CLEANUP EFFECTS
---============================================================
-
-local function cleanupEffects()
-
-	for _, object in ipairs(State.Effects) do
-
-		if object then
-			destroyObject(object)
-		end
-
-	end
-
-	State.Effects = {}
+    State.Aura = attachKJEffect(
+        resource,
+        "KJ_Aura"
+    )
 
 end
 
---============================================================
--- COMPLETE CLEANUP
---============================================================
 
-local function cleanup()
+------------------------------------------------------------
+-- REMOVE AURA
+------------------------------------------------------------
 
-	State.Enabled = false
-	State.UltimateActive = false
-	State.Busy = false
-	State.M1Debounce = false
-	State.M1Index = 0
+local function removeKJAura()
 
-	stopAnimations()
+    if State.Aura then
 
-	for _, sound in ipairs(State.Sounds) do
+        safeDestroy(State.Aura)
 
-		if sound then
-			pcall(function()
-				sound:Stop()
-				sound:Destroy()
-			end)
-		end
+        State.Aura = nil
 
-	end
-
-	State.Sounds = {}
-
-	cleanupEffects()
-
-	disconnectList(State.CharacterConnections)
-
-	restoreUI()
-
-	local camera = getCamera()
-
-	if camera and State.OriginalCameraFOV then
-		camera.FieldOfView = State.OriginalCameraFOV
-	end
-
-	State.OriginalCameraFOV = nil
-
-	refreshCharacterReferences()
-end
-
---============================================================
--- ACTIVATE KJ
---============================================================
-
-local function activateKJ()
-
-	if State.Enabled then
-		return
-	end
-
-	refreshCharacterReferences()
-
-	if not State.Character then
-		return
-	end
-
-	State.Enabled = true
-	State.UltimateActive = false
-	State.Busy = false
-
-	setKJUI()
-
-	----------------------------------------------------------
-	-- KJ aura
-	----------------------------------------------------------
-
-	createKJAura()
-
-	----------------------------------------------------------
-	-- Character sound
-	----------------------------------------------------------
-
-	playSound(
-		CONFIG.Sounds.Character,
-		0.8
-	)
-
-	print("[KJ] Enabled")
+    end
 
 end
 
---============================================================
--- TOGGLE
---============================================================
 
-local function toggleKJ()
+------------------------------------------------------------
+-- REMOVE SAITAMA VFX
+------------------------------------------------------------
 
-	if State.Enabled then
-		cleanup()
-	else
-		activateKJ()
-	end
+local function removeSaitamaEffects()
+
+    local character = State.Character
+
+    if not character then
+        return
+    end
+
+    pcall(function()
+
+        for _, object in ipairs(character:GetDescendants()) do
+
+            local lowerName =
+                string.lower(object.Name)
+
+            ------------------------------------------------
+            -- Your original BarrageBind cleanup.
+            ------------------------------------------------
+
+            if object:IsA("Accessory")
+                and object.Name == "BarrageBind" then
+
+                object:Destroy()
+
+            ------------------------------------------------
+            -- Saitama-specific visual objects.
+            ------------------------------------------------
+
+            elseif (
+                string.find(lowerName, "saitama", 1, true)
+                or string.find(lowerName, "normalpunch", 1, true)
+                or string.find(lowerName, "seriouspunch", 1, true)
+            ) then
+
+                if object:IsA("ParticleEmitter")
+                    or object:IsA("Beam")
+                    or object:IsA("Trail")
+                    or object:IsA("Attachment")
+                    or object:IsA("Folder")
+                    or object:IsA("Model") then
+
+                    object:Destroy()
+
+                end
+
+            end
+
+        end
+
+    end)
 
 end
 
---============================================================
--- TOPBAR CONNECTION
---============================================================
 
-local connectedKJButtons = {}
+------------------------------------------------------------
+-- KJ VISUAL IMPACT
+------------------------------------------------------------
 
-local function connectKJButton()
+local function spawnKJImpact()
 
-	local kj = getKJButton()
+    local root = State.Root
 
-	if not kj then
-		return
-	end
+    if not root then
+        return
+    end
 
-	keepKJVisible()
+    local resources = {
 
-	if connectedKJButtons[kj] then
-		return
-	end
+        findKJResource("PunchFX"),
 
-	connectedKJButtons[kj] = true
+        findKJResource("KJThrow"),
 
-	if kj:IsA("GuiButton") then
+    }
 
-		local connection = kj.Activated:Connect(function()
-			toggleKJ()
-		end)
+    for _, resource in ipairs(resources) do
 
-		trackConnection(connection)
+        if resource then
 
-	end
+            local clone =
+                attachKJEffect(
+                    resource,
+                    "KJ_Impact"
+                )
 
-	----------------------------------------------------------
-	-- The actual button is inside the Frame
-	----------------------------------------------------------
+            if clone then
 
-	local iconButton = kj:FindFirstChild("IconButton")
+                task.delay(1.5, function()
 
-	if iconButton and iconButton:IsA("GuiButton") then
+                    safeDestroy(clone)
 
-		if not connectedKJButtons[iconButton] then
+                end)
 
-			connectedKJButtons[iconButton] = true
+            end
 
-			local connection = iconButton.Activated:Connect(function()
-				toggleKJ()
-			end)
+            break
 
-			trackConnection(connection)
-		end
-	end
+        end
+
+    end
+
+    playHitSound(root)
+
 end
 
---============================================================
--- MOBILE
---============================================================
 
-local function getPunchButton()
+------------------------------------------------------------
+-- WALL COMBO EFFECT
+------------------------------------------------------------
 
-	local touchGui = playerGui:FindFirstChild("TouchGui")
+local function spawnWallComboFX()
 
-	if not touchGui then
-		return nil
-	end
+    local resource =
+        findKJResource("KJWallCombo")
 
-	local control =
-		touchGui:FindFirstChild("TouchControlFrame")
+    if not resource then
 
-	if not control then
-		return nil
-	end
+        warn("[KJ] KJWallCombo resource not found.")
 
-	local jump =
-		control:FindFirstChild("JumpButton")
+        return
 
-	if not jump then
-		return nil
-	end
+    end
 
-	return jump:FindFirstChild("PunchButton")
+    local root = State.Root
+
+    if not root then
+        return
+    end
+
+    local clone
+
+    pcall(function()
+        clone = resource:Clone()
+    end)
+
+    if not clone then
+        return
+    end
+
+    clone.Name = "KJ_WallCombo_ClientFX"
+
+    clone.Parent = workspace
+
+    positionObject(
+        clone,
+        root.CFrame
+    )
+
+    enableParticles(clone)
+
+    trackEffect(clone)
+
+    task.delay(8, function()
+
+        safeDestroy(clone)
+
+    end)
+
 end
 
-local connectedPunchButtons = {}
 
-local function connectMobile()
+------------------------------------------------------------
+-- CAMERA EFFECT
+------------------------------------------------------------
 
-	local punch = getPunchButton()
+local function cameraImpact(strength, duration)
 
-	if not punch then
-		return
-	end
+    local camera = workspace.CurrentCamera
 
-	if connectedPunchButtons[punch] then
-		return
-	end
+    if not camera then
+        return
+    end
 
-	connectedPunchButtons[punch] = true
+    strength = strength or 1
 
-	if punch:IsA("GuiButton") then
+    duration = duration or 0.25
 
-		trackConnection(
-			punch.Activated:Connect(function()
+    local start = os.clock()
 
-				if not State.Enabled then
-					return
-				end
+    local connection
 
-				m1()
+    connection = RunService.RenderStepped:Connect(function()
 
-			end)
-		)
+        if os.clock() - start >= duration then
 
-	end
+            disconnect(connection)
+
+            return
+
+        end
+
+        if not camera then
+            return
+        end
+
+        local remaining =
+            1 - ((os.clock() - start) / duration)
+
+        local x =
+            (math.random() - 0.5)
+            * strength
+            * remaining
+
+        local y =
+            (math.random() - 0.5)
+            * strength
+            * remaining
+
+        local z =
+            (math.random() - 0.5)
+            * strength
+            * remaining
+
+        camera.CFrame =
+            camera.CFrame
+            * CFrame.new(x, y, z)
+
+    end)
+
 end
 
---============================================================
+
+------------------------------------------------------------
+-- FOV EFFECT
+------------------------------------------------------------
+
+local function tweenFOV(target, time)
+
+    local camera = workspace.CurrentCamera
+
+    if not camera then
+        return
+    end
+
+    local tween = TweenService:Create(
+        camera,
+        TweenInfo.new(
+            time or 0.3,
+            Enum.EasingStyle.Quart,
+            Enum.EasingDirection.Out
+        ),
+        {
+            FieldOfView = target
+        }
+    )
+
+    tween:Play()
+
+end
+
+
+------------------------------------------------------------
+-- SCREEN FLASH
+------------------------------------------------------------
+
+local function screenFlash()
+
+    local gui = Instance.new("ScreenGui")
+
+    gui.Name = "KJ_LocalImpact"
+
+    gui.IgnoreGuiInset = true
+
+    gui.ResetOnSpawn = false
+
+    gui.DisplayOrder = 999999
+
+    gui.Parent = PlayerGui
+
+    local frame = Instance.new("Frame")
+
+    frame.Size = UDim2.fromScale(1, 1)
+
+    frame.BackgroundColor3 =
+        Color3.fromRGB(255, 255, 255)
+
+    frame.BackgroundTransparency = 0.15
+
+    frame.BorderSizePixel = 0
+
+    frame.Parent = gui
+
+    local tween = TweenService:Create(
+
+        frame,
+
+        TweenInfo.new(
+            0.25,
+            Enum.EasingStyle.Quad,
+            Enum.EasingDirection.Out
+        ),
+
+        {
+            BackgroundTransparency = 1
+        }
+
+    )
+
+    tween:Play()
+
+    trackEffect(gui)
+
+    task.delay(0.35, function()
+
+        safeDestroy(gui)
+
+    end)
+
+end
+
+
+------------------------------------------------------------
+-- PLAY MOVE
+------------------------------------------------------------
+
+local function playMove(name)
+
+    if not State.Active then
+        return
+    end
+
+    if State.Busy then
+        return
+    end
+
+    if not State.Humanoid then
+        return
+    end
+
+    State.Busy = true
+
+    --------------------------------------------------------
+    -- Stop currently playing action animations.
+    --------------------------------------------------------
+
+    for _, track in ipairs(
+        State.Humanoid:GetPlayingAnimationTracks()
+    ) do
+
+        local id =
+            getAnimationId(track.Animation)
+
+        if id and Config.Saitama.Moves[id] then
+
+            stopTrack(track)
+
+        end
+
+    end
+
+    --------------------------------------------------------
+    -- Select animation.
+    --------------------------------------------------------
+
+    local animationId =
+        Config.Animations[name]
+
+    if not animationId then
+
+        State.Busy = false
+
+        return
+
+    end
+
+    --------------------------------------------------------
+    -- Animation.
+    --------------------------------------------------------
+
+    local track =
+        playKJAnimation(
+            animationId,
+            1
+        )
+
+    if not track then
+
+        State.Busy = false
+
+        return
+
+    end
+
+    --------------------------------------------------------
+    -- Visual timing.
+    --------------------------------------------------------
+
+    task.delay(0.08, function()
+
+        if State.Active then
+
+            playCharacterSound()
+
+        end
+
+    end)
+
+    task.delay(0.20, function()
+
+        if State.Active then
+
+            spawnKJImpact()
+
+            cameraImpact(0.35, 0.16)
+
+        end
+
+    end)
+
+    --------------------------------------------------------
+    -- Wall combo gets its own presentation.
+    --------------------------------------------------------
+
+    if name == "WallCombo" then
+
+        spawnWallComboFX()
+
+        screenFlash()
+
+        cameraImpact(
+            1.2,
+            0.45
+        )
+
+    end
+
+    --------------------------------------------------------
+    -- Heavy moves.
+    --------------------------------------------------------
+
+    if name == "CollateralRuin"
+        or name == "StoicBomb"
+        or name == "FiveSeasons" then
+
+        screenFlash()
+
+        cameraImpact(
+            1.5,
+            0.5
+        )
+
+    end
+
+    --------------------------------------------------------
+    -- Don't hold Busy forever.
+    --------------------------------------------------------
+
+    local length = 1.5
+
+    if name == "Ravage" then
+        length = 3.5
+
+    elseif name == "SwiftSweep" then
+        length = 1.6
+
+    elseif name == "CollateralRuin" then
+        length = 1.7
+
+    elseif name == "SpiralingStorm" then
+        length = 2.2
+
+    elseif name == "WallCombo" then
+        length = 3.5
+
+    elseif name == "StoicBomb" then
+        length = 4
+
+    elseif name == "Dropkick" then
+        length = 3
+
+    elseif name == "FiveSeasons" then
+        length = 4
+
+    elseif name == "UnlimitedFlexworks" then
+        length = 8
+
+    end
+
+    task.delay(length, function()
+
+        if State.Busy then
+            State.Busy = false
+        end
+
+    end)
+
+end
+
+
+------------------------------------------------------------
+-- PLAY KJ M1
+------------------------------------------------------------
+
+local function playM1(index)
+
+    if not State.Active then
+        return
+    end
+
+    if State.Ultimate then
+        return
+    end
+
+    local animationId =
+        Config.Animations.M1[index]
+
+    if not animationId then
+        return
+    end
+
+    --------------------------------------------------------
+    -- Stop the original Saitama M1.
+    --------------------------------------------------------
+
+    if State.Humanoid then
+
+        for _, track in ipairs(
+            State.Humanoid:GetPlayingAnimationTracks()
+        ) do
+
+            local id =
+                getAnimationId(track.Animation)
+
+            if id and Config.Saitama.M1[id] then
+
+                stopTrack(track)
+
+            end
+
+        end
+
+    end
+
+    --------------------------------------------------------
+    -- Play KJ M1.
+    --------------------------------------------------------
+
+    playKJAnimation(
+        animationId,
+        1
+    )
+
+end
+
+
+------------------------------------------------------------
+-- ULTIMATE ACTIVATION
+------------------------------------------------------------
+
+local function activateUltimate()
+
+    if not State.Active then
+        return
+    end
+
+    if State.Ultimate then
+        return
+    end
+
+    if State.Busy then
+        return
+    end
+
+    State.Ultimate = true
+
+    State.Busy = true
+
+    --------------------------------------------------------
+    -- Awakening animation.
+    --------------------------------------------------------
+
+    playKJAnimation(
+        Config.Animations.Awakening,
+        1
+    )
+
+    --------------------------------------------------------
+    -- Presentation.
+    --------------------------------------------------------
+
+    createKJAura()
+
+    screenFlash()
+
+    cameraImpact(
+        1.4,
+        0.6
+    )
+
+    tweenFOV(
+        55,
+        0.45
+    )
+
+    playCharacterSound()
+
+    --------------------------------------------------------
+    -- Hold the awakening state.
+    --------------------------------------------------------
+
+    task.delay(1.8, function()
+
+        if not State.Active then
+            return
+        end
+
+        State.Busy = false
+
+    end)
+
+end
+
+
+------------------------------------------------------------
+-- ULTIMATE MOVE
+------------------------------------------------------------
+
+local function playUltimateMove(name)
+
+    if not State.Active then
+        return
+    end
+
+    if not State.Ultimate then
+        return
+    end
+
+    if State.Busy then
+        return
+    end
+
+    State.Busy = true
+
+    local animationId =
+        Config.Animations[name]
+
+    if not animationId then
+
+        State.Busy = false
+
+        return
+
+    end
+
+    local track =
+        playKJAnimation(
+            animationId,
+            1
+        )
+
+    if not track then
+
+        State.Busy = false
+
+        return
+
+    end
+
+    --------------------------------------------------------
+    -- Different KJ ultimates have different presentation.
+    --------------------------------------------------------
+
+    if name == "StoicBomb" then
+
+        tweenFOV(45, 0.25)
+
+        task.delay(0.8, function()
+
+            screenFlash()
+
+            cameraImpact(
+                2,
+                0.65
+            )
+
+            spawnKJImpact()
+
+        end)
+
+        task.delay(3.5, function()
+
+            State.Busy = false
+
+        end)
+
+    elseif name == "Dropkick" then
+
+        tweenFOV(50, 0.2)
+
+        task.delay(0.6, function()
+
+            cameraImpact(
+                1.4,
+                0.35
+            )
+
+            spawnKJImpact()
+
+        end)
+
+        task.delay(2.8, function()
+
+            State.Busy = false
+
+        end)
+
+    elseif name == "FiveSeasons" then
+
+        tweenFOV(42, 0.3)
+
+        task.delay(1.2, function()
+
+            screenFlash()
+
+            cameraImpact(
+                2.2,
+                0.7
+            )
+
+            spawnKJImpact()
+
+        end)
+
+        task.delay(4, function()
+
+            State.Busy = false
+
+        end)
+
+    elseif name == "UnlimitedFlexworks" then
+
+        tweenFOV(38, 0.4)
+
+        task.delay(2, function()
+
+            cameraImpact(
+                0.8,
+                0.5
+            )
+
+        end)
+
+        task.delay(6, function()
+
+            screenFlash()
+
+            cameraImpact(
+                2.5,
+                0.9
+            )
+
+            spawnKJImpact()
+
+        end)
+
+        task.delay(8.5, function()
+
+            State.Busy = false
+
+        end)
+
+    end
+
+end
+
+
+------------------------------------------------------------
+-- ANIMATION INTERCEPTOR
+------------------------------------------------------------
+
+local function handleAnimationPlayed(animationTrack)
+
+    if not State.Active then
+        return
+    end
+
+    if not animationTrack then
+        return
+    end
+
+    local animation =
+        animationTrack.Animation
+
+    if not animation then
+        return
+    end
+
+    local id =
+        getAnimationId(animation)
+
+    if not id then
+        return
+    end
+
+    --------------------------------------------------------
+    -- M1
+    --------------------------------------------------------
+
+    local m1Index =
+        Config.Saitama.M1[id]
+
+    if m1Index then
+
+        task.defer(function()
+
+            if not State.Active then
+                return
+            end
+
+            stopTrack(animationTrack)
+
+            playM1(m1Index)
+
+        end)
+
+        return
+
+    end
+
+    --------------------------------------------------------
+    -- Moves
+    --------------------------------------------------------
+
+    local move =
+        Config.Saitama.Moves[id]
+
+    if not move then
+        return
+    end
+
+    task.defer(function()
+
+        if not State.Active then
+            return
+        end
+
+        stopTrack(animationTrack)
+
+        ----------------------------------------------------
+        -- Awakening.
+        ----------------------------------------------------
+
+        if move == "Awakening" then
+
+            activateUltimate()
+
+            return
+
+        end
+
+        ----------------------------------------------------
+        -- Normal moves.
+        ----------------------------------------------------
+
+        if move == "Ravage"
+            or move == "SwiftSweep"
+            or move == "CollateralRuin"
+            or move == "SpiralingStorm" then
+
+            playMove(move)
+
+            return
+
+        end
+
+        ----------------------------------------------------
+        -- Ultimate moves.
+        ----------------------------------------------------
+
+        if move == "StoicBomb"
+            or move == "Dropkick"
+            or move == "FiveSeasons"
+            or move == "UnlimitedFlexworks" then
+
+            playUltimateMove(move)
+
+            return
+
+        end
+
+    end)
+
+end
+
+
+------------------------------------------------------------
+-- CHARACTER CONNECTION
+------------------------------------------------------------
+
+local function disconnectCharacterConnections()
+
+    for _, connection in ipairs(
+        State.CharacterConnections
+    ) do
+
+        disconnect(connection)
+
+    end
+
+    table.clear(State.CharacterConnections)
+
+end
+
+
+------------------------------------------------------------
 -- CHARACTER SETUP
---============================================================
+------------------------------------------------------------
 
 local function setupCharacter(character)
 
-	disconnectList(State.CharacterConnections)
+    disconnectCharacterConnections()
 
-	stopAnimations()
-	cleanupEffects()
+    State.Character = character
 
-	State.Character = character
-	State.Humanoid =
-		character:WaitForChild("Humanoid", 10)
+    State.Humanoid =
+        character:WaitForChild(
+            "Humanoid",
+            10
+        )
 
-	State.RootPart =
-		character:WaitForChild("HumanoidRootPart", 10)
+    State.Root =
+        character:WaitForChild(
+            "HumanoidRootPart",
+            10
+        )
 
-	State.UltimateActive = false
-	State.Busy = false
-	State.M1Index = 0
+    if not State.Humanoid then
+        return
+    end
 
-	if not State.Enabled then
-		return
-	end
+    --------------------------------------------------------
+    -- Animation interceptor.
+    --------------------------------------------------------
 
-	task.wait(0.5)
+    trackCharacterConnection(
+        State.Humanoid.AnimationPlayed:Connect(
+            handleAnimationPlayed
+        )
+    )
 
-	if State.Enabled then
-		createKJAura()
-	end
+    --------------------------------------------------------
+    -- Death cleanup.
+    --------------------------------------------------------
 
-	----------------------------------------------------------
-	-- Death
-	----------------------------------------------------------
+    trackCharacterConnection(
+        State.Humanoid.Died:Connect(function()
 
-	if State.Humanoid then
+            State.Busy = false
+            State.Ultimate = false
 
-		table.insert(
-			State.CharacterConnections,
+            stopCustomTracks()
 
-			State.Humanoid.Died:Connect(function()
+            removeKJAura()
 
-				if State.Enabled then
-					cleanup()
-				end
+        end)
+    )
 
-			end)
-		)
+    --------------------------------------------------------
+    -- Remove Saitama visual effects.
+    --------------------------------------------------------
 
-	end
+    if State.Active then
+
+        task.defer(function()
+
+            removeSaitamaEffects()
+
+            createKJAura()
+
+        end)
+
+    end
 
 end
 
---============================================================
--- INPUT
---============================================================
+
+------------------------------------------------------------
+-- CLEANUP EFFECTS
+------------------------------------------------------------
+
+local function cleanupEffects()
+
+    for i = #State.Effects, 1, -1 do
+
+        local object =
+            State.Effects[i]
+
+        safeDestroy(object)
+
+        table.remove(
+            State.Effects,
+            i
+        )
+
+    end
+
+end
+
+
+------------------------------------------------------------
+-- DISABLE KJ
+------------------------------------------------------------
+
+local function disableKJ()
+
+    State.Active = false
+
+    State.Ultimate = false
+
+    State.Busy = false
+
+    stopCustomTracks()
+
+    removeKJAura()
+
+    cleanupEffects()
+
+    restoreHotbar()
+
+    local camera = workspace.CurrentCamera
+
+    if camera then
+
+        tweenFOV(
+            70,
+            0.35
+        )
+
+    end
+
+end
+
+
+------------------------------------------------------------
+-- ENABLE KJ
+------------------------------------------------------------
+
+local function enableKJ()
+
+    if State.Destroyed then
+        return
+    end
+
+    State.Active = true
+
+    State.Ultimate = false
+
+    State.Busy = false
+
+    local character, humanoid, root =
+        getCharacter()
+
+    if character then
+
+        State.Character = character
+
+        State.Humanoid = humanoid
+
+        State.Root = root
+
+    end
+
+    --------------------------------------------------------
+    -- Remove Saitama visuals first.
+    --------------------------------------------------------
+
+    removeSaitamaEffects()
+
+    --------------------------------------------------------
+    -- Add actual KJ aura.
+    --------------------------------------------------------
+
+    createKJAura()
+
+    --------------------------------------------------------
+    -- Update existing hotbar.
+    --------------------------------------------------------
+
+    updateHotbar()
+
+    --------------------------------------------------------
+    -- Make KJ visible.
+    --------------------------------------------------------
+
+    keepKJVisible()
+
+    print("==============================================")
+    print("KJ ENABLED")
+    print("==============================================")
+
+end
+
+
+------------------------------------------------------------
+-- TOPBAR KJ CLICK
+------------------------------------------------------------
+
+local function hookKJButton()
+
+    local button = getKJClickable()
+
+    if not button then
+        return false
+    end
+
+    --------------------------------------------------------
+    -- Avoid reconnecting to the same button.
+    --------------------------------------------------------
+
+    if State.KJButtonConnection then
+
+        disconnect(
+            State.KJButtonConnection
+        )
+
+        State.KJButtonConnection = nil
+
+    end
+
+    State.KJButtonConnection =
+        button.Activated:Connect(function()
+
+            task.defer(function()
+
+                enableKJ()
+
+            end)
+
+        end)
+
+    return true
+
+end
+
+
+------------------------------------------------------------
+-- KEEP TOPBAR ALIVE
+------------------------------------------------------------
 
 trackConnection(
-	UserInputService.InputBegan:Connect(function(input, processed)
+    PlayerGui.DescendantAdded:Connect(
+        function()
 
-		if processed then
-			return
-		end
+            task.defer(function()
 
-		if not State.Enabled then
-			return
-		end
+                keepKJVisible()
 
-		------------------------------------------------------
-		-- M1
-		------------------------------------------------------
+                hookKJButton()
 
-		if input.UserInputType == Enum.UserInputType.MouseButton1 then
-			m1()
-			return
-		end
+                if State.Active then
 
-		------------------------------------------------------
-		-- Keyboard
-		------------------------------------------------------
+                    updateHotbar()
 
-		if input.KeyCode == Enum.KeyCode.One then
-			move1()
+                end
 
-		elseif input.KeyCode == Enum.KeyCode.Two then
-			move2()
+            end)
 
-		elseif input.KeyCode == Enum.KeyCode.Three then
-			move3()
-
-		elseif input.KeyCode == Enum.KeyCode.Four then
-			wallCombo()
-
-		elseif input.KeyCode == Enum.KeyCode.G then
-			ultimate()
-		end
-
-	end)
+        end
+    )
 )
 
---============================================================
--- PLAYER RESPAWN
---============================================================
+
+------------------------------------------------------------
+-- TOPBAR LOOP
+------------------------------------------------------------
 
 trackConnection(
-	player.CharacterAdded:Connect(function(character)
+    RunService.Heartbeat:Connect(
+        function()
 
-		task.wait(0.25)
+            keepKJVisible()
 
-		setupCharacter(character)
+            hookKJButton()
 
-		task.wait(0.5)
+            if State.Active then
 
-		keepKJVisible()
-		connectKJButton()
-		connectMobile()
+                updateHotbar()
 
-	end)
+            end
+
+        end
+    )
 )
 
---============================================================
--- PLAYERGUI RECREATION
---============================================================
+
+------------------------------------------------------------
+-- CHARACTER RESPAWN
+------------------------------------------------------------
 
 trackConnection(
-	playerGui.DescendantAdded:Connect(function()
+    Player.CharacterAdded:Connect(
+        function(character)
 
-		task.defer(function()
+            State.Ultimate = false
+            State.Busy = false
 
-			keepKJVisible()
-			connectKJButton()
-			connectMobile()
+            setupCharacter(character)
 
-			if State.Enabled then
-				setKJUI()
-			end
+            task.wait(0.5)
 
-		end)
+            if State.Active then
 
-	end)
+                removeSaitamaEffects()
+
+                createKJAura()
+
+                updateHotbar()
+
+            end
+
+        end
+    )
 )
 
---============================================================
--- TOPBAR MAINTENANCE
---============================================================
+
+------------------------------------------------------------
+-- MOBILE / TOUCH SUPPORT
+------------------------------------------------------------
+-- The game's existing buttons remain untouched.
+--
+-- We only listen for the existing hotbar buttons and
+-- let the game's own Saitama inputs trigger the animation
+-- interceptor above.
+--
+-- This means no giant custom mobile GUI is created.
+------------------------------------------------------------
+
+
+------------------------------------------------------------
+-- OPTIONAL MANUAL TEST KEYS
+------------------------------------------------------------
+-- These are useful if the KJ selector is temporarily
+-- inaccessible while testing.
+--
+-- They do NOT create a new GUI.
+------------------------------------------------------------
+
+trackConnection(
+    UserInputService.InputBegan:Connect(
+        function(input, processed)
+
+            if processed then
+                return
+            end
+
+            if not State.Active then
+                return
+            end
+
+            if input.KeyCode == Enum.KeyCode.K then
+
+                if not State.Ultimate then
+
+                    enableKJ()
+
+                else
+
+                    State.Ultimate = false
+
+                end
+
+            end
+
+        end
+    )
+)
+
+
+------------------------------------------------------------
+-- INITIAL SETUP
+------------------------------------------------------------
+
+inspectKJResources()
+
+if Player.Character then
+
+    task.spawn(function()
+
+        setupCharacter(
+            Player.Character
+        )
+
+    end)
+
+end
+
+
+------------------------------------------------------------
+-- KEEP KJ VISIBLE
+------------------------------------------------------------
 
 task.spawn(function()
 
-	while task.wait(0.5) do
+    while not State.Destroyed do
 
-		pcall(function()
+        task.wait(0.1)
 
-			keepKJVisible()
-			connectKJButton()
-			connectMobile()
+        pcall(function()
 
-			if State.Enabled then
-				setKJUI()
-			end
+            keepKJVisible()
 
-		end)
+            hookKJButton()
 
-	end
+        end)
+
+    end
 
 end)
 
---============================================================
--- INITIALIZATION
---============================================================
 
-refreshCharacterReferences()
+------------------------------------------------------------
+-- INITIAL KJ BUTTON HOOK
+------------------------------------------------------------
 
-if State.Character then
-	setupCharacter(State.Character)
-end
+task.defer(function()
 
-task.wait(1)
+    task.wait(0.5)
 
-keepKJVisible()
-connectKJButton()
-connectMobile()
+    keepKJVisible()
 
-print("==================================================")
-print("KJ CLIENT SYSTEM LOADED")
-print("==================================================")
-print("KJ Topbar integration: READY")
-print("KJ Aura discovery: READY")
-print("KJ Wall animation: READY")
-print("KJ sounds: READY")
-print("M1: READY")
-print("Move 1: READY")
-print("Move 2: READY")
-print("Move 3: READY")
-print("Wall Combo: READY")
-print("Ultimate: READY")
-print("Mobile: READY")
-print("Respawn handling: READY")
-print("Cleanup: READY")
-print("==================================================")
+    hookKJButton()
+
+end)
+
+
+------------------------------------------------------------
+-- OPTIONAL:
+-- Automatically enable once the existing KJ button is
+-- clicked. No fake character selector is created.
+------------------------------------------------------------
+
+print("==============================================")
+print("KJ CLIENT CONVERSION LOADED")
+print("==============================================")
+print("Click the existing KJ Topbar button.")
+print("")
+print("Normal:")
+print("1 = Ravage")
+print("2 = Swift Sweep")
+print("3 = Collateral Ruin")
+print("4 = Spiraling Storm")
+print("")
+print("Ultimate:")
+print("1 = Stoic Bomb")
+print("2 = 20-20-20 Dropkick")
+print("3 = Five Seasons")
+print("4 = Unlimited Flex Works")
+print("")
+print("KJ animations loaded from supplied animation data.")
+print("==============================================")
