@@ -1,0 +1,26 @@
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
+
+local function enableKJ()
+    local playerGui = player:WaitForChild("PlayerGui")
+
+    local topbar = playerGui:WaitForChild("TopbarPlus")
+    local container = topbar:WaitForChild("TopbarContainer")
+    local unnamedIcon = container:WaitForChild("UnnamedIcon")
+    local dropdown = unnamedIcon:WaitForChild("DropdownContainer")
+    local frame = dropdown:WaitForChild("DropdownFrame")
+    local kj = frame:WaitForChild("KJ")
+
+    kj.Visible = true
+
+    if kj:IsA("GuiButton") then
+        kj.Active = true
+    end
+end
+
+enableKJ()
+
+player.CharacterAdded:Connect(function()
+    task.wait(1)
+    pcall(enableKJ)
+end)
