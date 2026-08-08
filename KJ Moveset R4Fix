@@ -1,9 +1,181 @@
-print("KJ TEST: SCRIPT STARTED")
+--============================================================
+-- KJ RUNTIME CAPTURE SCANNER
+-- READ-ONLY
+--
+-- Run this while KJ is equipped in the private server.
+-- Then activate the requested KJ move.
+--
+-- The scanner captures objects that appear/change during
+-- the capture window.
+--============================================================
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Workspace = game:GetService("Workspace")
 
-print("KJ TEST: Player =", Players.LocalPlayer and Players.LocalPlayer.Name or "NO PLAYER")
-print("KJ TEST: ReplicatedStorage =", ReplicatedStorage:GetFullName())
+local player = Players.LocalPlayer
 
-print("KJ TEST: SCRIPT FINISHED")
+local function safe(fn, fallback)
+    local ok, result = pcall(fn)
+    if ok then
+        return result
+    end
+    return fallback
+end
+
+local function fullName(obj)
+    return safe(function()
+        return obj:GetFullName()
+    end, "Unknown")
+end
+
+local function className(obj)
+    return safe(function()
+        return obj.ClassName
+    end, "Unknown")
+end
+
+local function objectName(obj)
+    return safe(function()
+        return obj.Name
+    end, "Unknown")
+end
+
+local function animationId(obj)
+    if not obj or not obj:IsA("Animation") then
+        return ""
+    end
+
+    return safe(function()
+        return obj.AnimationId
+    end, "")
+end
+
+local function soundId(obj)
+    if not obj or not obj:IsA("Sound") then
+        return ""
+    end
+
+    return safe(function()
+        return obj.SoundId
+    end, "")
+end
+
+local function copy(text)
+    if setclipboard then
+        return pcall(setclipboard, text)
+    end
+
+    if toclipboard then
+        return pcall(toclipboard, text)
+    end
+
+    if syn and syn.write_clipboard then
+        return pcall(syn.write_clipboard, text)
+    end
+
+    return false
+end
+
+local function snapshot(root)
+    local result = {}
+
+    if not root then
+        return result
+    end
+
+    result[root] = true
+
+    for _, obj in ipairs(root:GetDescendants()) do
+        result[obj] = true
+    end
+
+    return result
+end
+
+local function isInteresting(obj)
+    local name = string.lower(objectName(obj))
+    local path = string.lower(fullName(obj))
+
+    local keywords = {
+        "kj",
+        "ufw",
+        "ultimate",
+        "cutscene",
+        "wall",
+        "throw",
+        "slam",
+        "punch",
+        "barrage",
+        "everything",
+        "punchfx",
+        "effects",
+        "vfx",
+        "animation",
+        "sound",
+        "camera",
+        "dialogue",
+        "phone",
+        "sign",
+    }
+
+    for _, keyword in ipairs(keywords) do
+        if string.find(name, keyword, 1, true)
+        or string.find(path, keyword, 1, true) then
+            return true
+        end
+    end
+
+    return false
+end
+
+--============================================================
+-- START
+--============================================================
+
+print("")
+print("============================================================")
+print("KJ RUNTIME CAPTURE")
+print("============================================================")
+print("Player: " .. player.Name)
+print("")
+print("KJ CAPTURE IS READY.")
+print("")
+print("DO NOT ACTIVATE ANYTHING YET.")
+print("")
+print("I WILL GIVE YOU THE EXACT MOVE TO ACTIVATE.")
+print("============================================================")
+
+--============================================================
+-- BASELINE
+--============================================================
+
+local roots = {
+    ReplicatedStorage,
+    Workspace,
+    player:FindFirstChild("PlayerGui"),
+    player:FindFirstChild("Backpack"),
+    player.Character,
+}
+
+local before = {}
+
+for _, root in ipairs(roots) do
+    if root then
+        before[root] = snapshot(root)
+    end
+end
+
+--============================================================
+-- WAIT
+--============================================================
+
+print("")
+print("BASELINE CAPTURED.")
+print("WAITING FOR MOVE...")
+print("============================================================")
+
+-- We intentionally wait here.
+-- Stop the script after the requested move has played.
+
+task.wait(999999)
