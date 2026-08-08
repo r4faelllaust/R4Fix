@@ -1,46 +1,59 @@
-local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local player = Players.LocalPlayer
-local playerGui = player:WaitForChild("PlayerGui")
-
-local function keepKJVisible()
-    local topbar = playerGui:FindFirstChild("TopbarPlus")
-    if not topbar then return end
-
-    local container = topbar:FindFirstChild("TopbarContainer")
-    if not container then return end
-
-    local unnamedIcon = container:FindFirstChild("UnnamedIcon")
-    if not unnamedIcon then return end
-
-    local dropdown = unnamedIcon:FindFirstChild("DropdownContainer")
-    if not dropdown then return end
-
-    local frame = dropdown:FindFirstChild("DropdownFrame")
-    if not frame then return end
-
-    local kj = frame:FindFirstChild("KJ")
-    if not kj then return end
-
-    kj.Visible = true
-
-    if kj:IsA("GuiButton") then
-        kj.Active = true
-        kj.Selectable = true
-    end
+local function findAll(root, name)
+	local results = {}
+	if not root then return results end
+	for _, obj in ipairs(root:GetDescendants()) do
+		if obj.Name == name then
+			table.insert(results, obj)
+		end
+	end
+	return results
 end
 
--- Initial
-keepKJVisible()
+local function safeFind(root, ...)
+	local current = root
+	for _, name in ipairs({...}) do
+		if not current then return nil end
+		current = current:FindFirstChild(name)
+	end
+	return current
+end
 
--- Keep forcing it back if the game's UI hides it
-task.spawn(function()
-    while task.wait(0.1) do
-        pcall(keepKJVisible)
-    end
-end)
+print("========== KJ RESOURCE SCAN ==========")
 
--- Also handle PlayerGui/UI being recreated
-playerGui.DescendantAdded:Connect(function()
-    task.defer(keepKJVisible)
-end)
+-- Main folders
+local Resources = ReplicatedStorage:FindFirstChild("Resources")
+local KJEffects = Resources and Resources:FindFirstChild("KJEffects")
+local Cutscenes = ReplicatedStorage:FindFirstChild("Cutscenes")
+local UFW = ReplicatedStorage:FindFirstChild("UFW")
+
+print("Resources:", Resources and "FOUND" or "MISSING")
+print("KJEffects:", KJEffects and "FOUND" or "MISSING")
+print("Cutscenes:", Cutscenes and "FOUND" or "MISSING")
+print("UFW:", UFW and "FOUND" or "MISSING")
+
+-- Specific important objects
+local importantNames = {
+	"KJWallCombo", "KJThrow", "PunchFX", "KJWallBreak",
+	"RockJump", "KJBlack", "KJWhite", "KJDialogue",
+	"KJ phone", "kjphone", "signkj", "Everything", "KJ"
+}
+
+for _, name in ipairs(importantNames) do
+	local found = findAll(ReplicatedStorage, name)
+	if #found > 0 then
+		print(name .. " → Found " .. #found .. " time(s)")
+		for _, obj in ipairs(found) do
+			print("   └─", obj:GetFullName(), "(" .. obj.ClassName .. ")")
+		end
+	else
+		print(name .. " → NOT FOUND")
+	end
+end
+
+-- Dialogue module
+local Tekrinn = UFW and UFW:FindFirstChild("TekrinnDialogue")
+print("TekrinnDialogue:", Tekrinn and (Tekrinn.ClassName .. " - " .. Tekrinn:GetFullName()) or "MISSING")
+
+print("======================================")
