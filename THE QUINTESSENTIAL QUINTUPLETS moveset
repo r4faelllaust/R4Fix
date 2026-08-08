@@ -2,12 +2,8 @@
 --[[
 =================================================================
   THE QUINTESSENTIAL QUINTUPLETS
-  Full 5-Sister Moveset
-  R4FIX x Grok Edition
-=================================================================
-  Switching: TopbarPlus Character Tab
-  Base: Hero Hunter
-  Song: TQQ5sisOPE.mp3 (persistent loop)
+  Mobile Friendly Version
+  R4FIX x Grok
 =================================================================
 ]]
 
@@ -21,11 +17,9 @@ local SoundService = game:GetService("SoundService")
 local LocalPlayer = Players.LocalPlayer
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 
-----------------------------------------------------------------
--- PLACE CHECK
-----------------------------------------------------------------
+-- Place Check
 if game.PlaceId \~= 10449761463 then
-	LocalPlayer:Kick("Wrong game 😂")
+	LocalPlayer:Kick("Wrong game")
 	return
 end
 
@@ -33,121 +27,74 @@ end
 -- SESSION
 ----------------------------------------------------------------
 getgenv().Quintuplets = getgenv().Quintuplets or {
-	CurrentSister = 1, -- 1=Ichika, 2=Nino, 3=Miku, 4=Yotsuba, 5=Itsuki
+	CurrentSister = 1,
 	Connections = {},
 	CharacterConnections = {},
 	AuraObjects = {},
-	LastDeathCFrame = nil,
 	IsUlted = false,
 }
 
 local SESSION = getgenv().Quintuplets
 
 ----------------------------------------------------------------
--- SISTERS DATA
+-- SISTERS
 ----------------------------------------------------------------
 local SISTERS = {
 	[1] = {
 		Name = "Ichika",
 		FullName = "Ichika Nakano",
-		Theme = "Cyborg",
 		ColorMain = Color3.fromRGB(255, 220, 50),
 		ColorSecond = Color3.fromRGB(255, 180, 30),
 		ColorDark = Color3.fromRGB(180, 120, 0),
 		Decal = "rbxthumb://type=Asset&id=98181799656366&w=150&h=150",
 		UltimateName = "⚡ CYBER OVERDRIVE ⚡",
-		EngineName = "Cyber Dash",
 	},
 	[2] = {
 		Name = "Nino",
 		FullName = "Nino Nakano",
-		Theme = "Martial Arts",
 		ColorMain = Color3.fromRGB(255, 105, 180),
 		ColorSecond = Color3.fromRGB(255, 60, 140),
 		ColorDark = Color3.fromRGB(160, 30, 90),
 		Decal = "rbxthumb://type=Asset&id=84966996106387&w=150&h=150",
 		UltimateName = "💗 NINO'S FURY 💗",
-		EngineName = "Love Engine",
 	},
 	[3] = {
 		Name = "Miku",
 		FullName = "Miku Nakano",
-		Theme = "Phantom",
 		ColorMain = Color3.fromRGB(140, 180, 255),
 		ColorSecond = Color3.fromRGB(180, 140, 255),
 		ColorDark = Color3.fromRGB(60, 40, 140),
 		Decal = "rbxthumb://type=Asset&id=139310852089028&w=150&h=150",
 		UltimateName = "🌙 PHANTOM DOMAIN 🌙",
-		EngineName = "Phantom Engine",
 	},
 	[4] = {
 		Name = "Yotsuba",
 		FullName = "Yotsuba Nakano",
-		Theme = "Serious",
 		ColorMain = Color3.fromRGB(255, 80, 40),
 		ColorSecond = Color3.fromRGB(255, 140, 50),
 		ColorDark = Color3.fromRGB(160, 30, 10),
 		Decal = "rbxthumb://type=Asset&id=127206472590344&w=150&h=150",
 		UltimateName = "🔥 SERIOUS MODE 🔥",
-		EngineName = "Serious Burst",
 	},
 	[5] = {
 		Name = "Itsuki",
 		FullName = "Itsuki Nakano",
-		Theme = "Blademaster",
 		ColorMain = Color3.fromRGB(255, 50, 50),
 		ColorSecond = Color3.fromRGB(255, 120, 40),
 		ColorDark = Color3.fromRGB(140, 20, 20),
 		Decal = "rbxthumb://type=Asset&id=115613783620344&w=150&h=150",
 		UltimateName = "⚔️ ATOMIC SLASH ⚔️",
-		EngineName = "Blade Rush",
 	},
 }
 
-----------------------------------------------------------------
--- MUSIC
-----------------------------------------------------------------
-local MUSIC_URL = "https://github.com/r4faelllaust/R4Fix/raw/refs/heads/main/TQQ5sisOPE.mp3"
-local MUSIC_FILE = "TQQ5sisOPE.mp3"
-
-local function setupMusic()
-	local sound = SoundService:FindFirstChild("QuintupletsBGM")
-	if sound then sound:Destroy() end
-
-	sound = Instance.new("Sound")
-	sound.Name = "QuintupletsBGM"
-	sound.Looped = true
-	sound.Volume = 0.7
-	sound.Parent = SoundService
-
-	task.spawn(function()
-		if not isfile(MUSIC_FILE) then
-			local success, data = pcall(function()
-				return game:HttpGet(MUSIC_URL)
-			end)
-			if success and data then
-				writefile(MUSIC_FILE, data)
-			end
-		end
-
-		if isfile(MUSIC_FILE) and getcustomasset then
-			sound.SoundId = getcustomasset(MUSIC_FILE)
-			sound:Play()
-		end
-	end)
-
-	-- Keep alive
-	sound.Ended:Connect(function()
-		if sound.Looped then
-			sound:Play()
-		end
-	end)
+local function getCurrentSister()
+	return SISTERS[SESSION.CurrentSister]
 end
 
 ----------------------------------------------------------------
 -- UTILS
 ----------------------------------------------------------------
-local function cleanupCharacterConnections()
+local function cleanup()
 	for _, conn in ipairs(SESSION.CharacterConnections) do
 		pcall(function() conn:Disconnect() end)
 	end
@@ -161,8 +108,14 @@ local function track(conn)
 	return conn
 end
 
-local function getCurrentSister()
-	return SISTERS[SESSION.CurrentSister]
+local function notify(title, text)
+	pcall(function()
+		StarterGui:SetCore("SendNotification", {
+			Title = title,
+			Text = text,
+			Duration = 3
+		})
+	end)
 end
 
 local function getClosestEnemy()
@@ -174,13 +127,13 @@ local function getClosestEnemy()
 	local closest, dist = nil, math.huge
 	for _, plr in ipairs(Players:GetPlayers()) do
 		if plr \~= LocalPlayer and plr.Character then
-			local enemyHRP = plr.Character:FindFirstChild("HumanoidRootPart")
+			local eHRP = plr.Character:FindFirstChild("HumanoidRootPart")
 			local hum = plr.Character:FindFirstChildOfClass("Humanoid")
-			if enemyHRP and hum and hum.Health > 0 then
-				local d = (hrp.Position - enemyHRP.Position).Magnitude
-				if d < dist and d < 80 then
+			if eHRP and hum and hum.Health > 0 then
+				local d = (hrp.Position - eHRP.Position).Magnitude
+				if d < dist and d < 70 then
 					dist = d
-					closest = enemyHRP
+					closest = eHRP
 				end
 			end
 		end
@@ -189,60 +142,56 @@ local function getClosestEnemy()
 end
 
 ----------------------------------------------------------------
--- VFX HELPERS
+-- VFX
 ----------------------------------------------------------------
-local function spawnBurst(cframe, size, color, duration)
-	local part = Instance.new("Part")
-	part.Anchored = true
-	part.CanCollide = false
-	part.CanQuery = false
-	part.CanTouch = false
-	part.Shape = Enum.PartType.Ball
-	part.Material = Enum.Material.Neon
-	part.Color = color
-	part.Transparency = 0.15
-	part.Size = Vector3.one
-	part.CFrame = cframe
-	part.Parent = workspace
+local function spawnBurst(cf, size, color, dur)
+	local p = Instance.new("Part")
+	p.Anchored = true
+	p.CanCollide = false
+	p.CanQuery = false
+	p.Shape = Enum.PartType.Ball
+	p.Material = Enum.Material.Neon
+	p.Color = color
+	p.Transparency = 0.15
+	p.Size = Vector3.one
+	p.CFrame = cf
+	p.Parent = workspace
 
-	TweenService:Create(part, TweenInfo.new(duration or 0.35, Enum.EasingStyle.Quint), {
+	TweenService:Create(p, TweenInfo.new(dur or 0.35, Enum.EasingStyle.Quint), {
 		Size = Vector3.new(size, size, size),
 		Transparency = 1
 	}):Play()
-
-	Debris:AddItem(part, (duration or 0.35) + 0.1)
+	Debris:AddItem(p, (dur or 0.35) + 0.1)
 end
 
-local function spawnShockwave(cframe, startSize, endSize, color)
-	local ring = Instance.new("Part")
-	ring.Anchored = true
-	ring.CanCollide = false
-	ring.CanQuery = false
-	ring.Shape = Enum.PartType.Cylinder
-	ring.Material = Enum.Material.Neon
-	ring.Color = color
-	ring.Transparency = 0.2
-	ring.Size = Vector3.new(0.12, startSize, startSize)
-	ring.CFrame = cframe * CFrame.Angles(0, 0, math.rad(90))
-	ring.Parent = workspace
+local function spawnShockwave(cf, startS, endS, color)
+	local r = Instance.new("Part")
+	r.Anchored = true
+	r.CanCollide = false
+	r.CanQuery = false
+	r.Shape = Enum.PartType.Cylinder
+	r.Material = Enum.Material.Neon
+	r.Color = color
+	r.Transparency = 0.2
+	r.Size = Vector3.new(0.12, startS, startS)
+	r.CFrame = cf * CFrame.Angles(0, 0, math.rad(90))
+	r.Parent = workspace
 
-	TweenService:Create(ring, TweenInfo.new(0.4, Enum.EasingStyle.Quint), {
-		Size = Vector3.new(0.12, endSize, endSize),
+	TweenService:Create(r, TweenInfo.new(0.4, Enum.EasingStyle.Quint), {
+		Size = Vector3.new(0.12, endS, endS),
 		Transparency = 1
 	}):Play()
-
-	Debris:AddItem(ring, 0.55)
+	Debris:AddItem(r, 0.55)
 end
 
 ----------------------------------------------------------------
--- PHANTOM / ENGINE SYSTEM (shared + themed)
+-- ENGINE
 ----------------------------------------------------------------
 local function activateEngine(duration, speed)
 	local char = LocalPlayer.Character
 	if not char then return end
 	local hrp = char:FindFirstChild("HumanoidRootPart")
-	local hum = char:FindFirstChildOfClass("Humanoid")
-	if not hrp or not hum then return end
+	if not hrp then return end
 
 	local sister = getCurrentSister()
 
@@ -254,306 +203,109 @@ local function activateEngine(duration, speed)
 	bv.Velocity = hrp.CFrame.LookVector * speed
 	bv.Parent = hrp
 
-	local bg = Instance.new("BodyGyro")
-	bg.MaxTorque = Vector3.new(1e6, 1e6, 1e6)
-	bg.P = 30000
-	bg.CFrame = hrp.CFrame
-	bg.Parent = hrp
-
-	-- Afterimages
-	task.spawn(function()
-		for i = 1, 6 do
-			if not hrp or not hrp.Parent then break end
-			local clone = char:Clone()
-			for _, v in ipairs(clone:GetDescendants()) do
-				if v:IsA("BasePart") then
-					v.Anchored = true
-					v.CanCollide = false
-					v.Material = Enum.Material.Neon
-					v.Color = sister.ColorMain
-					v.Transparency = 0.55
-				elseif v:IsA("Script") or v:IsA("LocalScript") or v:IsA("Humanoid") then
-					v:Destroy()
-				end
-			end
-			clone.Parent = workspace
-			Debris:AddItem(clone, 0.45)
-			task.wait(0.04)
-		end
-	end)
-
 	task.delay(duration, function()
 		if bv then bv:Destroy() end
-		if bg then bg:Destroy() end
 		if hrp then
-			spawnBurst(hrp.CFrame, 12, sister.ColorSecond, 0.3)
+			spawnBurst(hrp.CFrame, 11, sister.ColorSecond, 0.3)
 		end
 	end)
 end
 
 ----------------------------------------------------------------
--- TOPBAR SWITCHING
+-- SWITCH TOOL (Mobile friendly)
 ----------------------------------------------------------------
-local function updateTopbar()
-	local topbar = PlayerGui:FindFirstChild("TopbarPlus")
-	if not topbar then return end
-
-	local sister = getCurrentSister()
-
-	for _, desc in ipairs(topbar:GetDescendants()) do
-		if desc.Name == "IconButton" then
-			local label = desc:FindFirstChild("IconLabel")
-			local image = desc:FindFirstChild("IconImage")
-
-			if label and label:IsA("TextLabel") then
-				local text = label.Text
-				if text == "Hero Hunter" or text == "Garou" or text == "Dark Garou" 
-					or text == "Ichika" or text == "Nino" or text == "Miku" 
-					or text == "Yotsuba" or text == "Itsuki" or text == sister.Name then
-
-					label.Text = sister.Name
-					if image then
-						image.Image = sister.Decal
-					end
-				end
+local function createSwitchTool()
+	-- Remove old
+	for _, obj in ipairs(LocalPlayer.Backpack:GetChildren()) do
+		if obj:IsA("Tool") and obj.Name == "Switch Sister" then
+			obj:Destroy()
+		end
+	end
+	if LocalPlayer.Character then
+		for _, obj in ipairs(LocalPlayer.Character:GetChildren()) do
+			if obj:IsA("Tool") and obj.Name == "Switch Sister" then
+				obj:Destroy()
 			end
 		end
 	end
-end
 
-local function cycleSister()
-	SESSION.CurrentSister = SESSION.CurrentSister % 5 + 1
-	local sister = getCurrentSister()
+	local tool = Instance.new("Tool")
+	tool.Name = "Switch Sister"
+	tool.RequiresHandle = false
+	tool.CanBeDropped = false
+	tool.Parent = LocalPlayer.Backpack
 
-	-- Notify
-	pcall(function()
-		StarterGui:SetCore("SendNotification", {
-			Title = sister.Name .. " selected!",
-			Text = sister.FullName .. " • " .. sister.Theme,
-			Icon = sister.Decal,
-			Duration = 2.5
-		})
+	tool.Activated:Connect(function()
+		SESSION.CurrentSister = SESSION.CurrentSister % 5 + 1
+		local sister = getCurrentSister()
+
+		notify(sister.Name, sister.FullName)
+
+		-- Re-apply visuals if character exists
+		if LocalPlayer.Character then
+			clearVisuals()
+			applySisterVisuals(LocalPlayer.Character)
+		end
 	end)
-
-	-- Force UI refresh
-	updateTopbar()
-	-- We will call full character restyle later
-end
-
--- Detect clicks on Topbar icon (simple but effective)
-task.spawn(function()
-	while true do
-		task.wait(0.3)
-		updateTopbar()
-	end
-end)
-
--- Temporary keybind for switching until we improve Topbar click detection
--- (You can change this later)
-local UIS = game:GetService("UserInputService")
-UIS.InputBegan:Connect(function(input, gpe)
-	if gpe then return end
-	if input.KeyCode == Enum.KeyCode.G then -- G = Switch Sister
-		cycleSister()
-	end
-end)
-
-print("[Quintuplets] Core loaded • Press G to switch sisters for now")
-----------------------------------------------------------------
--- MOVE NAMES PER SISTER
-----------------------------------------------------------------
-local MOVE_SETS = {
-	[1] = { -- Ichika (Cyborg)
-		Base = {
-			[1] = {name = "Cyber Strike", variant = "|| OVERCLOCK ||"},
-			[2] = {name = "Data Dash", variant = "|| CYBER ENGINE ||"},
-			[3] = {name = "System Crash", variant = nil},
-			[4] = {name = "Protocol Zero", variant = nil},
-		},
-		Ult = {
-			[1] = "Full Overdrive",
-			[2] = "Neural Storm",
-			[3] = "Core Meltdown",
-			[4] = "Singularity",
-		}
-	},
-	[2] = { -- Nino (Martial Arts)
-		Base = {
-			[1] = {name = "Tsundere Punch", variant = "|| RAGE ||"},
-			[2] = {name = "Love Engine", variant = "|| HEART DASH ||"},
-			[3] = {name = "Ribbon Barrage", variant = nil},
-			[4] = {name = "Nino's Kick", variant = nil},
-		},
-		Ult = {
-			[1] = "Heartbreak Impact",
-			[2] = "Pink Fury",
-			[3] = "Ultimate Tsundere",
-			[4] = "Love Catastrophe",
-		}
-	},
-	[3] = { -- Miku (Phantom)
-		Base = {
-			[1] = {name = "Silent Cut", variant = "|| PHANTOM ||"},
-			[2] = {name = "Phantom Engine", variant = "|| VOID STEP ||"},
-			[3] = {name = "Headphones Slash", variant = nil},
-			[4] = {name = "Quiet Domain", variant = nil},
-		},
-		Ult = {
-			[1] = "Phantom World",
-			[2] = "Echo Strike",
-			[3] = "Silent Execution",
-			[4] = "Miku's Domain",
-		}
-	},
-	[4] = { -- Yotsuba (Serious)
-		Base = {
-			[1] = {name = "Serious Punch", variant = "|| SERIOUS ||"},
-			[2] = {name = "Serious Burst", variant = "|| OPM ||"},
-			[3] = {name = "Lucky Strike", variant = nil},
-			[4] = {name = "Yotsuba Smash", variant = nil},
-		},
-		Ult = {
-			[1] = "Serious Series",
-			[2] = "Consecutive Punches",
-			[3] = "Serious Sideways",
-			[4] = "One Punch",
-		}
-	},
-	[5] = { -- Itsuki (Blademaster)
-		Base = {
-			[1] = {name = "Atomic Slash", variant = "|| BLADE ||"},
-			[2] = {name = "Blade Rush", variant = "|| SAMURAI ||"},
-			[3] = {name = "Air Blade", variant = nil},
-			[4] = {name = "Sunset Cut", variant = nil},
-		},
-		Ult = {
-			[1] = "Atomic Samurai",
-			[2] = "Thousand Cuts",
-			[3] = "Blade Domain",
-			[4] = "Final Slash",
-		}
-	},
-}
-
-----------------------------------------------------------------
--- HOTBAR + ULTIMATE BAR
-----------------------------------------------------------------
-local function refreshHotbar()
-	local sister = getCurrentSister()
-	local set = MOVE_SETS[SESSION.CurrentSister]
-	if not set then return end
-
-	local hb = PlayerGui:FindFirstChild("Hotbar")
-	if not hb then return end
-	local backpack = hb:FindFirstChild("Backpack")
-	if not backpack then return end
-	local frame = backpack:FindFirstChild("Hotbar")
-	if not frame then return end
-
-	local moves = SESSION.IsUlted and set.Ult or set.Base
-
-	for i = 1, 4 do
-		local slot = frame:FindFirstChild(tostring(i))
-		local base = slot and slot:FindFirstChild("Base")
-		if base then
-			local toolName = base:FindFirstChild("ToolName")
-			if toolName then
-				if SESSION.IsUlted then
-					toolName.Text = moves[i] or "Ultimate"
-				else
-					toolName.Text = moves[i].name
-					local reuse = base:FindFirstChild("Reuse")
-					if reuse and moves[i].variant then
-						reuse.Visible = true
-						reuse.Text = moves[i].variant
-					end
-				end
-			end
-		end
-	end
-end
-
-local function styleUltimateBar()
-	local sister = getCurrentSister()
-	local bar = PlayerGui:FindFirstChild("Bar")
-	if not bar then return end
-	local magic = bar:FindFirstChild("MagicHealth")
-	if not magic then return end
-
-	local text = magic:FindFirstChild("TextLabel")
-	if text and text:IsA("TextLabel") then
-		text.Text = sister.UltimateName
-		text.TextColor3 = sister.ColorMain
-	end
 end
 
 ----------------------------------------------------------------
--- CHARACTER VISUALS (Aura + Trails)
+-- VISUALS
 ----------------------------------------------------------------
-local function clearVisuals()
+function clearVisuals()
 	for _, obj in ipairs(SESSION.AuraObjects) do
 		pcall(function() obj:Destroy() end)
 	end
 	SESSION.AuraObjects = {}
 end
 
-local function applySisterVisuals(character)
+function applySisterVisuals(character)
 	clearVisuals()
 	local sister = getCurrentSister()
 	local hrp = character:FindFirstChild("HumanoidRootPart")
 	if not hrp then return end
 
-	-- Aura
 	local att = Instance.new("Attachment")
 	att.Parent = hrp
-	local emitter = Instance.new("ParticleEmitter")
-	emitter.Color = ColorSequence.new({
+	local em = Instance.new("ParticleEmitter")
+	em.Color = ColorSequence.new({
 		ColorSequenceKeypoint.new(0, sister.ColorMain),
-		ColorSequenceKeypoint.new(0.5, sister.ColorSecond),
 		ColorSequenceKeypoint.new(1, sister.ColorDark)
 	})
-	emitter.LightEmission = 0.75
-	emitter.Rate = 45
-	emitter.Lifetime = NumberRange.new(0.3, 0.6)
-	emitter.Speed = NumberRange.new(0.8, 2.5)
-	emitter.Size = NumberSequence.new({
-		NumberSequenceKeypoint.new(0, 0.8),
-		NumberSequenceKeypoint.new(0.4, 1.8),
+	em.LightEmission = 0.7
+	em.Rate = 40
+	em.Lifetime = NumberRange.new(0.3, 0.55)
+	em.Speed = NumberRange.new(0.6, 2)
+	em.Size = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0.7),
 		NumberSequenceKeypoint.new(1, 0)
 	})
-	emitter.Transparency = NumberSequence.new({
+	em.Transparency = NumberSequence.new({
 		NumberSequenceKeypoint.new(0, 0.3),
 		NumberSequenceKeypoint.new(1, 1)
 	})
-	emitter.Parent = att
+	em.Parent = att
 	table.insert(SESSION.AuraObjects, att)
 
-	-- Limb trails
-	for _, limbName in ipairs({"Left Arm", "Right Arm", "Left Leg", "Right Leg"}) do
-		local limb = character:FindFirstChild(limbName)
+	-- Simple trails on arms
+	for _, name in ipairs({"Left Arm", "Right Arm"}) do
+		local limb = character:FindFirstChild(name)
 		if limb then
 			local a0 = Instance.new("Attachment")
 			a0.Position = Vector3.new(0, -0.1, 0)
 			a0.Parent = limb
 			local a1 = Instance.new("Attachment")
-			a1.Position = Vector3.new(0, -1.1, 0)
+			a1.Position = Vector3.new(0, -1, 0)
 			a1.Parent = limb
 
 			local trail = Instance.new("Trail")
 			trail.Attachment0 = a0
 			trail.Attachment1 = a1
-			trail.Lifetime = 0.35
-			trail.LightEmission = 0.8
-			trail.Color = ColorSequence.new({
-				ColorSequenceKeypoint.new(0, sister.ColorMain),
-				ColorSequenceKeypoint.new(0.6, sister.ColorSecond),
-				ColorSequenceKeypoint.new(1, sister.ColorDark)
-			})
-			trail.Transparency = NumberSequence.new({
-				NumberSequenceKeypoint.new(0, 0.15),
-				NumberSequenceKeypoint.new(1, 1)
-			})
-			trail.WidthScale = NumberSequence.new(1.1, 0)
+			trail.Lifetime = 0.3
+			trail.LightEmission = 0.7
+			trail.Color = ColorSequence.new(sister.ColorMain, sister.ColorDark)
+			trail.Transparency = NumberSequence.new(0.2, 1)
+			trail.WidthScale = NumberSequence.new(1, 0)
 			trail.Parent = limb
 
 			table.insert(SESSION.AuraObjects, trail)
@@ -564,7 +316,7 @@ local function applySisterVisuals(character)
 end
 
 ----------------------------------------------------------------
--- MOVE HANDLER (Animation Triggers)
+-- MOVES
 ----------------------------------------------------------------
 local SLOT1 = "rbxassetid://12273188754"
 local SLOT2 = "rbxassetid://12296113986"
@@ -576,42 +328,27 @@ local function setupMoves(character, humanoid, hrp)
 		local id = track.Animation.AnimationId
 		local sister = getCurrentSister()
 
-		-- MOVE 1
 		if id == SLOT1 then
 			track:Stop()
 			local target = getClosestEnemy()
 			if target then
-				-- Snap behind target
-				local pos = target.Position - target.CFrame.LookVector * 3.5
+				local pos = target.Position - target.CFrame.LookVector * 3.2
 				hrp.CFrame = CFrame.lookAt(pos, target.Position)
 			end
-			activateEngine(0.55, 210)
-			spawnBurst(hrp.CFrame, 11, sister.ColorMain, 0.3)
-			spawnShockwave(hrp.CFrame, 2, 22, sister.ColorSecond)
-		end
-
-		-- MOVE 2 (Engine Move)
-		if id == SLOT2 then
+			activateEngine(0.5, 200)
+			spawnBurst(hrp.CFrame, 10, sister.ColorMain, 0.3)
+		elseif id == SLOT2 then
 			track:Stop()
-			activateEngine(0.85, 265)
-			spawnBurst(hrp.CFrame, 13, sister.ColorSecond, 0.35)
-			spawnShockwave(hrp.CFrame, 3, 28, sister.ColorMain)
-		end
-
-		-- MOVE 3
-		if id == SLOT3 then
+			activateEngine(0.8, 250)
+			spawnBurst(hrp.CFrame, 12, sister.ColorSecond, 0.35)
+		elseif id == SLOT3 then
 			track:Stop()
-			activateEngine(1.1, 240)
-			spawnBurst(hrp.CFrame, 15, sister.ColorMain, 0.4)
-			spawnShockwave(hrp.CFrame, 4, 32, sister.ColorSecond)
-		end
-
-		-- MOVE 4
-		if id == SLOT4 then
+			activateEngine(1.0, 230)
+			spawnBurst(hrp.CFrame, 14, sister.ColorMain, 0.4)
+		elseif id == SLOT4 then
 			track:Stop()
-			spawnBurst(hrp.CFrame, 16, sister.ColorDark, 0.45)
-			spawnShockwave(hrp.CFrame, 5, 36, sister.ColorMain)
-			spawnBurst(hrp.CFrame * CFrame.new(0, 0, -6), 10, sister.ColorSecond, 0.3)
+			spawnBurst(hrp.CFrame, 15, sister.ColorDark, 0.4)
+			spawnShockwave(hrp.CFrame, 4, 30, sister.ColorMain)
 		end
 	end))
 end
@@ -620,87 +357,66 @@ end
 -- CHARACTER SETUP
 ----------------------------------------------------------------
 local function setupCharacter(character)
-	cleanupCharacterConnections()
+	cleanup()
 	clearVisuals()
 
-	local humanoid = character:WaitForChild("Humanoid", 8)
-	local hrp = character:WaitForChild("HumanoidRootPart", 8)
+	local humanoid = character:WaitForChild("Humanoid", 10)
+	local hrp = character:WaitForChild("HumanoidRootPart", 10)
 	if not humanoid or not hrp then return end
 
 	-- Force Hunter
 	pcall(function()
-		if LocalPlayer:GetAttribute("Character") \~= "Hunter" then
-			character:WaitForChild("Communicate"):FireServer({
-				Goal = "Change Character",
-				Character = "Hunter"
-			})
-		end
+		character:WaitForChild("Communicate", 3):FireServer({
+			Goal = "Change Character",
+			Character = "Hunter"
+		})
 	end)
 
-	task.wait(0.4)
+	task.wait(0.6)
 
 	applySisterVisuals(character)
 	setupMoves(character, humanoid, hrp)
+	createSwitchTool()
 
-	-- UI Loops
-	track(task.spawn(function()
-		while humanoid.Health > 0 do
-			updateTopbar()
-			refreshHotbar()
-			styleUltimateBar()
-			task.wait(0.2)
-		end
-	end))
-
-	-- Death save
-	humanoid.Died:Once(function()
-		SESSION.LastDeathCFrame = hrp.CFrame
-		SESSION.IsUlted = false
-	end)
-
-	-- Spawn effect
 	local sister = getCurrentSister()
-	spawnBurst(hrp.CFrame, 12, sister.ColorMain, 0.4)
-	spawnShockwave(hrp.CFrame, 3, 20, sister.ColorSecond)
+	spawnBurst(hrp.CFrame, 11, sister.ColorMain, 0.4)
+	notify("Quintuplets", "Loaded • " .. sister.Name)
 end
 
 ----------------------------------------------------------------
 -- INIT
 ----------------------------------------------------------------
-setupMusic()
+createSwitchTool()
 
 if LocalPlayer.Character then
-	setupCharacter(LocalPlayer.Character)
+	task.spawn(function()
+		setupCharacter(LocalPlayer.Character)
+	end)
 end
 
 LocalPlayer.CharacterAdded:Connect(function(char)
-	task.wait(0.25)
+	task.wait(0.4)
 	setupCharacter(char)
 end)
 
--- Continuous Topbar + UI
-RunService.Heartbeat:Connect(function()
-	pcall(function()
-		updateTopbar()
-		refreshHotbar()
-		styleUltimateBar()
-	end)
+-- Keep tool alive
+task.spawn(function()
+	while true do
+		task.wait(3)
+		local found = false
+		for _, obj in ipairs(LocalPlayer.Backpack:GetChildren()) do
+			if obj.Name == "Switch Sister" then found = true break end
+		end
+		if LocalPlayer.Character then
+			for _, obj in ipairs(LocalPlayer.Character:GetChildren()) do
+				if obj.Name == "Switch Sister" then found = true break end
+			end
+		end
+		if not found then
+			createSwitchTool()
+		end
+	end
 end)
 
--- Notification
-task.defer(function()
-	task.wait(1)
-	local sister = getCurrentSister()
-	pcall(function()
-		StarterGui:SetCore("SendNotification", {
-			Title = "Quintuplets Loaded",
-			Text = "Press G to switch sisters • Currently: " .. sister.Name,
-			Icon = sister.Decal,
-			Duration = 5
-		})
-	end)
-end)
-
-print("[Quintuplets] Full core + all 5 kits loaded")
-print("Current Sister:", getCurrentSister().Name)
-print("Press G to cycle sisters")
+notify("Quintuplets", "Script loaded! Use the Tool to switch sisters")
+print("[Quintuplets] Mobile version loaded")
