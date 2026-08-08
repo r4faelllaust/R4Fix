@@ -1,45 +1,29 @@
 --!strict
 --[[
-	KJ Moveset (Client-Only)
-	Saitama Override → looks & feels like KJ
-	Uses real game resources from ReplicatedStorage
+	KJ Moveset - Improved
+	Forces KJ button visible + activates real KJ resources when selected
 ]]
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
-local TweenService = game:GetService("TweenService")
 local Debris = game:GetService("Debris")
 local StarterGui = game:GetService("StarterGui")
+local TweenService = game:GetService("TweenService")
 
 local LocalPlayer = Players.LocalPlayer
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 
 ----------------------------------------------------------------
--- CONFIG
-----------------------------------------------------------------
-local CONFIG = {
-	CharacterName = "KJ",
-	BaseCharacter = "Saitama", -- we override this
-
-	-- Known safe IDs
-	WallAttackerAnim = "rbxassetid://18447913645",
-	WallVictimAnim   = "rbxassetid://18447915110",
-	CharSound        = "rbxassetid://18443048724",
-	HitSound         = "rbxassetid://18443049348",
-}
-
-----------------------------------------------------------------
 -- STATE
 ----------------------------------------------------------------
 local State = {
-	Active = false,
-	Ultimate = false,
-	Busy = false,
+	KJActive = false,
 	Connections = {},
-	CharacterConnections = {},
+	CharConnections = {},
 	Effects = {},
 	Aura = nil,
+	LastCharacter = nil,
 }
 
 local function track(conn, list)
@@ -49,13 +33,13 @@ local function track(conn, list)
 end
 
 local function cleanup(list)
-	for _, conn in ipairs(list) do
-		pcall(function() conn:Disconnect() end)
+	for _, c in ipairs(list) do
+		pcall(function() c:Disconnect() end)
 	end
 	table.clear(list)
 end
 
-local function destroyEffects()
+local function clearEffects()
 	for _, obj in ipairs(State.Effects) do
 		pcall(function() obj:Destroy() end)
 	end
@@ -82,73 +66,119 @@ local function getEverythingKJ()
 	return everything and everything:FindFirstChild("KJ")
 end
 
-local function cloneAndParent(source, parent, lifetime)
+local function cloneFX(source, parent, lifetime)
 	if not source then return nil end
-	local clone = source:Clone()
-	clone.Parent = parent
-	table.insert(State.Effects, clone)
+	local c = source:Clone()
+	c.Parent = parent
+	table.insert(State.Effects, c)
 	if lifetime then
-		Debris:AddItem(clone, lifetime)
+		Debris:AddItem(c, lifetime)
 	end
-	return clone
+	return c
 end
 
 local function emitAll(root)
 	if not root then return end
-	for _, desc in ipairs(root:GetDescendants()) do
-		if desc:IsA("ParticleEmitter") then
+	for _, d in ipairs(root:GetDescendants()) do
+		if d:IsA("ParticleEmitter") then
 			pcall(function()
-				desc:Emit(desc:GetAttribute("EmitCount") or 8)
+				d.Enabled = true
+				d:Emit(12)
 			end)
 		end
 	end
 end
 
 ----------------------------------------------------------------
--- TOPBAR
+-- KEEP KJ BUTTON VISIBLE (dein Code verbessert)
 ----------------------------------------------------------------
-local function updateTopbar(isKJ)
+local function keepKJVisible()
 	local topbar = PlayerGui:FindFirstChild("TopbarPlus")
 	if not topbar then return end
 
-	for _, desc in ipairs(topbar:GetDescendants()) do
-		if desc.Name == "IconButton" then
-			local label = desc:FindFirstChild("IconLabel")
-			if label and label:IsA("TextLabel") then
-				local t = label.Text
-				if t == "Saitama" or t == "KJ" or t == "Hero Hunter" or t == "Garou" then
-					label.Text = isKJ and "KJ" or "Saitama"
-				end
-			end
+	local container = topbar:FindFirstChild("TopbarContainer")
+	if not container then return end
+
+	local unnamedIcon = container:FindFirstChild("UnnamedIcon")
+	if not unnamedIcon then return end
+
+	local dropdown = unnamedIcon:FindFirstChild("DropdownContainer")
+	if not dropdown then return end
+
+	local frame = dropdown:FindFirstChild("DropdownFrame")
+	if not frame then return end
+
+	local kj = frame:FindFirstChild("KJ")
+	if not kj then return end
+
+	kj.Visible = true
+	if kj:IsA("GuiButton") or kj:IsA("TextButton") or kj:IsA("ImageButton") then
+		kj.Active = true
+		kj.Selectable = true
+	end
+
+	-- Also force any child labels
+	for _, child in ipairs(kj:GetDescendants()) do
+		if child:IsA("GuiObject") then
+			child.Visible = true
 		end
 	end
 end
 
 ----------------------------------------------------------------
+-- DETECT KJ SELECTION
+----------------------------------------------------------------
+local function isKJSelected()
+	-- Method 1: Check Topbar label
+	local topbar = PlayerGui:FindFirstChild("TopbarPlus")
+	if topbar then
+		for _, desc in ipairs(topbar:GetDescendants()) do
+			if desc.Name == "IconLabel" and desc:IsA("TextLabel") then
+				local text = desc.Text:lower()
+				if text == "kj" then
+					return true
+				end
+			end
+		end
+	end
+	return false
+end
+
+----------------------------------------------------------------
 -- AURA
 ----------------------------------------------------------------
-local function applyAura(character)
-	destroyEffects()
+local function applyKJAura(character)
+	clearEffects()
 	local source = getEverythingKJ()
-	if not source then return end
+	if not source then
+		warn("[KJ] Everything.KJ not found")
+		return
+	end
 
 	local hrp = character:FindFirstChild("HumanoidRootPart")
 	if not hrp then return end
 
 	local aura = source:Clone()
-	aura.Name = "KJ_Aura"
+	aura.Name = "KJ_ClientAura"
 	aura.Parent = character
 
-	-- Try to weld / position
 	local surface = aura:FindFirstChild("Surface")
 	if surface and surface:IsA("BasePart") then
 		surface.Anchored = false
 		surface.CanCollide = false
-		local weld = Instance.new("Weld")
+		surface.Massless = true
+
+		local weld = Instance.new("WeldConstraint")
 		weld.Part0 = hrp
 		weld.Part1 = surface
-		weld.C0 = CFrame.new()
 		weld.Parent = surface
+
+		-- Enable particles
+		for _, d in ipairs(aura:GetDescendants()) do
+			if d:IsA("ParticleEmitter") then
+				d.Enabled = true
+			end
+		end
 	end
 
 	State.Aura = aura
@@ -156,205 +186,140 @@ local function applyAura(character)
 end
 
 ----------------------------------------------------------------
--- VFX SHORTCUTS
+-- VFX PLAYERS
 ----------------------------------------------------------------
-local function playWallImpact(hrp)
-	local kjEffects = getKJEffects()
-	if not kjEffects then return end
-	local wall = kjEffects:FindFirstChild("KJWallCombo")
+local function playFromWallCombo(name, hrp, lifetime)
+	local effects = getKJEffects()
+	if not effects then return end
+	local wall = effects:FindFirstChild("KJWallCombo")
 	if not wall then return end
+	local part = wall:FindFirstChild(name)
+	if not part then return end
 
-	local final = wall:FindFirstChild("FinalImpact")
-	if final then
-		local clone = cloneAndParent(final, workspace, 2.5)
-		if clone then
-			clone.CFrame = hrp.CFrame
-			emitAll(clone)
-		end
-	end
-end
-
-local function playSlam(hrp)
-	local kjEffects = getKJEffects()
-	if not kjEffects then return end
-	local wall = kjEffects:FindFirstChild("KJWallCombo")
-	if not wall then return end
-
-	local slam = wall:FindFirstChild("slam")
-	if slam then
-		local clone = cloneAndParent(slam, workspace, 2)
-		if clone then
-			clone.CFrame = hrp.CFrame
-			emitAll(clone)
-		end
-	end
-end
-
-local function playHold(hrp)
-	local kjEffects = getKJEffects()
-	if not kjEffects then return end
-	local wall = kjEffects:FindFirstChild("KJWallCombo")
-	if not wall then return end
-
-	local hold = wall:FindFirstChild("hold")
-	if hold then
-		local clone = cloneAndParent(hold, workspace, 1.8)
-		if clone then
-			clone.CFrame = hrp.CFrame
-			emitAll(clone)
-		end
+	local clone = cloneFX(part, workspace, lifetime or 2)
+	if clone and clone:IsA("BasePart") then
+		clone.CFrame = hrp.CFrame
+		clone.Anchored = true
+		emitAll(clone)
+	elseif clone then
+		emitAll(clone)
 	end
 end
 
 ----------------------------------------------------------------
--- ANIMATION HELPER
-----------------------------------------------------------------
-local function playAnim(humanoid, id, priority, fade)
-	if not humanoid or humanoid.Health <= 0 then return nil end
-	local animator = humanoid:FindFirstChildOfClass("Animator")
-	if not animator then
-		animator = Instance.new("Animator")
-		animator.Parent = humanoid
-	end
-
-	local anim = Instance.new("Animation")
-	anim.AnimationId = id
-	local ok, track = pcall(function()
-		return animator:LoadAnimation(anim)
-	end)
-	anim:Destroy()
-	if not ok or not track then return nil end
-
-	track.Priority = priority or Enum.AnimationPriority.Action
-	track:Play(fade or 0.1)
-	return track
-end
-
-----------------------------------------------------------------
--- MOVES
+-- MOVES (Saitama animation intercept)
 ----------------------------------------------------------------
 local function setupMoves(character)
-	local humanoid = character:WaitForChild("Humanoid", 8)
-	local hrp = character:WaitForChild("HumanoidRootPart", 8)
+	local humanoid = character:FindFirstChildOfClass("Humanoid")
+	local hrp = character:FindFirstChild("HumanoidRootPart")
 	if not humanoid or not hrp then return end
 
-	-- Saitama / common trigger IDs (we intercept them)
-	local SLOT1 = "rbxassetid://12273188754" -- example, may need adjustment
-	local SLOT2 = "rbxassetid://12296113986"
-	local SLOT3 = "rbxassetid://12309835105"
-	local SLOT4 = "rbxassetid://12351854556"
-
 	track(humanoid.AnimationPlayed:Connect(function(track)
-		if not State.Active then return end
-		local id = track.Animation and track.Animation.AnimationId
-		if not id then return end
+		if not State.KJActive then return end
+		if not track.Animation then return end
 
-		-- MOVE 1 - Signature
-		if id:find("12273188754") or id:find("18447913645") then
-			track:Stop(0.05)
-			playAnim(humanoid, CONFIG.WallAttackerAnim, Enum.AnimationPriority.Action4)
-			playHold(hrp)
-			task.delay(0.35, function()
-				playSlam(hrp)
-			end)
-			task.delay(0.7, function()
-				playWallImpact(hrp)
-			end)
-		end
+		local id = track.Animation.AnimationId
 
-		-- MOVE 2 - Spin / Power
-		if id:find("12296113986") then
-			track:Stop(0.05)
-			playSlam(hrp)
-			local kjEffects = getKJEffects()
-			if kjEffects then
-				local spin = kjEffects:FindFirstChild("SPINNNN")
-				if spin then
-					local c = cloneAndParent(spin, hrp, 1.5)
+		-- Very broad detection for now (Saitama moves)
+		-- We will refine IDs later
+		if id:find("12273") or id:find("12296") or id:find("12309") or id:find("12351") or id:find("184479") then
+			-- Play KJ VFX on any major move
+			playFromWallCombo("hold", hrp, 1.5)
+			task.delay(0.25, function()
+				if hrp and hrp.Parent then
+					playFromWallCombo("slam", hrp, 1.8)
 				end
-			end
-		end
-
-		-- MOVE 3 - Throw style
-		if id:find("12309835105") then
-			track:Stop(0.05)
-			playHold(hrp)
-			task.delay(0.4, function()
-				playWallImpact(hrp)
+			end)
+			task.delay(0.55, function()
+				if hrp and hrp.Parent then
+					playFromWallCombo("FinalImpact", hrp, 2.2)
+				end
 			end)
 		end
-
-		-- MOVE 4 - Wall Combo
-		if id:find("12351854556") then
-			track:Stop(0.05)
-			local t = playAnim(humanoid, CONFIG.WallAttackerAnim, Enum.AnimationPriority.Action4)
-			playHold(hrp)
-			task.delay(0.3, function() playSlam(hrp) end)
-			task.delay(0.65, function() playWallImpact(hrp) end)
-			task.delay(1.1, function() playWallImpact(hrp) end)
-		end
-	end), State.CharacterConnections)
+	end), State.CharConnections)
 end
 
 ----------------------------------------------------------------
--- CHARACTER SETUP
+-- ACTIVATE / DEACTIVATE
 ----------------------------------------------------------------
-local function setupCharacter(character)
-	cleanup(State.CharacterConnections)
-	destroyEffects()
+local function activateKJ(character)
+	if State.KJActive and State.LastCharacter == character then return end
 
-	local humanoid = character:WaitForChild("Humanoid", 10)
-	local hrp = character:WaitForChild("HumanoidRootPart", 10)
-	if not humanoid or not hrp then return end
+	State.KJActive = true
+	State.LastCharacter = character
+	cleanup(State.CharConnections)
+	clearEffects()
 
-	State.Active = true
-	applyAura(character)
+	applyKJAura(character)
 	setupMoves(character)
-	updateTopbar(true)
-
-	-- Spawn effect
-	playHold(hrp)
-	task.delay(0.2, function()
-		playSlam(hrp)
-	end)
 
 	pcall(function()
 		StarterGui:SetCore("SendNotification", {
 			Title = "KJ",
-			Text = "Moveset active",
+			Text = "KJ Moveset activated",
 			Duration = 3
 		})
 	end)
 
-	humanoid.Died:Once(function()
-		State.Active = false
-		State.Ultimate = false
-		destroyEffects()
-		cleanup(State.CharacterConnections)
-	end)
+	print("[KJ] Activated")
+end
+
+local function deactivateKJ()
+	if not State.KJActive then return end
+	State.KJActive = false
+	cleanup(State.CharConnections)
+	clearEffects()
+	print("[KJ] Deactivated")
 end
 
 ----------------------------------------------------------------
--- INIT
+-- MAIN LOOP
 ----------------------------------------------------------------
-if LocalPlayer.Character then
-	task.spawn(function()
-		setupCharacter(LocalPlayer.Character)
-	end)
-end
+-- Keep KJ button visible forever
+task.spawn(function()
+	while true do
+		pcall(keepKJVisible)
+		task.wait(0.15)
+	end
+end)
 
+PlayerGui.DescendantAdded:Connect(function()
+	task.defer(keepKJVisible)
+end)
+
+-- Watch for selection changes + character
+task.spawn(function()
+	while true do
+		task.wait(0.25)
+
+		local selected = isKJSelected()
+		local char = LocalPlayer.Character
+
+		if selected and char then
+			if not State.KJActive or State.LastCharacter \~= char then
+				activateKJ(char)
+			end
+		elseif not selected and State.KJActive then
+			deactivateKJ()
+		end
+	end
+end)
+
+-- Character added
 LocalPlayer.CharacterAdded:Connect(function(char)
-	task.wait(0.35)
-	if State.Active then
-		setupCharacter(char)
+	task.wait(0.6)
+	if isKJSelected() then
+		activateKJ(char)
 	end
 end)
 
--- Keep Topbar updated
-RunService.Heartbeat:Connect(function()
-	if State.Active then
-		pcall(updateTopbar, true)
+-- Initial
+task.defer(function()
+	task.wait(1)
+	keepKJVisible()
+	if isKJSelected() and LocalPlayer.Character then
+		activateKJ(LocalPlayer.Character)
 	end
 end)
 
-print("[KJ] Client moveset loaded")
+print("[KJ] Improved script loaded - KJ button forced visible")
