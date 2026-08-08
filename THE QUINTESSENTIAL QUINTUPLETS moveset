@@ -578,3 +578,2481 @@ setup(Player.Character)
 end
 
 print("[R4FIX] Yotsuba Saitama moveset loaded. (FIXED)")
+
+--!strict
+-- ================================================================
+-- R4FIX // THE QUINTESSENTIAL QUINTUPLETS
+-- ITSUKI NAKANO
+-- BLADEMASTER / ATOMIC SAMURAI
+-- FIXED: ImageButton support in tab() icon replacement
+-- ================================================================
+
+-- NORMAL:
+--   1. Atomic Draw
+--   2. Crescent Sever
+--   3. Thousand Cuts
+--   4. Blade Meditation
+
+-- ULTIMATE:
+--   1. ATOMIC AWAKENING
+--   2. ATOMIC SLASH
+--   3. WORLD-CLEAVING DRAW
+--   4. ATOMIC SAMURAI
+
+-- DECAL:
+--   115613783620344
+-- ================================================================
+
+local Players=game:GetService("Players")
+local RunService=game:GetService("RunService")
+local TweenService=game:GetService("TweenService")
+local Debris=game:GetService("Debris")
+local StarterGui=game:GetService("StarterGui")
+local SoundService=game:GetService("SoundService")
+
+local Player=Players.LocalPlayer
+local Gui=Player:WaitForChild("PlayerGui")
+
+local NAME="Itsuki"
+local DECAL="rbxassetid://115613783620344"
+
+local RED=Color3.fromRGB(255,40,40)
+local FIRE=Color3.fromRGB(255,90,20)
+local ORANGE=Color3.fromRGB(255,170,45)
+local WHITE=Color3.fromRGB(255,245,220)
+
+local MUSIC_URL="https://github.com/r4faelllaust/R4Fix/raw/refs/heads/main/TQQ5sisOPE.mp3"
+local MUSIC_FILE="R4Fix_TQQ5sisOPE_Itsuki.mp3"
+
+local SLOT1="rbxassetid://12273188754"
+local SLOT2="rbxassetid://12296113986"
+local SLOT3="rbxassetid://12309835105"
+local SLOT4="rbxassetid://12351854556"
+
+local ULT1="rbxassetid://12467789963"
+local ULT2="rbxassetid://13630786846"
+local ULT3="rbxassetid://14057231976"
+
+getgenv().R4FIX_Itsuki=getgenv().R4FIX_Itsuki or {
+Initialized=false,
+Ulted=false,
+Token=0,
+Connections={},
+VFX={}
+}
+
+local S=getgenv().R4FIX_Itsuki
+
+local function track(c)
+table.insert(S.Connections,c)
+return c
+end
+
+local function clean()
+for _,c in ipairs(S.Connections) do
+pcall(function() c:Disconnect() end)
+end
+table.clear(S.Connections)
+
+for _,v in ipairs(S.VFX) do
+	pcall(function()
+		if v and v.Parent then v:Destroy() end
+	end)
+end
+table.clear(S.VFX)
+
+end
+
+local function folder()
+local x=workspace:FindFirstChild("R4FIX_Itsuki_VFX")
+
+if not x then
+	x=Instance.new("Folder")
+	x.Name="R4FIX_Itsuki_VFX"
+	x.Parent=workspace
+end
+
+return x
+
+end
+
+local function root()
+local c=Player.Character
+return c and c:FindFirstChild("HumanoidRootPart") :: BasePart?
+end
+
+local function closest()
+local rr=root()
+if not rr then return nil end
+
+local best,bestD=nil,math.huge
+
+for _,p in ipairs(Players:GetPlayers()) do
+	if p~=Player and p.Character then
+		local h=p.Character:FindFirstChild("HumanoidRootPart")
+		local hum=p.Character:FindFirstChildOfClass("Humanoid")
+
+		if h and hum and hum.Health>0 then
+			local d=(h.Position-rr.Position).Magnitude
+
+			if d<bestD then
+				best=p
+				bestD=d
+			end
+		end
+	end
+end
+
+return best
+
+end
+
+local function slash(cf:CFrame,size:number)
+local p=Instance.new("Part")
+p.Name="ItsukiAtomicSlash"
+p.Anchored=true
+p.CanCollide=false
+p.CanTouch=false
+p.CanQuery=false
+p.CastShadow=false
+p.Material=Enum.Material.Neon
+p.Color=RED
+p.Transparency=.05
+p.Size=Vector3.new(.15,1,size)
+p.CFrame=cf*CFrame.Angles(0,math.rad(math.random(-25,25)),math.rad(math.random(-35,35)))
+p.Parent=folder()
+table.insert(S.VFX,p)
+
+TweenService:Create(
+	p,
+	TweenInfo.new(.18,Enum.EasingStyle.Quint,Enum.EasingDirection.Out),
+	{
+		Size=Vector3.new(.03,size*.5,size*1.8),
+		Transparency=1
+	}
+):Play()
+
+Debris:AddItem(p,.25)
+
+end
+
+local function burst(cf:CFrame,size:number)
+local p=Instance.new("Part")
+p.Anchored=true
+p.CanCollide=false
+p.CanTouch=false
+p.CanQuery=false
+p.CastShadow=false
+p.Shape=Enum.PartType.Ball
+p.Material=Enum.Material.Neon
+p.Color=FIRE
+p.Transparency=.08
+p.Size=Vector3.one
+p.CFrame=cf
+p.Parent=folder()
+table.insert(S.VFX,p)
+
+local l=Instance.new("PointLight")
+l.Color=ORANGE
+l.Brightness=12
+l.Range=25
+l.Parent=p
+
+TweenService:Create(
+	p,
+	TweenInfo.new(.3,Enum.EasingStyle.Quint,Enum.EasingDirection.Out),
+	{
+		Size=Vector3.new(size,size,size),
+		Transparency=1
+	}
+):Play()
+
+TweenService:Create(
+	l,
+	TweenInfo.new(.25),
+	{
+		Brightness=0,
+		Range=0
+	}
+):Play()
+
+Debris:AddItem(p,.4)
+
+end
+
+local function ring(cf:CFrame,size:number)
+local p=Instance.new("Part")
+p.Anchored=true
+p.CanCollide=false
+p.CanTouch=false
+p.CanQuery=false
+p.CastShadow=false
+p.Shape=Enum.PartType.Cylinder
+p.Material=Enum.Material.Neon
+p.Color=RED
+p.Transparency=.1
+p.Size=Vector3.new(.12,2,2)
+p.CFrame=cf*CFrame.Angles(0,0,math.rad(90))
+p.Parent=folder()
+table.insert(S.VFX,p)
+
+TweenService:Create(
+	p,
+	TweenInfo.new(.4,Enum.EasingStyle.Quint,Enum.EasingDirection.Out),
+	{
+		Size=Vector3.new(.12,size,size),
+		Transparency=1
+	}
+):Play()
+
+Debris:AddItem(p,.5)
+
+end
+
+local function particles(part:BasePart,n:number)
+local a=Instance.new("Attachment")
+a.Parent=part
+table.insert(S.VFX,a)
+
+local e=Instance.new("ParticleEmitter")
+e.Texture="rbxasset://textures/particles/sparkles_main.dds"
+e.Color=ColorSequence.new(WHITE,ORANGE,RED)
+e.LightEmission=1
+e.Rate=0
+e.Lifetime=NumberRange.new(.2,.6)
+e.Speed=NumberRange.new(4,14)
+e.SpreadAngle=Vector2.new(360,360)
+e.Size=NumberSequence.new({
+	NumberSequenceKeypoint.new(0,.1),
+	NumberSequenceKeypoint.new(.5,.45),
+	NumberSequenceKeypoint.new(1,0)
+})
+e.Parent=a
+
+pcall(function() e:Emit(n) end)
+
+Debris:AddItem(a,1)
+
+end
+
+local function aura()
+local rr=root()
+if not rr then return end
+
+local a=Instance.new("Attachment")
+a.Name="ItsukiAtomicAura"
+a.Parent=rr
+table.insert(S.VFX,a)
+
+local e=Instance.new("ParticleEmitter")
+e.Texture="rbxasset://textures/particles/fire_main.dds"
+e.Color=ColorSequence.new(WHITE,ORANGE,RED)
+e.LightEmission=1
+e.Rate=16
+e.Lifetime=NumberRange.new(.25,.7)
+e.Speed=NumberRange.new(.7,3)
+e.SpreadAngle=Vector2.new(360,360)
+e.Size=NumberSequence.new({
+	NumberSequenceKeypoint.new(0,.12),
+	NumberSequenceKeypoint.new(.5,.45),
+	NumberSequenceKeypoint.new(1,0)
+})
+e.Parent=a
+
+end
+
+local function atomicDraw()
+local rr=root()
+local t=closest()
+
+if not rr then return end
+
+if t and t.Character then
+	local tr=t.Character:FindFirstChild("HumanoidRootPart")
+
+	if tr and tr:IsA("BasePart") then
+		rr.CFrame=tr.CFrame*CFrame.new(0,0,8)
+
+		task.delay(.12,function()
+			if rr.Parent then
+				for i=1,7 do
+					slash(
+						rr.CFrame*
+							CFrame.Angles(
+								0,
+								math.rad(i*20),
+								0
+							),
+						12+i
+					)
+				end
+
+				burst(rr.CFrame,18)
+				ring(rr.CFrame,38)
+				particles(rr,80)
+			end
+		end)
+	end
+end
+
+end
+
+local function thousandCuts()
+local rr=root()
+if not rr then return end
+
+for i=1,35 do
+	task.delay(i*.025,function()
+		if rr.Parent then
+			slash(
+				rr.CFrame*
+					CFrame.new(
+						math.random(-6,6),
+						math.random(-3,5),
+						math.random(-6,2)
+					),
+				math.random(8,16)
+			)
+		end
+	end)
+end
+
+end
+
+local function flash()
+local g=Instance.new("ScreenGui")
+g.IgnoreGuiInset=true
+g.ResetOnSpawn=false
+g.Parent=Gui
+table.insert(S.VFX,g)
+
+local frame=Instance.new("Frame")
+frame.Size=UDim2.fromScale(1,1)
+frame.BackgroundColor3=WHITE
+frame.BackgroundTransparency=.08
+frame.BorderSizePixel=0
+frame.Parent=g
+
+TweenService:Create(
+	frame,
+	TweenInfo.new(.4),
+	{BackgroundTransparency=1}
+):Play()
+
+Debris:AddItem(g,.45)
+
+end
+
+local function bar()
+local b=Gui:FindFirstChild("Bar")
+local m=b and b:FindFirstChild("MagicHealth")
+if not m then return end
+
+local l=m:FindFirstChild("TextLabel")
+
+if l and l:IsA("TextLabel") then
+	l.Text=S.Ulted
+		and "🔥 ITSUKI // ATOMIC SAMURAI 🔥"
+		or "🔥 ITSUKI'S BLADE ENERGY 🔥"
+
+	l.TextColor3=ORANGE
+end
+
+end
+
+local function slot(n:number,text:string)
+local h=Gui:FindFirstChild("Hotbar")
+local b=h and h:FindFirstChild("Backpack")
+local hb=b and b:FindFirstChild("Hotbar")
+local s=hb and hb:FindFirstChild(tostring(n))
+
+if not s then return end
+
+local base=s:FindFirstChild("Base") or s
+local l=base:FindFirstChild("ToolName")
+
+if l and l:IsA("TextLabel") then
+	l.Text=text
+end
+end
+
+local function hot()
+if S.Ulted then
+slot(1,"Atomic Slash")
+slot(2,"World Cleaver")
+slot(3,"Infinite Cuts")
+slot(4,"Atomic Samurai")
+else
+slot(1,"Atomic Draw")
+slot(2,"Crescent Sever")
+slot(3,"Thousand Cuts")
+slot(4,"Blade Meditation")
+end
+end
+
+local function tab()
+local top=Gui:FindFirstChild("TopbarPlus")
+if not top then return end
+
+for _,x in ipairs(top:GetDescendants()) do
+	if x.Name=="IconButton" then
+		local l=x:FindFirstChild("IconLabel")
+		local i=x:FindFirstChild("IconImage")
+
+		if l and l:IsA("TextLabel") then
+			if l.Text=="Hero Hunter"
+				or l.Text=="Garou"
+				or l.Text=="Dark Garou"
+				or l.Text=="Marin"
+				or l.Text=="Ichika"
+				or l.Text=="Nino"
+				or l.Text=="Miku"
+				or l.Text=="Yotsuba"
+			then
+				l.Text=NAME
+
+				-- FIX: match ImageButton too, not just ImageLabel
+				if i and (i:IsA("ImageLabel") or i:IsA("ImageButton")) then
+					i.Image=DECAL
+				end
+			end
+		end
+	end
+end
+
+end
+
+local function music()
+if not isfile or not writefile or not getcustomasset then return end
+
+if not isfile(MUSIC_FILE) then
+	local ok,data=pcall(function()
+		return game:HttpGet(MUSIC_URL)
+	end)
+
+	if ok and data then
+		pcall(function()
+			writefile(MUSIC_FILE,data)
+		end)
+	end
+end
+
+if not isfile(MUSIC_FILE) then return end
+
+local old=SoundService:FindFirstChild("R4FIX_TQQ_Music")
+if old then old:Destroy() end
+
+local s=Instance.new("Sound")
+s.Name="R4FIX_TQQ_Music"
+s.SoundId=getcustomasset(MUSIC_FILE)
+s.Volume=.9
+s.Looped=true
+s.Parent=SoundService
+s:Play()
+
+end
+
+local function notify(text)
+pcall(function()
+StarterGui:SetCore("SendNotification",{
+Title="ITSUKI ⚔",
+Text=text,
+Icon=DECAL,
+Duration=3
+})
+end)
+end
+
+local function move(id:string)
+local rr=root()
+if not rr then return end
+
+if id==SLOT1 then
+	atomicDraw()
+
+elseif id==SLOT2 then
+	for i=1,5 do
+		task.delay(i*.06,function()
+			if rr.Parent then
+				slash(rr.CFrame,12+i*2)
+				burst(rr.CFrame,5+i)
+			end
+		end)
+	end
+
+elseif id==SLOT3 then
+	thousandCuts()
+
+elseif id==SLOT4 then
+	aura()
+	burst(rr.CFrame,15)
+	ring(rr.CFrame,32)
+	particles(rr,75)
+end
+
+end
+
+local function ult(id:string)
+S.Ulted=true
+
+local rr=root()
+if not rr then return end
+
+flash()
+aura()
+
+burst(rr.CFrame,35)
+ring(rr.CFrame,70)
+particles(rr,180)
+
+if id==ULT1 then
+	for i=1,25 do
+		task.delay(i*.035,function()
+			slash(
+				rr.CFrame*
+					CFrame.new(
+						math.random(-8,8),
+						math.random(-5,6),
+						math.random(-8,8)
+					),
+				10+i
+			)
+		end)
+	end
+
+elseif id==ULT2 then
+	for i=1,15 do
+		task.delay(i*.055,function()
+			atomicDraw()
+		end)
+	end
+
+elseif id==ULT3 then
+	thousandCuts()
+
+	task.delay(.25,function()
+		thousandCuts()
+	end)
+
+	task.delay(.5,function()
+		thousandCuts()
+	end)
+
+	task.delay(.9,function()
+		if rr.Parent then
+			burst(rr.CFrame,60)
+			ring(rr.CFrame,120)
+			particles(rr,300)
+		end
+	end)
+end
+
+hot()
+
+end
+
+local function setup(c:Model)
+S.Token+=1
+local token=S.Token
+
+clean()
+S.Ulted=false
+
+local hum=c:WaitForChild("Humanoid",10)
+local rr=c:WaitForChild("HumanoidRootPart",10)
+
+if not hum or not rr or not rr:IsA("BasePart") then return end
+
+aura()
+
+track(hum.AnimationPlayed:Connect(function(t)
+	if token~=S.Token then return end
+	if not t.Animation then return end
+
+	local id=t.Animation.AnimationId
+
+	if id==SLOT1
+		or id==SLOT2
+		or id==SLOT3
+		or id==SLOT4
+	then
+		move(id)
+	elseif id==ULT1
+		or id==ULT2
+		or id==ULT3
+	then
+		ult(id)
+	end
+end))
+
+notify("ATOMIC SAMURAI MODE READY ⚔")
+
+end
+
+if not S.Initialized then
+S.Initialized=true
+
+track(Player.CharacterAdded:Connect(function(c)
+	task.wait(.3)
+	setup(c)
+end))
+
+track(RunService.Heartbeat:Connect(function()
+	pcall(tab)
+	pcall(hot)
+	pcall(bar)
+end))
+
+task.spawn(music)
+
+end
+
+if Player.Character then
+setup(Player.Character)
+end
+
+print("[R4FIX] Itsuki Atomic Samurai loaded. (FIXED)")
+
+--!strict
+-- ================================================================
+-- R4FIX // THE QUINTESSENTIAL QUINTUPLETS
+-- MIKU NAKANO
+-- HERO HUNTER / BLUE-VIOLET
+-- FIXED: ImageButton support in tab() icon replacement
+-- ================================================================
+
+-- NORMAL:
+--   1. Hunter Step
+--   2. Water Fang
+--   3. Phantom Pursuit
+--   4. Monster Adaptation
+
+-- ULTIMATE:
+--   1. HERO HUNTER AWAKENING
+--   2. ADAPTIVE MASSACRE
+--   3. PHANTOM HUNTER
+--   4. LIMIT BREAK
+
+-- DECAL:
+--   139310852089028
+-- ================================================================
+
+local Players=game:GetService("Players")
+local RunService=game:GetService("RunService")
+local TweenService=game:GetService("TweenService")
+local Debris=game:GetService("Debris")
+local StarterGui=game:GetService("StarterGui")
+local SoundService=game:GetService("SoundService")
+
+local Player=Players.LocalPlayer
+local Gui=Player:WaitForChild("PlayerGui")
+
+local NAME="Miku"
+local DECAL="rbxassetid://139310852089028"
+
+local BLUE=Color3.fromRGB(70,170,255)
+local ICE=Color3.fromRGB(160,220,255)
+local VIOLET=Color3.fromRGB(175,130,255)
+local DARK=Color3.fromRGB(45,35,120)
+local WHITE=Color3.fromRGB(245,250,255)
+
+local MUSIC_URL="https://github.com/r4faelllaust/R4Fix/raw/refs/heads/main/TQQ5sisOPE.mp3"
+local MUSIC_FILE="R4Fix_TQQ5sisOPE_Miku.mp3"
+
+local SLOT1="rbxassetid://12273188754"
+local SLOT2="rbxassetid://12296113986"
+local SLOT3="rbxassetid://12309835105"
+local SLOT4="rbxassetid://12351854556"
+
+local ULT1="rbxassetid://12467789963"
+local ULT2="rbxassetid://13630786846"
+local ULT3="rbxassetid://14057231976"
+
+getgenv().R4FIX_Miku=getgenv().R4FIX_Miku or {
+Initialized=false,
+Ulted=false,
+Token=0,
+Connections={},
+VFX={}
+}
+
+local S=getgenv().R4FIX_Miku
+
+local function track(c)
+table.insert(S.Connections,c)
+return c
+end
+
+local function clean()
+for _,c in ipairs(S.Connections) do
+pcall(function() c:Disconnect() end)
+end
+table.clear(S.Connections)
+
+for _,v in ipairs(S.VFX) do
+	pcall(function()
+		if v and v.Parent then v:Destroy() end
+	end)
+end
+table.clear(S.VFX)
+
+end
+
+local function folder()
+local x=workspace:FindFirstChild("R4FIX_Miku_VFX")
+if not x then
+x=Instance.new("Folder")
+x.Name="R4FIX_Miku_VFX"
+x.Parent=workspace
+end
+return x
+end
+
+local function root()
+local c=Player.Character
+return c and c:FindFirstChild("HumanoidRootPart") :: BasePart?
+end
+
+local function target()
+local rr=root()
+if not rr then return nil end
+
+local best,bestD=nil,math.huge
+
+for _,p in ipairs(Players:GetPlayers()) do
+	if p~=Player and p.Character then
+		local h=p.Character:FindFirstChild("HumanoidRootPart")
+		local hum=p.Character:FindFirstChildOfClass("Humanoid")
+
+		if h and hum and hum.Health>0 then
+			local d=(h.Position-rr.Position).Magnitude
+
+			if d<bestD then
+				best=p
+				bestD=d
+			end
+		end
+	end
+end
+
+return best
+
+end
+
+local function burst(cf:CFrame,size:number,color:Color3)
+local p=Instance.new("Part")
+p.Anchored=true
+p.CanCollide=false
+p.CanTouch=false
+p.CanQuery=false
+p.CastShadow=false
+p.Shape=Enum.PartType.Ball
+p.Material=Enum.Material.Neon
+p.Color=color
+p.Transparency=.08
+p.Size=Vector3.one
+p.CFrame=cf
+p.Parent=folder()
+table.insert(S.VFX,p)
+
+local l=Instance.new("PointLight")
+l.Color=color
+l.Brightness=10
+l.Range=22
+l.Parent=p
+
+TweenService:Create(
+	p,
+	TweenInfo.new(.35,Enum.EasingStyle.Quint,Enum.EasingDirection.Out),
+	{Size=Vector3.new(size,size,size),Transparency=1}
+):Play()
+
+TweenService:Create(
+	l,
+	TweenInfo.new(.3),
+	{Brightness=0,Range=0}
+):Play()
+
+Debris:AddItem(p,.45)
+
+end
+
+local function slash(cf:CFrame)
+local p=Instance.new("Part")
+p.Anchored=true
+p.CanCollide=false
+p.CanTouch=false
+p.CanQuery=false
+p.CastShadow=false
+p.Material=Enum.Material.Neon
+p.Color=VIOLET
+p.Transparency=.1
+p.Size=Vector3.new(.25,1,12)
+p.CFrame=cf*CFrame.Angles(0,math.rad(35),math.rad(-30))
+p.Parent=folder()
+table.insert(S.VFX,p)
+
+TweenService:Create(
+	p,
+	TweenInfo.new(.22,Enum.EasingStyle.Quint,Enum.EasingDirection.Out),
+	{
+		Size=Vector3.new(.05,8,22),
+		Transparency=1
+	}
+):Play()
+
+Debris:AddItem(p,.3)
+
+end
+
+local function iceRing(cf:CFrame,size:number)
+local p=Instance.new("Part")
+p.Anchored=true
+p.CanCollide=false
+p.CanTouch=false
+p.CanQuery=false
+p.Shape=Enum.PartType.Cylinder
+p.Material=Enum.Material.Neon
+p.Color=ICE
+p.Transparency=.15
+p.Size=Vector3.new(.12,2,2)
+p.CFrame=cf*CFrame.Angles(0,0,math.rad(90))
+p.Parent=folder()
+table.insert(S.VFX,p)
+
+TweenService:Create(
+	p,
+	TweenInfo.new(.45,Enum.EasingStyle.Quint,Enum.EasingDirection.Out),
+	{
+		Size=Vector3.new(.12,size,size),
+		Transparency=1
+	}
+):Play()
+
+Debris:AddItem(p,.55)
+
+end
+
+local function particles(part:BasePart,n:number)
+local a=Instance.new("Attachment")
+a.Parent=part
+table.insert(S.VFX,a)
+
+local e=Instance.new("ParticleEmitter")
+e.Texture="rbxasset://textures/particles/sparkles_main.dds"
+e.Color=ColorSequence.new(WHITE,ICE,VIOLET)
+e.LightEmission=1
+e.Rate=0
+e.Lifetime=NumberRange.new(.3,.8)
+e.Speed=NumberRange.new(3,12)
+e.SpreadAngle=Vector2.new(360,360)
+e.Size=NumberSequence.new({
+	NumberSequenceKeypoint.new(0,.12),
+	NumberSequenceKeypoint.new(.5,.45),
+	NumberSequenceKeypoint.new(1,0)
+})
+e.Parent=a
+
+pcall(function() e:Emit(n) end)
+
+Debris:AddItem(a,1)
+
+end
+
+local function aura()
+local rr=root()
+if not rr then return end
+
+local a=Instance.new("Attachment")
+a.Name="MikuHunterAura"
+a.Parent=rr
+table.insert(S.VFX,a)
+
+local e=Instance.new("ParticleEmitter")
+e.Texture="rbxasset://textures/particles/sparkles_main.dds"
+e.Color=ColorSequence.new(ICE,BLUE,VIOLET)
+e.LightEmission=1
+e.Rate=13
+e.Lifetime=NumberRange.new(.35,.9)
+e.Speed=NumberRange.new(.4,2)
+e.SpreadAngle=Vector2.new(360,360)
+e.Size=NumberSequence.new(.18,.0)
+e.Parent=a
+
+end
+
+local function phantom()
+local t=target()
+local rr=root()
+
+if not t or not rr then return end
+
+local tr=t.Character and t.Character:FindFirstChild("HumanoidRootPart")
+if not tr or not tr:IsA("BasePart") then return end
+
+local original=rr.CFrame
+
+for i=1,5 do
+	task.delay(i*.07,function()
+		if rr.Parent and tr.Parent then
+			local angle=i*math.pi/2
+			rr.CFrame=tr.CFrame*CFrame.new(
+				math.cos(angle)*5,
+				0,
+				math.sin(angle)*5
+			)
+
+			slash(rr.CFrame)
+			burst(rr.CFrame,5+i,BLUE)
+		end
+	end)
+end
+
+task.delay(.45,function()
+	if rr.Parent and tr.Parent then
+		rr.CFrame=tr.CFrame*CFrame.new(0,0,-4)
+		burst(rr.CFrame,18,VIOLET)
+		iceRing(rr.CFrame,38)
+		particles(rr,70)
+	end
+end)
+
+end
+
+local function adaptation()
+local rr=root()
+if not rr then return end
+
+for i=1,10 do
+	task.delay(i*.045,function()
+		if rr.Parent then
+			burst(
+				rr.CFrame*CFrame.new(
+					math.random(-5,5),
+					math.random(-2,4),
+					math.random(-5,5)
+				),
+				4+i,
+				i%2==0 and BLUE or VIOLET
+			)
+			slash(rr.CFrame)
+		end
+	end)
+end
+
+end
+
+local function bar()
+local b=Gui:FindFirstChild("Bar")
+local m=b and b:FindFirstChild("MagicHealth")
+if not m then return end
+
+local l=m:FindFirstChild("TextLabel")
+if l and l:IsA("TextLabel") then
+	l.Text=S.Ulted
+		and "❄ MIKU // MONSTER MODE ❄"
+		or "❄ MIKU'S HUNTER INSTINCT ❄"
+	l.TextColor3=ICE
+end
+
+end
+
+local function slot(n:number,text:string)
+local h=Gui:FindFirstChild("Hotbar")
+local b=h and h:FindFirstChild("Backpack")
+local hb=b and b:FindFirstChild("Hotbar")
+local s=hb and hb:FindFirstChild(tostring(n))
+if not s then return end
+
+local base=s:FindFirstChild("Base") or s
+local l=base:FindFirstChild("ToolName")
+
+if l and l:IsA("TextLabel") then
+	l.Text=text
+end
+end
+
+local function hot()
+if S.Ulted then
+slot(1,"Adaptive Massacre")
+slot(2,"Phantom Hunter")
+slot(3,"Monster Counter")
+slot(4,"Limit Break")
+else
+slot(1,"Hunter Step")
+slot(2,"Water Fang")
+slot(3,"Phantom Pursuit")
+slot(4,"Monster Adaptation")
+end
+end
+
+local function tab()
+local top=Gui:FindFirstChild("TopbarPlus")
+if not top then return end
+
+for _,x in ipairs(top:GetDescendants()) do
+	if x.Name=="IconButton" then
+		local l=x:FindFirstChild("IconLabel")
+		local i=x:FindFirstChild("IconImage")
+
+		if l and l:IsA("TextLabel") then
+			if l.Text=="Hero Hunter"
+				or l.Text=="Garou"
+				or l.Text=="Dark Garou"
+				or l.Text=="Marin"
+				or l.Text=="Nino"
+				or l.Text=="Ichika"
+			then
+				l.Text=NAME
+				-- FIX: match ImageButton too, not just ImageLabel
+				if i and (i:IsA("ImageLabel") or i:IsA("ImageButton")) then
+					i.Image=DECAL
+				end
+			end
+		end
+	end
+end
+
+end
+
+local function flash()
+local g=Instance.new("ScreenGui")
+g.IgnoreGuiInset=true
+g.ResetOnSpawn=false
+g.Parent=Gui
+table.insert(S.VFX,g)
+
+local x=Instance.new("Frame")
+x.Size=UDim2.fromScale(1,1)
+x.BackgroundColor3=VIOLET
+x.BackgroundTransparency=.15
+x.BorderSizePixel=0
+x.Parent=g
+
+TweenService:Create(
+	x,
+	TweenInfo.new(.4),
+	{BackgroundTransparency=1}
+):Play()
+
+Debris:AddItem(g,.45)
+
+end
+
+local function music()
+if not isfile or not writefile or not getcustomasset then return end
+
+if not isfile(MUSIC_FILE) then
+	local ok,data=pcall(function()
+		return game:HttpGet(MUSIC_URL)
+	end)
+
+	if ok and data then
+		pcall(function() writefile(MUSIC_FILE,data) end)
+	end
+end
+
+if not isfile(MUSIC_FILE) then return end
+
+local old=SoundService:FindFirstChild("R4FIX_TQQ_Music")
+if old then old:Destroy() end
+
+local s=Instance.new("Sound")
+s.Name="R4FIX_TQQ_Music"
+s.SoundId=getcustomasset(MUSIC_FILE)
+s.Volume=.85
+s.Looped=true
+s.Parent=SoundService
+s:Play()
+
+end
+
+local function notify(t)
+pcall(function()
+StarterGui:SetCore("SendNotification",{
+Title="MIKU ❄",
+Text=t,
+Icon=DECAL,
+Duration=3
+})
+end)
+end
+
+local function move(id:string)
+local rr=root()
+if not rr then return end
+
+if id==SLOT1 then
+	rr.CFrame=rr.CFrame*CFrame.new(0,0,-7)
+	burst(rr.CFrame,10,BLUE)
+	iceRing(rr.CFrame,24)
+	particles(rr,45)
+
+elseif id==SLOT2 then
+	phantom()
+
+elseif id==SLOT3 then
+	local t=target()
+	if t and t.Character then
+		local tr=t.Character:FindFirstChild("HumanoidRootPart")
+		if tr and tr:IsA("BasePart") then
+			rr.CFrame=tr.CFrame*CFrame.new(0,0,5)
+			slash(rr.CFrame)
+			burst(rr.CFrame,14,VIOLET)
+			iceRing(rr.CFrame,30)
+		end
+	end
+
+elseif id==SLOT4 then
+	adaptation()
+end
+
+end
+
+local function ult(id:string)
+S.Ulted=true
+
+local rr=root()
+if not rr then return end
+
+flash()
+aura()
+burst(rr.CFrame,32,WHITE)
+iceRing(rr.CFrame,65)
+particles(rr,130)
+
+if id==ULT1 then
+	for i=1,15 do
+		task.delay(i*.045,function()
+			burst(rr.CFrame,5+i,BLUE)
+			slash(rr.CFrame)
+		end)
+	end
+
+elseif id==ULT2 then
+	for i=1,12 do
+		task.delay(i*.055,phantom)
+	end
+
+elseif id==ULT3 then
+	adaptation()
+	task.delay(.3,adaptation)
+	task.delay(.6,adaptation)
+end
+
+hot()
+
+end
+
+local function setup(c:Model)
+S.Token+=1
+local token=S.Token
+
+clean()
+S.Ulted=false
+
+local hum=c:WaitForChild("Humanoid",10)
+local rr=c:WaitForChild("HumanoidRootPart",10)
+
+if not hum or not rr or not rr:IsA("BasePart") then return end
+
+aura()
+
+track(hum.AnimationPlayed:Connect(function(t)
+	if token~=S.Token then return end
+	if not t.Animation then return end
+
+	local id=t.Animation.AnimationId
+
+	if id==SLOT1
+		or id==SLOT2
+		or id==SLOT3
+		or id==SLOT4
+	then
+		move(id)
+	elseif id==ULT1
+		or id==ULT2
+		or id==ULT3
+	then
+		ult(id)
+	end
+end))
+
+notify("HERO HUNTER MODE ACTIVATED ❄")
+
+end
+
+if not S.Initialized then
+S.Initialized=true
+
+track(Player.CharacterAdded:Connect(function(c)
+	task.wait(.3)
+	setup(c)
+end))
+
+track(RunService.Heartbeat:Connect(function()
+	pcall(tab)
+	pcall(hot)
+	pcall(bar)
+end))
+
+task.spawn(music)
+
+end
+
+if Player.Character then
+setup(Player.Character)
+end
+
+print("[R4FIX] Miku Hero Hunter loaded. (FIXED)")
+
+--!strict
+-- ================================================================
+-- R4FIX // THE QUINTESSENTIAL QUINTUPLETS
+-- ICHIKA NAKANO
+-- CYBORG / YELLOW TECHNOLOGY
+-- FIXED: added missing slot() function, ImageButton support on tab()
+-- ================================================================
+
+-- NORMAL:
+--   1. Cyber Rush
+--   2. Servo Breaker
+--   3. Target Lock
+--   4. Overclock
+
+-- ULTIMATE:
+--   1. CYBER AWAKENING
+--   2. MACHINE GUN BLITZ
+--   3. ZERO-DISTANCE EXECUTION
+--   4. CYBORG OVERDRIVE
+
+-- DECAL:
+--   98181799656366
+
+-- MUSIC:
+--   TQQ5sisOPE.mp3
+
+-- ================================================================
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
+local Debris = game:GetService("Debris")
+local StarterGui = game:GetService("StarterGui")
+local SoundService = game:GetService("SoundService")
+
+local Player = Players.LocalPlayer
+local PlayerGui = Player:WaitForChild("PlayerGui")
+
+local NAME = "Ichika"
+local DECAL = "rbxassetid://98181799656366"
+
+local YELLOW = Color3.fromRGB(255,220,35)
+local GOLD = Color3.fromRGB(255,170,0)
+local LIGHT = Color3.fromRGB(255,245,150)
+local DARK = Color3.fromRGB(125,85,0)
+local WHITE = Color3.fromRGB(255,255,255)
+
+local MUSIC_URL =
+"https://github.com/r4faelllaust/R4Fix/raw/refs/heads/main/TQQ5sisOPE.mp3"
+
+local MUSIC_FILE = "R4Fix_TQQ5sisOPE.mp3"
+
+local SLOT1 = "rbxassetid://12273188754"
+local SLOT2 = "rbxassetid://12296113986"
+local SLOT3 = "rbxassetid://12309835105"
+local SLOT4 = "rbxassetid://12351854556"
+
+local ULT1 = "rbxassetid://12467789963"
+local ULT2 = "rbxassetid://13630786846"
+local ULT3 = "rbxassetid://14057231976"
+
+getgenv().R4FIX_Ichika =
+getgenv().R4FIX_Ichika or {
+Initialized = false,
+Ulted = false,
+Token = 0,
+Connections = {},
+VFX = {},
+}
+
+local S = getgenv().R4FIX_Ichika
+
+local function cleanup()
+for _, c in ipairs(S.Connections) do
+pcall(function()
+c:Disconnect()
+end)
+end
+table.clear(S.Connections)
+
+for _, v in ipairs(S.VFX) do
+	pcall(function()
+		if v and v.Parent then
+			v:Destroy()
+		end
+	end)
+end
+table.clear(S.VFX)
+
+end
+
+local function track(c)
+table.insert(S.Connections,c)
+return c
+end
+
+local function folder()
+local f = workspace:FindFirstChild("R4FIX_Ichika_VFX")
+if not f then
+f = Instance.new("Folder")
+f.Name = "R4FIX_Ichika_VFX"
+f.Parent = workspace
+end
+return f
+end
+
+local function root()
+local c = Player.Character
+return c and c:FindFirstChild("HumanoidRootPart") :: BasePart?
+end
+
+local function nearest(maxDistance:number?)
+local r = root()
+if not r then return nil end
+
+local best = nil
+local bestDistance = maxDistance or math.huge
+
+for _, p in ipairs(Players:GetPlayers()) do
+	if p ~= Player and p.Character then
+		local hrp = p.Character:FindFirstChild("HumanoidRootPart")
+		local hum = p.Character:FindFirstChildOfClass("Humanoid")
+
+		if hrp and hum and hum.Health > 0 then
+			local d = (hrp.Position-r.Position).Magnitude
+			if d < bestDistance then
+				bestDistance=d
+				best=p
+			end
+		end
+	end
+end
+
+return best
+
+end
+
+local function burst(cf:CFrame,size:number,color:Color3)
+local p=Instance.new("Part")
+p.Name="IchikaCyberBurst"
+p.Anchored=true
+p.CanCollide=false
+p.CanTouch=false
+p.CanQuery=false
+p.CastShadow=false
+p.Material=Enum.Material.Neon
+p.Shape=Enum.PartType.Ball
+p.Color=color
+p.Transparency=.12
+p.Size=Vector3.one
+p.CFrame=cf
+p.Parent=folder()
+
+table.insert(S.VFX,p)
+
+local light=Instance.new("PointLight")
+light.Color=color
+light.Brightness=10
+light.Range=20
+light.Parent=p
+
+TweenService:Create(
+	p,
+	TweenInfo.new(.32,Enum.EasingStyle.Quint,Enum.EasingDirection.Out),
+	{
+		Size=Vector3.new(size,size,size),
+		Transparency=1
+	}
+):Play()
+
+TweenService:Create(
+	light,
+	TweenInfo.new(.3),
+	{
+		Brightness=0,
+		Range=0
+	}
+):Play()
+
+Debris:AddItem(p,.4)
+
+end
+
+local function ring(cf:CFrame,size:number)
+local p=Instance.new("Part")
+p.Name="IchikaCyberRing"
+p.Anchored=true
+p.CanCollide=false
+p.CanTouch=false
+p.CanQuery=false
+p.CastShadow=false
+p.Material=Enum.Material.Neon
+p.Shape=Enum.PartType.Cylinder
+p.Color=YELLOW
+p.Transparency=.1
+p.Size=Vector3.new(.15,2,2)
+p.CFrame=cf*CFrame.Angles(0,0,math.rad(90))
+p.Parent=folder()
+
+table.insert(S.VFX,p)
+
+TweenService:Create(
+	p,
+	TweenInfo.new(.4,Enum.EasingStyle.Quint,Enum.EasingDirection.Out),
+	{
+		Size=Vector3.new(.15,size,size),
+		Transparency=1
+	}
+):Play()
+
+Debris:AddItem(p,.5)
+
+end
+
+local function sparks(part:BasePart,amount:number)
+local a=Instance.new("Attachment")
+a.Name="IchikaCyberSparks"
+a.Parent=part
+table.insert(S.VFX,a)
+
+local e=Instance.new("ParticleEmitter")
+e.Texture="rbxasset://textures/particles/sparkles_main.dds"
+e.Color=ColorSequence.new(LIGHT,YELLOW)
+e.LightEmission=1
+e.Rate=0
+e.Lifetime=NumberRange.new(.25,.65)
+e.Speed=NumberRange.new(4,12)
+e.SpreadAngle=Vector2.new(360,360)
+e.Size=NumberSequence.new({
+	NumberSequenceKeypoint.new(0,.18),
+	NumberSequenceKeypoint.new(.5,.5),
+	NumberSequenceKeypoint.new(1,0)
+})
+e.Parent=a
+
+pcall(function()
+	e:Emit(amount)
+end)
+
+Debris:AddItem(a,1)
+
+end
+
+local function aura(character:Model)
+local r=character:FindFirstChild("HumanoidRootPart")
+if not r or not r:IsA("BasePart") then return end
+
+local a=Instance.new("Attachment")
+a.Name="IchikaCyberAura"
+a.Parent=r
+table.insert(S.VFX,a)
+
+local e=Instance.new("ParticleEmitter")
+e.Texture="rbxasset://textures/particles/sparkles_main.dds"
+e.Color=ColorSequence.new(LIGHT,YELLOW)
+e.LightEmission=1
+e.Rate=12
+e.Lifetime=NumberRange.new(.3,.8)
+e.Speed=NumberRange.new(.5,2)
+e.SpreadAngle=Vector2.new(360,360)
+e.Size=NumberSequence.new({
+	NumberSequenceKeypoint.new(0,.12),
+	NumberSequenceKeypoint.new(.5,.4),
+	NumberSequenceKeypoint.new(1,0)
+})
+e.Parent=a
+
+end
+
+local function cyberFlash()
+local gui=Instance.new("ScreenGui")
+gui.Name="IchikaCyberFlash"
+gui.IgnoreGuiInset=true
+gui.ResetOnSpawn=false
+gui.Parent=PlayerGui
+table.insert(S.VFX,gui)
+
+local frame=Instance.new("Frame")
+frame.Size=UDim2.fromScale(1,1)
+frame.BackgroundColor3=YELLOW
+frame.BackgroundTransparency=.25
+frame.BorderSizePixel=0
+frame.Parent=gui
+
+TweenService:Create(
+	frame,
+	TweenInfo.new(.35,Enum.EasingStyle.Quad),
+	{BackgroundTransparency=1}
+):Play()
+
+Debris:AddItem(gui,.4)
+
+end
+
+local function teleportStrike()
+local target=nearest(90)
+local r=root()
+
+if not target or not r then return end
+
+local tr=target.Character and
+	target.Character:FindFirstChild("HumanoidRootPart")
+
+if not tr or not tr:IsA("BasePart") then return end
+
+r.CFrame=tr.CFrame*CFrame.new(0,0,4)
+
+burst(r.CFrame,12,YELLOW)
+ring(r.CFrame,25)
+sparks(r,35)
+
+task.delay(.12,function()
+	if r and r.Parent and tr and tr.Parent then
+		r.CFrame=tr.CFrame*CFrame.new(0,0,-3)
+		burst(r.CFrame,16,GOLD)
+		sparks(r,50)
+	end
+end)
+
+end
+
+local function overclock()
+local r=root()
+local c=Player.Character
+if not r or not c then return end
+
+aura(c)
+
+for i=1,8 do
+	task.delay(i*.055,function()
+		if r and r.Parent then
+			burst(
+				r.CFrame*CFrame.new(
+					math.random(-4,4),
+					math.random(-2,5),
+					math.random(-4,4)
+				),
+				4,
+				i%2==0 and GOLD or YELLOW
+			)
+		end
+	end)
+end
+
+end
+
+local function styleBar()
+local bar=PlayerGui:FindFirstChild("Bar")
+if not bar then return end
+
+local magic=bar:FindFirstChild("MagicHealth")
+if not magic then return end
+
+local label=magic:FindFirstChild("TextLabel")
+if label and label:IsA("TextLabel") then
+	label.Text=S.Ulted and "⚡ ICHIKA // OVERDRIVE ⚡"
+		or "⚡ ICHIKA'S CYBER CORE ⚡"
+	label.TextColor3=LIGHT
+end
+
+local fill=magic:FindFirstChild("Health")
+if fill and fill:IsA("Frame") then
+	fill.BackgroundColor3=YELLOW
+
+	local gradient=fill:FindFirstChild("IchikaGradient")
+	if not gradient then
+		gradient=Instance.new("UIGradient")
+		gradient.Name="IchikaGradient"
+		gradient.Color=ColorSequence.new({
+			ColorSequenceKeypoint.new(0,WHITE),
+			ColorSequenceKeypoint.new(.5,YELLOW),
+			ColorSequenceKeypoint.new(1,GOLD)
+		})
+		gradient.Parent=fill
+	end
+end
+
+end
+
+-- ================================================================
+-- FIX: this function was missing from the original script.
+-- hotbar() below calls slot() but slot() was never defined,
+-- so every hotbar text update silently failed inside the pcall
+-- in the Heartbeat loop.
+-- ================================================================
+local function slot(n:number,name:string)
+local hotbarGui=PlayerGui:FindFirstChild("Hotbar")
+if not hotbarGui then return end
+
+local backpack=hotbarGui:FindFirstChild("Backpack")
+if not backpack then return end
+
+local hb=backpack:FindFirstChild("Hotbar")
+if not hb then return end
+
+local s=hb:FindFirstChild(tostring(n))
+if not s then return end
+
+local base=s:FindFirstChild("Base") or s
+local text=base:FindFirstChild("ToolName")
+
+if text and text:IsA("TextLabel") then
+	text.Text=name
+end
+end
+
+local function hotbar()
+if S.Ulted then
+slot(1,"Cyber Singularity")
+slot(2,"Neon Blitz")
+slot(3,"Zero-Distance Kill")
+slot(4,"Cyborg Overdrive")
+else
+slot(1,"Cyber Rush")
+slot(2,"Servo Breaker")
+slot(3,"Target Lock")
+slot(4,"Overclock")
+end
+end
+
+local function tab()
+local top=PlayerGui:FindFirstChild("TopbarPlus")
+if not top then return end
+
+for _,x in ipairs(top:GetDescendants()) do
+	if x.Name=="IconButton" then
+		local label=x:FindFirstChild("IconLabel")
+		local image=x:FindFirstChild("IconImage")
+
+		if label and label:IsA("TextLabel") then
+			local old=label.Text
+
+			if old=="Hero Hunter"
+				or old=="Garou"
+				or old=="Dark Garou"
+				or old=="Marin"
+			then
+				label.Text=NAME
+
+				-- FIX: TopbarPlus icons are usually ImageButton,
+				-- not ImageLabel. Original check only matched
+				-- ImageLabel so the icon artwork never updated.
+				if image and (image:IsA("ImageLabel") or image:IsA("ImageButton")) then
+					image.Image=DECAL
+				end
+			end
+		end
+	end
+end
+
+end
+
+local function music()
+if not isfile or not writefile or not getcustomasset then return end
+
+local old=SoundService:FindFirstChild("R4FIX_TQQ_Music")
+if old then old:Destroy() end
+
+if not isfile(MUSIC_FILE) then
+	local ok,data=pcall(function()
+		return game:HttpGet(MUSIC_URL)
+	end)
+
+	if ok and data then
+		pcall(function()
+			writefile(MUSIC_FILE,data)
+		end)
+	end
+end
+
+if not isfile(MUSIC_FILE) then return end
+
+local sound=Instance.new("Sound")
+sound.Name="R4FIX_TQQ_Music"
+sound.SoundId=getcustomasset(MUSIC_FILE)
+sound.Volume=.85
+sound.Looped=true
+sound.Parent=SoundService
+sound:Play()
+
+table.insert(S.VFX,sound)
+
+end
+
+local function notify(text)
+pcall(function()
+StarterGui:SetCore("SendNotification",{
+Title="ICHIKA ⚡",
+Text=text,
+Icon=DECAL,
+Duration=3
+})
+end)
+end
+
+local function moves(id:string)
+local r=root()
+local c=Player.Character
+if not r or not c then return end
+
+if id==SLOT1 then
+	burst(r.CFrame,14,YELLOW)
+	ring(r.CFrame,30)
+	sparks(r,45)
+
+elseif id==SLOT2 then
+	teleportStrike()
+
+elseif id==SLOT3 then
+	local target=nearest(100)
+	if target and target.Character then
+		local tr=target.Character:FindFirstChild("HumanoidRootPart")
+		if tr and tr:IsA("BasePart") then
+			for i=1,5 do
+				task.delay(i*.07,function()
+					if r.Parent then
+						r.CFrame=tr.CFrame*CFrame.new(0,0,5)
+						burst(r.CFrame,5+i*2,YELLOW)
+						sparks(r,12)
+					end
+				end)
+			end
+		end
+	end
+
+elseif id==SLOT4 then
+	overclock()
+end
+
+end
+
+local function ult(id:string)
+S.Ulted=true
+
+local r=root()
+if not r then return end
+
+cyberFlash()
+burst(r.CFrame,30,WHITE)
+ring(r.CFrame,60)
+sparks(r,120)
+
+aura(Player.Character :: Model)
+
+if id==ULT1 then
+	for i=1,12 do
+		task.delay(i*.04,function()
+			if r.Parent then
+				burst(r.CFrame,6+i,YELLOW)
+				ring(r.CFrame,15+i*4)
+			end
+		end)
+	end
+
+elseif id==ULT2 then
+	for i=1,20 do
+		task.delay(i*.035,function()
+			teleportStrike()
+		end)
+	end
+
+elseif id==ULT3 then
+	local target=nearest(150)
+	if target and target.Character then
+		local tr=target.Character:FindFirstChild("HumanoidRootPart")
+		if tr and tr:IsA("BasePart") then
+			r.CFrame=tr.CFrame*CFrame.new(0,0,8)
+
+			for i=1,10 do
+				task.delay(i*.08,function()
+					if r.Parent then
+						r.CFrame=tr.CFrame*CFrame.new(
+							math.cos(i)*6,
+							math.sin(i)*3,
+							math.sin(i)*6
+						)
+						burst(r.CFrame,8,YELLOW)
+					end
+				end)
+			end
+		end
+	end
+end
+
+hotbar()
+
+end
+
+local function setupCharacter(character:Model)
+S.Token+=1
+local token=S.Token
+
+cleanup()
+
+local hum=character:WaitForChild("Humanoid",10)
+local r=character:WaitForChild("HumanoidRootPart",10)
+
+if not hum or not r or not r:IsA("BasePart") then return end
+
+S.Ulted=false
+aura(character)
+
+track(
+	hum.AnimationPlayed:Connect(function(t)
+		if token~=S.Token then return end
+		if not t.Animation then return end
+
+		local id=t.Animation.AnimationId
+
+		if id==SLOT1
+			or id==SLOT2
+			or id==SLOT3
+			or id==SLOT4
+		then
+			moves(id)
+		elseif id==ULT1
+			or id==ULT2
+			or id==ULT3
+		then
+			ult(id)
+		end
+	end)
+)
+
+notify("CYBORG MODE ONLINE ⚡")
+
+end
+
+if not S.Initialized then
+S.Initialized=true
+
+track(
+	Player.CharacterAdded:Connect(function(c)
+		task.wait(.3)
+		setupCharacter(c)
+	end)
+)
+
+track(
+	RunService.Heartbeat:Connect(function()
+		pcall(tab)
+		pcall(hotbar)
+		pcall(styleBar)
+	end)
+)
+
+task.spawn(function()
+	music()
+end)
+
+end
+
+if Player.Character then
+setupCharacter(Player.Character)
+end
+
+print("[R4FIX] Ichika Cyborg Moveset loaded. (FIXED)")
+
+--!strict
+-- ================================================================
+-- R4FIX // THE QUINTESSENTIAL QUINTUPLETS
+-- MIKU NAKANO
+-- HERO HUNTER / BLUE-VIOLET
+-- FIXED: ImageButton support in tab() icon replacement
+-- ================================================================
+
+-- NORMAL:
+--   1. Hunter Step
+--   2. Water Fang
+--   3. Phantom Pursuit
+--   4. Monster Adaptation
+
+-- ULTIMATE:
+--   1. HERO HUNTER AWAKENING
+--   2. ADAPTIVE MASSACRE
+--   3. PHANTOM HUNTER
+--   4. LIMIT BREAK
+
+-- DECAL:
+--   139310852089028
+-- ================================================================
+
+local Players=game:GetService("Players")
+local RunService=game:GetService("RunService")
+local TweenService=game:GetService("TweenService")
+local Debris=game:GetService("Debris")
+local StarterGui=game:GetService("StarterGui")
+local SoundService=game:GetService("SoundService")
+
+local Player=Players.LocalPlayer
+local Gui=Player:WaitForChild("PlayerGui")
+
+local NAME="Miku"
+local DECAL="rbxassetid://139310852089028"
+
+local BLUE=Color3.fromRGB(70,170,255)
+local ICE=Color3.fromRGB(160,220,255)
+local VIOLET=Color3.fromRGB(175,130,255)
+local DARK=Color3.fromRGB(45,35,120)
+local WHITE=Color3.fromRGB(245,250,255)
+
+local MUSIC_URL="https://github.com/r4faelllaust/R4Fix/raw/refs/heads/main/TQQ5sisOPE.mp3"
+local MUSIC_FILE="R4Fix_TQQ5sisOPE_Miku.mp3"
+
+local SLOT1="rbxassetid://12273188754"
+local SLOT2="rbxassetid://12296113986"
+local SLOT3="rbxassetid://12309835105"
+local SLOT4="rbxassetid://12351854556"
+
+local ULT1="rbxassetid://12467789963"
+local ULT2="rbxassetid://13630786846"
+local ULT3="rbxassetid://14057231976"
+
+getgenv().R4FIX_Miku=getgenv().R4FIX_Miku or {
+Initialized=false,
+Ulted=false,
+Token=0,
+Connections={},
+VFX={}
+}
+
+local S=getgenv().R4FIX_Miku
+
+local function track(c)
+table.insert(S.Connections,c)
+return c
+end
+
+local function clean()
+for _,c in ipairs(S.Connections) do
+pcall(function() c:Disconnect() end)
+end
+table.clear(S.Connections)
+
+for _,v in ipairs(S.VFX) do
+	pcall(function()
+		if v and v.Parent then v:Destroy() end
+	end)
+end
+table.clear(S.VFX)
+
+end
+
+local function folder()
+local x=workspace:FindFirstChild("R4FIX_Miku_VFX")
+if not x then
+x=Instance.new("Folder")
+x.Name="R4FIX_Miku_VFX"
+x.Parent=workspace
+end
+return x
+end
+
+local function root()
+local c=Player.Character
+return c and c:FindFirstChild("HumanoidRootPart") :: BasePart?
+end
+
+local function target()
+local rr=root()
+if not rr then return nil end
+
+local best,bestD=nil,math.huge
+
+for _,p in ipairs(Players:GetPlayers()) do
+	if p~=Player and p.Character then
+		local h=p.Character:FindFirstChild("HumanoidRootPart")
+		local hum=p.Character:FindFirstChildOfClass("Humanoid")
+
+		if h and hum and hum.Health>0 then
+			local d=(h.Position-rr.Position).Magnitude
+
+			if d<bestD then
+				best=p
+				bestD=d
+			end
+		end
+	end
+end
+
+return best
+
+end
+
+local function burst(cf:CFrame,size:number,color:Color3)
+local p=Instance.new("Part")
+p.Anchored=true
+p.CanCollide=false
+p.CanTouch=false
+p.CanQuery=false
+p.CastShadow=false
+p.Shape=Enum.PartType.Ball
+p.Material=Enum.Material.Neon
+p.Color=color
+p.Transparency=.08
+p.Size=Vector3.one
+p.CFrame=cf
+p.Parent=folder()
+table.insert(S.VFX,p)
+
+local l=Instance.new("PointLight")
+l.Color=color
+l.Brightness=10
+l.Range=22
+l.Parent=p
+
+TweenService:Create(
+	p,
+	TweenInfo.new(.35,Enum.EasingStyle.Quint,Enum.EasingDirection.Out),
+	{Size=Vector3.new(size,size,size),Transparency=1}
+):Play()
+
+TweenService:Create(
+	l,
+	TweenInfo.new(.3),
+	{Brightness=0,Range=0}
+):Play()
+
+Debris:AddItem(p,.45)
+
+end
+
+local function slash(cf:CFrame)
+local p=Instance.new("Part")
+p.Anchored=true
+p.CanCollide=false
+p.CanTouch=false
+p.CanQuery=false
+p.CastShadow=false
+p.Material=Enum.Material.Neon
+p.Color=VIOLET
+p.Transparency=.1
+p.Size=Vector3.new(.25,1,12)
+p.CFrame=cf*CFrame.Angles(0,math.rad(35),math.rad(-30))
+p.Parent=folder()
+table.insert(S.VFX,p)
+
+TweenService:Create(
+	p,
+	TweenInfo.new(.22,Enum.EasingStyle.Quint,Enum.EasingDirection.Out),
+	{
+		Size=Vector3.new(.05,8,22),
+		Transparency=1
+	}
+):Play()
+
+Debris:AddItem(p,.3)
+
+end
+
+local function iceRing(cf:CFrame,size:number)
+local p=Instance.new("Part")
+p.Anchored=true
+p.CanCollide=false
+p.CanTouch=false
+p.CanQuery=false
+p.Shape=Enum.PartType.Cylinder
+p.Material=Enum.Material.Neon
+p.Color=ICE
+p.Transparency=.15
+p.Size=Vector3.new(.12,2,2)
+p.CFrame=cf*CFrame.Angles(0,0,math.rad(90))
+p.Parent=folder()
+table.insert(S.VFX,p)
+
+TweenService:Create(
+	p,
+	TweenInfo.new(.45,Enum.EasingStyle.Quint,Enum.EasingDirection.Out),
+	{
+		Size=Vector3.new(.12,size,size),
+		Transparency=1
+	}
+):Play()
+
+Debris:AddItem(p,.55)
+
+end
+
+local function particles(part:BasePart,n:number)
+local a=Instance.new("Attachment")
+a.Parent=part
+table.insert(S.VFX,a)
+
+local e=Instance.new("ParticleEmitter")
+e.Texture="rbxasset://textures/particles/sparkles_main.dds"
+e.Color=ColorSequence.new(WHITE,ICE,VIOLET)
+e.LightEmission=1
+e.Rate=0
+e.Lifetime=NumberRange.new(.3,.8)
+e.Speed=NumberRange.new(3,12)
+e.SpreadAngle=Vector2.new(360,360)
+e.Size=NumberSequence.new({
+	NumberSequenceKeypoint.new(0,.12),
+	NumberSequenceKeypoint.new(.5,.45),
+	NumberSequenceKeypoint.new(1,0)
+})
+e.Parent=a
+
+pcall(function() e:Emit(n) end)
+
+Debris:AddItem(a,1)
+
+end
+
+local function aura()
+local rr=root()
+if not rr then return end
+
+local a=Instance.new("Attachment")
+a.Name="MikuHunterAura"
+a.Parent=rr
+table.insert(S.VFX,a)
+
+local e=Instance.new("ParticleEmitter")
+e.Texture="rbxasset://textures/particles/sparkles_main.dds"
+e.Color=ColorSequence.new(ICE,BLUE,VIOLET)
+e.LightEmission=1
+e.Rate=13
+e.Lifetime=NumberRange.new(.35,.9)
+e.Speed=NumberRange.new(.4,2)
+e.SpreadAngle=Vector2.new(360,360)
+e.Size=NumberSequence.new(.18,.0)
+e.Parent=a
+
+end
+
+local function phantom()
+local t=target()
+local rr=root()
+
+if not t or not rr then return end
+
+local tr=t.Character and t.Character:FindFirstChild("HumanoidRootPart")
+if not tr or not tr:IsA("BasePart") then return end
+
+local original=rr.CFrame
+
+for i=1,5 do
+	task.delay(i*.07,function()
+		if rr.Parent and tr.Parent then
+			local angle=i*math.pi/2
+			rr.CFrame=tr.CFrame*CFrame.new(
+				math.cos(angle)*5,
+				0,
+				math.sin(angle)*5
+			)
+
+			slash(rr.CFrame)
+			burst(rr.CFrame,5+i,BLUE)
+		end
+	end)
+end
+
+task.delay(.45,function()
+	if rr.Parent and tr.Parent then
+		rr.CFrame=tr.CFrame*CFrame.new(0,0,-4)
+		burst(rr.CFrame,18,VIOLET)
+		iceRing(rr.CFrame,38)
+		particles(rr,70)
+	end
+end)
+
+end
+
+local function adaptation()
+local rr=root()
+if not rr then return end
+
+for i=1,10 do
+	task.delay(i*.045,function()
+		if rr.Parent then
+			burst(
+				rr.CFrame*CFrame.new(
+					math.random(-5,5),
+					math.random(-2,4),
+					math.random(-5,5)
+				),
+				4+i,
+				i%2==0 and BLUE or VIOLET
+			)
+			slash(rr.CFrame)
+		end
+	end)
+end
+
+end
+
+local function bar()
+local b=Gui:FindFirstChild("Bar")
+local m=b and b:FindFirstChild("MagicHealth")
+if not m then return end
+
+local l=m:FindFirstChild("TextLabel")
+if l and l:IsA("TextLabel") then
+	l.Text=S.Ulted
+		and "❄ MIKU // MONSTER MODE ❄"
+		or "❄ MIKU'S HUNTER INSTINCT ❄"
+	l.TextColor3=ICE
+end
+
+end
+
+local function slot(n:number,text:string)
+local h=Gui:FindFirstChild("Hotbar")
+local b=h and h:FindFirstChild("Backpack")
+local hb=b and b:FindFirstChild("Hotbar")
+local s=hb and hb:FindFirstChild(tostring(n))
+if not s then return end
+
+local base=s:FindFirstChild("Base") or s
+local l=base:FindFirstChild("ToolName")
+
+if l and l:IsA("TextLabel") then
+	l.Text=text
+end
+end
+
+local function hot()
+if S.Ulted then
+slot(1,"Adaptive Massacre")
+slot(2,"Phantom Hunter")
+slot(3,"Monster Counter")
+slot(4,"Limit Break")
+else
+slot(1,"Hunter Step")
+slot(2,"Water Fang")
+slot(3,"Phantom Pursuit")
+slot(4,"Monster Adaptation")
+end
+end
+
+local function tab()
+local top=Gui:FindFirstChild("TopbarPlus")
+if not top then return end
+
+for _,x in ipairs(top:GetDescendants()) do
+	if x.Name=="IconButton" then
+		local l=x:FindFirstChild("IconLabel")
+		local i=x:FindFirstChild("IconImage")
+
+		if l and l:IsA("TextLabel") then
+			if l.Text=="Hero Hunter"
+				or l.Text=="Garou"
+				or l.Text=="Dark Garou"
+				or l.Text=="Marin"
+				or l.Text=="Nino"
+				or l.Text=="Ichika"
+			then
+				l.Text=NAME
+				-- FIX: match ImageButton too, not just ImageLabel
+				if i and (i:IsA("ImageLabel") or i:IsA("ImageButton")) then
+					i.Image=DECAL
+				end
+			end
+		end
+	end
+end
+
+end
+
+local function flash()
+local g=Instance.new("ScreenGui")
+g.IgnoreGuiInset=true
+g.ResetOnSpawn=false
+g.Parent=Gui
+table.insert(S.VFX,g)
+
+local x=Instance.new("Frame")
+x.Size=UDim2.fromScale(1,1)
+x.BackgroundColor3=VIOLET
+x.BackgroundTransparency=.15
+x.BorderSizePixel=0
+x.Parent=g
+
+TweenService:Create(
+	x,
+	TweenInfo.new(.4),
+	{BackgroundTransparency=1}
+):Play()
+
+Debris:AddItem(g,.45)
+
+end
+
+local function music()
+if not isfile or not writefile or not getcustomasset then return end
+
+if not isfile(MUSIC_FILE) then
+	local ok,data=pcall(function()
+		return game:HttpGet(MUSIC_URL)
+	end)
+
+	if ok and data then
+		pcall(function() writefile(MUSIC_FILE,data) end)
+	end
+end
+
+if not isfile(MUSIC_FILE) then return end
+
+local old=SoundService:FindFirstChild("R4FIX_TQQ_Music")
+if old then old:Destroy() end
+
+local s=Instance.new("Sound")
+s.Name="R4FIX_TQQ_Music"
+s.SoundId=getcustomasset(MUSIC_FILE)
+s.Volume=.85
+s.Looped=true
+s.Parent=SoundService
+s:Play()
+
+end
+
+local function notify(t)
+pcall(function()
+StarterGui:SetCore("SendNotification",{
+Title="MIKU ❄",
+Text=t,
+Icon=DECAL,
+Duration=3
+})
+end)
+end
+
+local function move(id:string)
+local rr=root()
+if not rr then return end
+
+if id==SLOT1 then
+	rr.CFrame=rr.CFrame*CFrame.new(0,0,-7)
+	burst(rr.CFrame,10,BLUE)
+	iceRing(rr.CFrame,24)
+	particles(rr,45)
+
+elseif id==SLOT2 then
+	phantom()
+
+elseif id==SLOT3 then
+	local t=target()
+	if t and t.Character then
+		local tr=t.Character:FindFirstChild("HumanoidRootPart")
+		if tr and tr:IsA("BasePart") then
+			rr.CFrame=tr.CFrame*CFrame.new(0,0,5)
+			slash(rr.CFrame)
+			burst(rr.CFrame,14,VIOLET)
+			iceRing(rr.CFrame,30)
+		end
+	end
+
+elseif id==SLOT4 then
+	adaptation()
+end
+
+end
+
+local function ult(id:string)
+S.Ulted=true
+
+local rr=root()
+if not rr then return end
+
+flash()
+aura()
+burst(rr.CFrame,32,WHITE)
+iceRing(rr.CFrame,65)
+particles(rr,130)
+
+if id==ULT1 then
+	for i=1,15 do
+		task.delay(i*.045,function()
+			burst(rr.CFrame,5+i,BLUE)
+			slash(rr.CFrame)
+		end)
+	end
+
+elseif id==ULT2 then
+	for i=1,12 do
+		task.delay(i*.055,phantom)
+	end
+
+elseif id==ULT3 then
+	adaptation()
+	task.delay(.3,adaptation)
+	task.delay(.6,adaptation)
+end
+
+hot()
+
+end
+
+local function setup(c:Model)
+S.Token+=1
+local token=S.Token
+
+clean()
+S.Ulted=false
+
+local hum=c:WaitForChild("Humanoid",10)
+local rr=c:WaitForChild("HumanoidRootPart",10)
+
+if not hum or not rr or not rr:IsA("BasePart") then return end
+
+aura()
+
+track(hum.AnimationPlayed:Connect(function(t)
+	if token~=S.Token then return end
+	if not t.Animation then return end
+
+	local id=t.Animation.AnimationId
+
+	if id==SLOT1
+		or id==SLOT2
+		or id==SLOT3
+		or id==SLOT4
+	then
+		move(id)
+	elseif id==ULT1
+		or id==ULT2
+		or id==ULT3
+	then
+		ult(id)
+	end
+end))
+
+notify("HERO HUNTER MODE ACTIVATED ❄")
+
+end
+
+if not S.Initialized then
+S.Initialized=true
+
+track(Player.CharacterAdded:Connect(function(c)
+	task.wait(.3)
+	setup(c)
+end))
+
+track(RunService.Heartbeat:Connect(function()
+	pcall(tab)
+	pcall(hot)
+	pcall(bar)
+end))
+
+task.spawn(music)
+
+end
+
+if Player.Character then
+setup(Player.Character)
+end
+
+print("[R4FIX] Miku Hero Hunter loaded. (FIXED)")
