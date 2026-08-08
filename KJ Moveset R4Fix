@@ -1,59 +1,51 @@
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RS = game:GetService("ReplicatedStorage")
 
-local function findAll(root, name)
-	local results = {}
-	if not root then return results end
-	for _, obj in ipairs(root:GetDescendants()) do
-		if obj.Name == name then
-			table.insert(results, obj)
-		end
-	end
-	return results
-end
-
-local function safeFind(root, ...)
-	local current = root
-	for _, name in ipairs({...}) do
-		if not current then return nil end
-		current = current:FindFirstChild(name)
-	end
-	return current
-end
-
-print("========== KJ RESOURCE SCAN ==========")
-
--- Main folders
-local Resources = ReplicatedStorage:FindFirstChild("Resources")
-local KJEffects = Resources and Resources:FindFirstChild("KJEffects")
-local Cutscenes = ReplicatedStorage:FindFirstChild("Cutscenes")
-local UFW = ReplicatedStorage:FindFirstChild("UFW")
-
-print("Resources:", Resources and "FOUND" or "MISSING")
-print("KJEffects:", KJEffects and "FOUND" or "MISSING")
-print("Cutscenes:", Cutscenes and "FOUND" or "MISSING")
-print("UFW:", UFW and "FOUND" or "MISSING")
-
--- Specific important objects
-local importantNames = {
-	"KJWallCombo", "KJThrow", "PunchFX", "KJWallBreak",
-	"RockJump", "KJBlack", "KJWhite", "KJDialogue",
-	"KJ phone", "kjphone", "signkj", "Everything", "KJ"
-}
-
-for _, name in ipairs(importantNames) do
-	local found = findAll(ReplicatedStorage, name)
-	if #found > 0 then
-		print(name .. " → Found " .. #found .. " time(s)")
-		for _, obj in ipairs(found) do
-			print("   └─", obj:GetFullName(), "(" .. obj.ClassName .. ")")
-		end
-	else
-		print(name .. " → NOT FOUND")
+local function deepInfo(obj, depth)
+	depth = depth or 0
+	if depth > 4 then return end
+	local indent = string.rep("  ", depth)
+	print(indent .. obj.Name .. " [" .. obj.ClassName .. "]")
+	for _, child in ipairs(obj:GetChildren()) do
+		deepInfo(child, depth + 1)
 	end
 end
 
--- Dialogue module
-local Tekrinn = UFW and UFW:FindFirstChild("TekrinnDialogue")
-print("TekrinnDialogue:", Tekrinn and (Tekrinn.ClassName .. " - " .. Tekrinn:GetFullName()) or "MISSING")
+print("===== KJEffects Structure =====")
+local kjEffects = RS:FindFirstChild("Resources") and RS.Resources:FindFirstChild("KJEffects")
+if kjEffects then
+	deepInfo(kjEffects)
+else
+	print("KJEffects not found")
+end
 
-print("======================================")
+print("\n===== Everything.KJ =====")
+local everything = RS:FindFirstChild("Resources") and RS.Resources:FindFirstChild("UFW") and RS.Resources.UFW:FindFirstChild("vfx") and RS.Resources.UFW.vfx:FindFirstChild("Everything")
+if everything and everything:FindFirstChild("KJ") then
+	deepInfo(everything.KJ)
+end
+
+print("\n===== KJWallCombo =====")
+local wallCombo = RS:FindFirstChild("Resources") and RS.Resources:FindFirstChild("KJEffects") and RS.Resources.KJEffects:FindFirstChild("KJWallCombo", true)
+if wallCombo then
+	print("Found at:", wallCombo:GetFullName())
+	deepInfo(wallCombo)
+end
+
+print("\n===== Cutscenes.KJ =====")
+local cutscene = RS:FindFirstChild("Cutscenes") and RS.Cutscenes:FindFirstChild("KJ")
+if cutscene then
+	print("Class:", cutscene.ClassName)
+	print("FullName:", cutscene:GetFullName())
+end
+
+print("\n===== TekrinnDialogue =====")
+local tekrinn = RS:FindFirstChild("UFW") and RS.UFW:FindFirstChild("TekrinnDialogue")
+if not tekrinn then
+	-- try alternative paths
+	tekrinn = RS:FindFirstChild("Resources") and RS.Resources:FindFirstChild("UFW") and RS.Resources.UFW:FindFirstChild("TekrinnDialogue")
+end
+if tekrinn then
+	print("Found:", tekrinn:GetFullName(), tekrinn.ClassName)
+else
+	print("TekrinnDialogue not found")
+end
