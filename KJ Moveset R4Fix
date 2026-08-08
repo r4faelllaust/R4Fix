@@ -1,18 +1,123 @@
-local p = game:GetService("Players").LocalPlayer
-local gui = p:WaitForChild("PlayerGui")
+local Players = game:GetService("Players")
 
-local kj = gui
-    :FindFirstChild("TopbarPlus")
-    and gui.TopbarPlus:FindFirstChild("TopbarContainer")
-    and gui.TopbarPlus.TopbarContainer:FindFirstChild("UnnamedIcon")
-    and gui.TopbarPlus.TopbarContainer.UnnamedIcon:FindFirstChild("DropdownContainer")
-    and gui.TopbarPlus.TopbarContainer.UnnamedIcon.DropdownContainer:FindFirstChild("DropdownFrame")
-    and gui.TopbarPlus.TopbarContainer.UnnamedIcon.DropdownContainer.DropdownFrame:FindFirstChild("KJ")
+local player = Players.LocalPlayer
+local results = {}
 
-if kj then
-    print("KJ:", kj:GetFullName(), kj.ClassName)
+local keywords = {
+    "KJ",
+    "onActivated",
+    "Character",
+    "Selection",
+    "SelectCharacter",
+    "CharacterSelect",
+    "Moveset",
+    "Dropdown",
+    "Topbar",
+    "Switch",
+    "Equip"
+}
 
-    for _, v in ipairs(kj:GetDescendants()) do
-        print(v:GetFullName(), v.ClassName)
+local function containsKeyword(text)
+    text = string.lower(tostring(text))
+
+    for _, keyword in ipairs(keywords) do
+        if string.find(text, string.lower(keyword), 1, true) then
+            return true
+        end
+    end
+
+    return false
+end
+
+local function inspectObject(obj)
+    local ok, fullName = pcall(function()
+        return obj:GetFullName()
+    end)
+
+    if not ok then
+        return
+    end
+
+    if containsKeyword(fullName) then
+        table.insert(results, "\n[OBJECT]\n" .. fullName .. "\nClass: " .. obj.ClassName)
+    end
+
+    pcall(function()
+        if obj:IsA("StringValue") or obj:IsA("TextLabel") or obj:IsA("TextButton") then
+            if containsKeyword(obj.Text or obj.Value) then
+                table.insert(
+                    results,
+                    "\n[TEXT/VALUE]\n" ..
+                    fullName ..
+                    "\nClass: " .. obj.ClassName ..
+                    "\nValue: " .. tostring(obj.Text or obj.Value)
+                )
+            end
+        end
+    end)
+end
+
+print("========================================")
+print("KJ CHARACTER SYSTEM SCANNER")
+print("========================================")
+print("Scanning game...")
+
+local roots = {
+    game:GetService("ReplicatedStorage"),
+    game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui"),
+    game:GetService("Players").LocalPlayer:WaitForChild("PlayerScripts"),
+    game:GetService("StarterGui")
+}
+
+for _, root in ipairs(roots) do
+    inspectObject(root)
+
+    for _, obj in ipairs(root:GetDescendants()) do
+        inspectObject(obj)
     end
 end
+
+local output = {}
+
+table.insert(output, "============================================================")
+table.insert(output, "KJ CHARACTER SYSTEM SCAN")
+table.insert(output, "============================================================")
+table.insert(output, "Player: " .. player.Name)
+table.insert(output, "Results: " .. tostring(#results))
+table.insert(output, "")
+table.insert(output, "IMPORTANT: Find the script/object that actually handles KJ selection.")
+table.insert(output, "Look especially for onActivated callbacks, Character selection,")
+table.insert(output, Moveset selection, RemoteEvents, or RemoteFunctions.")
+table.insert(output, "")
+table.insert(output, "============================================================")
+
+for _, result in ipairs(results) do
+    table.insert(output, result)
+end
+
+table.insert(output, "")
+table.insert(output, "============================================================")
+table.insert(output, "END SCAN")
+table.insert(output, "============================================================")
+
+local final = table.concat(output, "\n")
+
+print(final)
+
+if setclipboard then
+    setclipboard(final)
+    print("")
+    print("========================================")
+    print("COPIED TO CLIPBOARD!")
+    print("========================================")
+else
+    warn("setclipboard is not available in this executor.")
+end
+
+pcall(function()
+    game:GetService("StarterGui"):SetCore("SendNotification", {
+        Title = "KJ Scanner",
+        Text = "Scan finished and copied to clipboard.",
+        Duration = 4
+    })
+end)
