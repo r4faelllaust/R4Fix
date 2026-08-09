@@ -1,69 +1,267 @@
 local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local player = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
 
-local function attachAura(character)
-    local root = character:WaitForChild("HumanoidRootPart")
+--==================================================
+-- GUI
+--==================================================
 
-    local source = game:GetService("ReplicatedStorage"):FindFirstChild("KJTestAura")
+local gui = Instance.new("ScreenGui")
+gui.Name = "KJFiveSeasonsTest"
+gui.ResetOnSpawn = false
+gui.IgnoreGuiInset = true
+gui.Parent = playerGui
 
-    if not source then
-        warn("[KJ TEST] ReplicatedStorage.KJTestAura was not found")
-        return
-    end
+local button = Instance.new("TextButton")
+button.Name = "TestButton"
+button.Size = UDim2.fromOffset(240, 70)
+button.Position = UDim2.new(0.5, -120, 0.75, 0)
+button.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+button.BorderSizePixel = 0
+button.Text = "TEST FIVE SEASONS"
+button.TextColor3 = Color3.new(1, 1, 1)
+button.TextScaled = true
+button.Font = Enum.Font.GothamBold
+button.Parent = gui
 
-    local old = character:FindFirstChild("KJ_TestAura")
+local corner = Instance.new("UICorner")
+corner.CornerRadius = UDim.new(0, 12)
+corner.Parent = button
 
-    if old then
-        old:Destroy()
-    end
+--==================================================
+-- STATUS
+--==================================================
 
-    local aura = source:Clone()
-    aura.Name = "KJ_TestAura"
-    aura.Parent = character
+local status = Instance.new("TextLabel")
+status.Size = UDim2.fromOffset(300, 45)
+status.Position = UDim2.new(0.5, -150, 0.75, 80)
+status.BackgroundTransparency = 1
+status.Text = "Ready"
+status.TextColor3 = Color3.new(1, 1, 1)
+status.TextScaled = true
+status.Font = Enum.Font.Gotham
+status.Parent = gui
 
-    if aura:IsA("Model") then
-        aura:PivotTo(root.CFrame)
-    elseif aura:IsA("BasePart") then
-        aura.CFrame = root.CFrame
-    end
-
-    for _, obj in ipairs(aura:GetDescendants()) do
-        if obj:IsA("BasePart") then
-            obj.Anchored = false
-            obj.CanCollide = false
-            obj.CanTouch = false
-            obj.CanQuery = false
-            obj.Massless = true
-
-            local weld = Instance.new("WeldConstraint")
-            weld.Part0 = root
-            weld.Part1 = obj
-            weld.Parent = obj
-
-        elseif obj:IsA("ParticleEmitter") then
-            obj.Enabled = true
-
-        elseif obj:IsA("Trail") then
-            obj.Enabled = true
-
-        elseif obj:IsA("Beam") then
-            obj.Enabled = true
-
-        elseif obj:IsA("PointLight")
-            or obj:IsA("SpotLight")
-            or obj:IsA("SurfaceLight") then
-            obj.Enabled = true
-        end
-    end
-
-    print("[KJ TEST] Aura attached:", aura:GetFullName())
+local function report(text)
+	status.Text = text
+	print("[KJ FIVE SEASONS TEST] " .. text)
 end
 
-if player.Character then
-    task.spawn(attachAura, player.Character)
+--==================================================
+-- FIND RESOURCES
+--==================================================
+
+local resources = ReplicatedStorage:FindFirstChild("Resources")
+local cutscenes = ReplicatedStorage:FindFirstChild("Cutscenes")
+
+local fiveFX = resources and resources:FindFirstChild("FiveSeasonsFX", true)
+local kjThrow = resources and resources:FindFirstChild("KJThrow", true)
+local stoicBomb = resources and resources:FindFirstChild("StoicBomb", true)
+
+local fiveStartup = cutscenes and cutscenes:FindFirstChild("Five Season Startup")
+local fiveAttack = cutscenes and cutscenes:FindFirstChild("Five Season Attack")
+local kjCutscene = cutscenes and cutscenes:FindFirstChild("KJ")
+
+print("========== KJ RESOURCE TEST ==========")
+print("FiveSeasonsFX:", fiveFX)
+print("KJThrow:", kjThrow)
+print("StoicBomb:", stoicBomb)
+print("Five Season Startup:", fiveStartup)
+print("Five Season Attack:", fiveAttack)
+print("KJ:", kjCutscene)
+print("======================================")
+
+--==================================================
+-- CLONE / PLAY VFX
+--==================================================
+
+local function activateEffects(object)
+
+	if not object then
+		return false
+	end
+
+	for _, descendant in ipairs(object:GetDescendants()) do
+
+		if descendant:IsA("ParticleEmitter") then
+			descendant.Enabled = true
+
+			local emitCount = descendant:GetAttribute("EmitCount")
+
+			if typeof(emitCount) == "number" then
+				pcall(function()
+					descendant:Emit(emitCount)
+				end)
+			else
+				pcall(function()
+					descendant:Emit(10)
+				end)
+			end
+
+		elseif descendant:IsA("Trail") then
+			descendant.Enabled = true
+
+		elseif descendant:IsA("Beam") then
+			descendant.Enabled = true
+
+		elseif descendant:IsA("PointLight")
+			or descendant:IsA("SpotLight")
+			or descendant:IsA("SurfaceLight") then
+
+			descendant.Enabled = true
+		end
+	end
+
+	return true
 end
 
-player.CharacterAdded:Connect(function(character)
-    task.spawn(attachAura, character)
+local function playFiveSeasonsFX()
+
+	if not fiveFX then
+		warn("FiveSeasonsFX was not found.")
+		return false
+	end
+
+	local character = player.Character
+
+	if not character then
+		return false
+	end
+
+	local root = character:FindFirstChild("HumanoidRootPart")
+
+	if not root then
+		return false
+	end
+
+	local clone
+
+	local success, errorMessage = pcall(function()
+
+		clone = fiveFX:Clone()
+		clone.Name = "LOCAL_FiveSeasonsFX_TEST"
+		clone.Parent = workspace
+
+		if clone:IsA("Model") then
+			clone:PivotTo(root.CFrame)
+		elseif clone:IsA("BasePart") then
+			clone.CFrame = root.CFrame
+		end
+
+	end)
+
+	if not success then
+		warn("Failed cloning FiveSeasonsFX:", errorMessage)
+		return false
+	end
+
+	activateEffects(clone)
+
+	-- Keep it around long enough to see it.
+	task.delay(8, function()
+		if clone and clone.Parent then
+			clone:Destroy()
+		end
+	end)
+
+	return true
+end
+
+--==================================================
+-- INSPECT CUTSCENE MODULE
+--==================================================
+
+local function inspectCutscene(moduleScript, name)
+
+	if not moduleScript then
+		report(name .. ": NOT FOUND")
+		return
+	end
+
+	if not moduleScript:IsA("ModuleScript") then
+		report(name .. ": " .. moduleScript.ClassName)
+		return
+	end
+
+	local success, result = pcall(function()
+		return require(moduleScript)
+	end)
+
+	if not success then
+		warn(name .. " require failed:", result)
+		report(name .. ": REQUIRE FAILED")
+		return
+	end
+
+	print("========== " .. name .. " ==========")
+	print("Returned:", result)
+	print("Type:", typeof(result))
+
+	if type(result) == "table" then
+
+		for key, value in pairs(result) do
+			print("  ", key, "=", value)
+		end
+
+	end
+
+	print("================================")
+
+	report(name .. ": MODULE LOADED")
+end
+
+--==================================================
+-- BUTTON
+--==================================================
+
+local running = false
+
+button.Activated:Connect(function()
+
+	if running then
+		return
+	end
+
+	running = true
+
+	button.Text = "TESTING..."
+
+	local character = player.Character or player.CharacterAdded:Wait()
+	character:WaitForChild("HumanoidRootPart")
+
+	-- Test the actual FX first.
+	local fxWorked = playFiveSeasonsFX()
+
+	if fxWorked then
+		report("FiveSeasonsFX CLONED")
+	else
+		report("FiveSeasonsFX FAILED")
+	end
+
+	-- Inspect the real Cutscene modules.
+	task.wait(0.5)
+
+	inspectCutscene(
+		fiveStartup,
+		"Five Season Startup"
+	)
+
+	task.wait(0.5)
+
+	inspectCutscene(
+		fiveAttack,
+		"Five Season Attack"
+	)
+
+	task.wait(0.5)
+
+	inspectCutscene(
+		kjCutscene,
+		"KJ Cutscene"
+	)
+
+	button.Text = "TEST FIVE SEASONS"
+	running = false
 end)
