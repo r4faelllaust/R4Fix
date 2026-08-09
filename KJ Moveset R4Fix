@@ -1,142 +1,69 @@
---============================================================
--- KJ AURA ASSET TEST
--- Asset: 18612420311
---============================================================
-
 local Players = game:GetService("Players")
 
 local player = Players.LocalPlayer
 
-if not player then
-    return
+local function attachAura(character)
+    local root = character:WaitForChild("HumanoidRootPart")
+
+    local source = game:GetService("ReplicatedStorage"):FindFirstChild("KJTestAura")
+
+    if not source then
+        warn("[KJ TEST] ReplicatedStorage.KJTestAura was not found")
+        return
+    end
+
+    local old = character:FindFirstChild("KJ_TestAura")
+
+    if old then
+        old:Destroy()
+    end
+
+    local aura = source:Clone()
+    aura.Name = "KJ_TestAura"
+    aura.Parent = character
+
+    if aura:IsA("Model") then
+        aura:PivotTo(root.CFrame)
+    elseif aura:IsA("BasePart") then
+        aura.CFrame = root.CFrame
+    end
+
+    for _, obj in ipairs(aura:GetDescendants()) do
+        if obj:IsA("BasePart") then
+            obj.Anchored = false
+            obj.CanCollide = false
+            obj.CanTouch = false
+            obj.CanQuery = false
+            obj.Massless = true
+
+            local weld = Instance.new("WeldConstraint")
+            weld.Part0 = root
+            weld.Part1 = obj
+            weld.Parent = obj
+
+        elseif obj:IsA("ParticleEmitter") then
+            obj.Enabled = true
+
+        elseif obj:IsA("Trail") then
+            obj.Enabled = true
+
+        elseif obj:IsA("Beam") then
+            obj.Enabled = true
+
+        elseif obj:IsA("PointLight")
+            or obj:IsA("SpotLight")
+            or obj:IsA("SurfaceLight") then
+            obj.Enabled = true
+        end
+    end
+
+    print("[KJ TEST] Aura attached:", aura:GetFullName())
 end
 
-local character = player.Character or player.CharacterAdded:Wait()
-local root = character:WaitForChild("HumanoidRootPart")
+if player.Character then
+    task.spawn(attachAura, player.Character)
+end
 
-local ASSET_ID = "rbxassetid://18612420311"
-
---============================================================
--- LOAD ASSET
---============================================================
-
-local success, objects = pcall(function()
-    return game:GetObjects(ASSET_ID)
+player.CharacterAdded:Connect(function(character)
+    task.spawn(attachAura, character)
 end)
-
-if not success then
-    warn("[KJ TEST] GetObjects failed:", objects)
-    return
-end
-
-if not objects or #objects == 0 then
-    warn("[KJ TEST] Asset returned no objects.")
-    return
-end
-
-print("[KJ TEST] Loaded", #objects, "object(s)")
-
---============================================================
--- CREATE CONTAINER
---============================================================
-
-local auraFolder = Instance.new("Folder")
-auraFolder.Name = "KJ_TestAura"
-auraFolder.Parent = character
-
---============================================================
--- POSITION / ATTACH
---============================================================
-
-local function attachObject(object)
-    object.Parent = auraFolder
-
-    if object:IsA("Model") then
-
-        -- Position the entire model around the character.
-        pcall(function()
-            object:PivotTo(root.CFrame)
-        end)
-
-        -- Weld every physical part to the HumanoidRootPart.
-        for _, part in ipairs(object:GetDescendants()) do
-            if part:IsA("BasePart") then
-
-                part.Anchored = false
-                part.CanCollide = false
-                part.CanTouch = false
-                part.CanQuery = false
-                part.Massless = true
-
-                local weld = Instance.new("WeldConstraint")
-                weld.Part0 = root
-                weld.Part1 = part
-                weld.Parent = part
-            end
-        end
-
-    elseif object:IsA("BasePart") then
-
-        object.CFrame = root.CFrame
-
-        object.Anchored = false
-        object.CanCollide = false
-        object.CanTouch = false
-        object.CanQuery = false
-        object.Massless = true
-
-        local weld = Instance.new("WeldConstraint")
-        weld.Part0 = root
-        weld.Part1 = object
-        weld.Parent = object
-
-    else
-
-        -- Folders / attachments / effects can still live
-        -- inside the character, but may not have a physical
-        -- position of their own.
-        object.Parent = auraFolder
-    end
-end
-
---============================================================
--- INSERT EVERYTHING
---============================================================
-
-for _, object in ipairs(objects) do
-    attachObject(object)
-end
-
---============================================================
--- ACTIVATE VFX
---============================================================
-
-for _, object in ipairs(auraFolder:GetDescendants()) do
-
-    if object:IsA("ParticleEmitter") then
-        object.Enabled = true
-
-        local emitCount = object:GetAttribute("EmitCount")
-
-        if typeof(emitCount) == "number" then
-            pcall(function()
-                object:Emit(emitCount)
-            end)
-        end
-
-    elseif object:IsA("Trail") then
-        object.Enabled = true
-
-    elseif object:IsA("Beam") then
-        object.Enabled = true
-
-    elseif object:IsA("PointLight")
-        or object:IsA("SpotLight")
-        or object:IsA("SurfaceLight") then
-
-        object.Enabled = true
-    end
-end
-
-print("[KJ TEST] Asset 18612420311 attached as aura.")
-print("[KJ TEST] Container:", auraFolder:GetFullName())
