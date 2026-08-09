@@ -1,409 +1,288 @@
 --============================================================
--- KJ FIVE SEASONS MODULE TEST
--- CLIENT TEST ONLY
+-- KJ REAL CUTSCENE TEST
 --============================================================
 
 local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RS = game:GetService("ReplicatedStorage")
 
-local Player = Players.LocalPlayer
-local PlayerGui = Player:WaitForChild("PlayerGui")
+local player = Players.LocalPlayer
+local gui = player:WaitForChild("PlayerGui")
+
+local old = gui:FindFirstChild("KJ_REAL_TEST")
+if old then old:Destroy() end
+
+local screen = Instance.new("ScreenGui")
+screen.Name = "KJ_REAL_TEST"
+screen.ResetOnSpawn = false
+screen.DisplayOrder = 999999
+screen.Parent = gui
+
+local frame = Instance.new("Frame")
+frame.Size = UDim2.fromOffset(330, 260)
+frame.Position = UDim2.new(.5, -165, .5, -130)
+frame.BackgroundColor3 = Color3.fromRGB(20,20,20)
+frame.BorderSizePixel = 0
+frame.Parent = screen
+
+Instance.new("UICorner", frame).CornerRadius = UDim.new(0,10)
+
+local title = Instance.new("TextLabel")
+title.Size = UDim2.new(1,-20,0,35)
+title.Position = UDim2.fromOffset(10,5)
+title.BackgroundTransparency = 1
+title.Text = "KJ REAL CUTSCENE TEST"
+title.TextColor3 = Color3.new(1,1,1)
+title.TextSize = 18
+title.Font = Enum.Font.GothamBold
+title.Parent = frame
+
+local result = Instance.new("TextLabel")
+result.Size = UDim2.new(1,-20,0,115)
+result.Position = UDim2.fromOffset(10,45)
+result.BackgroundColor3 = Color3.fromRGB(8,8,8)
+result.TextColor3 = Color3.fromRGB(150,255,150)
+result.TextSize = 12
+result.Font = Enum.Font.Code
+result.TextXAlignment = Enum.TextXAlignment.Left
+result.TextYAlignment = Enum.TextYAlignment.Top
+result.TextWrapped = true
+result.Parent = frame
+
+local button = Instance.new("TextButton")
+button.Size = UDim2.new(1,-20,0,45)
+button.Position = UDim2.fromOffset(10,170)
+button.BackgroundColor3 = Color3.fromRGB(45,45,45)
+button.Text = "EXECUTE REAL KJ CUTSCENE"
+button.TextColor3 = Color3.new(1,1,1)
+button.TextSize = 14
+button.Font = Enum.Font.GothamBold
+button.Parent = frame
+
+Instance.new("UICorner",button).CornerRadius = UDim.new(0,8)
+
+local close = Instance.new("TextButton")
+close.Size = UDim2.new(1,-20,0,30)
+close.Position = UDim2.fromOffset(10,220)
+close.BackgroundTransparency = 1
+close.Text = "CLOSE"
+close.TextColor3 = Color3.fromRGB(180,180,180)
+close.TextSize = 12
+close.Parent = frame
 
 --============================================================
--- GUI
+-- FIND MODULES
 --============================================================
 
-local old = PlayerGui:FindFirstChild("KJFiveSeasonsTest")
+local cutscenes = RS:FindFirstChild("Cutscenes")
 
-if old then
-    old:Destroy()
+if not cutscenes then
+    result.Text = "Cutscenes folder NOT FOUND"
+    return
 end
 
-local Gui = Instance.new("ScreenGui")
-Gui.Name = "KJFiveSeasonsTest"
-Gui.ResetOnSpawn = false
-Gui.IgnoreGuiInset = true
-Gui.DisplayOrder = 999999
-Gui.Parent = PlayerGui
+local attackModule =
+    cutscenes:FindFirstChild("Five Season Attack")
 
-local Main = Instance.new("Frame")
-Main.Size = UDim2.fromOffset(360, 430)
-Main.Position = UDim2.new(0.5, -180, 0.5, -215)
-Main.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
-Main.BorderSizePixel = 0
-Main.Parent = Gui
+local kjModule =
+    cutscenes:FindFirstChild("KJ")
 
-local Corner = Instance.new("UICorner")
-Corner.CornerRadius = UDim.new(0, 12)
-Corner.Parent = Main
-
-local Title = Instance.new("TextLabel")
-Title.Size = UDim2.new(1, -20, 0, 40)
-Title.Position = UDim2.fromOffset(10, 8)
-Title.BackgroundTransparency = 1
-Title.Text = "KJ FIVE SEASONS TEST"
-Title.TextColor3 = Color3.new(1, 1, 1)
-Title.TextSize = 20
-Title.Font = Enum.Font.GothamBold
-Title.Parent = Main
-
-local Status = Instance.new("TextLabel")
-Status.Size = UDim2.new(1, -20, 0, 45)
-Status.Position = UDim2.fromOffset(10, 48)
-Status.BackgroundTransparency = 1
-Status.Text = "Searching..."
-Status.TextColor3 = Color3.fromRGB(255, 220, 120)
-Status.TextSize = 14
-Status.Font = Enum.Font.Gotham
-Status.TextWrapped = true
-Status.Parent = Main
-
-local Output = Instance.new("TextLabel")
-Output.Size = UDim2.new(1, -20, 0, 160)
-Output.Position = UDim2.fromOffset(10, 100)
-Output.BackgroundColor3 = Color3.fromRGB(10, 10, 10)
-Output.BorderSizePixel = 0
-Output.Text = ""
-Output.TextColor3 = Color3.fromRGB(180, 255, 180)
-Output.TextSize = 12
-Output.Font = Enum.Font.Code
-Output.TextXAlignment = Enum.TextXAlignment.Left
-Output.TextYAlignment = Enum.TextYAlignment.Top
-Output.TextWrapped = false
-Output.Parent = Main
-
-local OutputCorner = Instance.new("UICorner")
-OutputCorner.CornerRadius = UDim.new(0, 8)
-OutputCorner.Parent = Output
-
-local function makeButton(text, y)
-    local Button = Instance.new("TextButton")
-
-    Button.Size = UDim2.new(1, -20, 0, 38)
-    Button.Position = UDim2.fromOffset(10, y)
-
-    Button.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-    Button.BorderSizePixel = 0
-
-    Button.Text = text
-    Button.TextColor3 = Color3.new(1, 1, 1)
-    Button.TextSize = 14
-    Button.Font = Enum.Font.GothamBold
-
-    Button.Parent = Main
-
-    local c = Instance.new("UICorner")
-    c.CornerRadius = UDim.new(0, 8)
-    c.Parent = Button
-
-    return Button
+if not attackModule or not attackModule:IsA("ModuleScript") then
+    result.Text = "Five Season Attack NOT FOUND"
+    return
 end
 
-local InspectButton = makeButton("INSPECT MODULE", 270)
-local VFXButton = makeButton("TEST FiveSeasonsFX", 315)
-local CloseButton = makeButton("CLOSE", 360)
-
---============================================================
--- FIND MODULE
---============================================================
-
-local Cutscenes = ReplicatedStorage:FindFirstChild("Cutscenes")
-
-local AttackModule
-
-if Cutscenes then
-    AttackModule = Cutscenes:FindFirstChild("Five Season Attack")
-end
-
-if AttackModule and AttackModule:IsA("ModuleScript") then
-    Status.Text = "MODULE FOUND"
-    Status.TextColor3 = Color3.fromRGB(100, 255, 100)
-else
-    Status.Text = "MODULE NOT FOUND"
-    Status.TextColor3 = Color3.fromRGB(255, 80, 80)
-
-    Output.Text =
-        "Expected:\n" ..
-        "ReplicatedStorage\n" ..
-        "  > Cutscenes\n" ..
-        "    > Five Season Attack\n\n" ..
-        "Not found."
+if not kjModule or not kjModule:IsA("ModuleScript") then
+    result.Text = "KJ module NOT FOUND"
+    return
 end
 
 --============================================================
--- REQUIRE MODULE
+-- REQUIRE
 --============================================================
 
-local ModuleResult
-local ModuleLoaded = false
-
-if AttackModule then
-
-    local success, result = pcall(function()
-        return require(AttackModule)
-    end)
-
-    if success then
-        ModuleResult = result
-        ModuleLoaded = true
-
-        print("[KJ FIVE SEASONS TEST] Five Season Attack: MODULE LOADED")
-
-    else
-
-        Output.Text =
-            "REQUIRE FAILED:\n\n" ..
-            tostring(result)
-
-        Status.Text = "REQUIRE FAILED"
-        Status.TextColor3 = Color3.fromRGB(255, 80, 80)
-
-    end
-
-end
-
---============================================================
--- INSPECT RETURN VALUE
---============================================================
-
-local function inspectModule()
-
-    if not ModuleLoaded then
-        Output.Text = "Module is not loaded."
-        return
-    end
-
-    local result = ModuleResult
-
-    local lines = {}
-
-    table.insert(lines, "RETURN TYPE: " .. typeof(result))
-    table.insert(lines, "")
-
-    if typeof(result) == "table" then
-
-        table.insert(lines, "EXPORTED MEMBERS:")
-
-        local count = 0
-
-        for key, value in pairs(result) do
-
-            count += 1
-
-            local valueType = typeof(value)
-
-            table.insert(
-                lines,
-                tostring(key) .. " = " .. valueType
-            )
-
-            if count >= 30 then
-                table.insert(lines, "...")
-                break
-            end
-
-        end
-
-        if count == 0 then
-            table.insert(lines, "(EMPTY TABLE)")
-        end
-
-    elseif typeof(result) == "function" then
-
-        table.insert(lines, "MODULE RETURNS A FUNCTION")
-
-    elseif typeof(result) == "Instance" then
-
-        table.insert(
-            lines,
-            "INSTANCE: " ..
-            result:GetFullName()
-        )
-
-    else
-
-        table.insert(
-            lines,
-            "VALUE: " ..
-            tostring(result)
-        )
-
-    end
-
-    Output.Text = table.concat(lines, "\n")
-
-    print("========== FIVE SEASONS MODULE ==========")
-
-    for _, line in ipairs(lines) do
-        print(line)
-    end
-
-    print("=========================================")
-
-end
-
-InspectButton.Activated:Connect(inspectModule)
-
---============================================================
--- FIND FIVE SEASONS FX
---============================================================
-
-local function findFiveSeasonsFX()
-
-    local Resources =
-        ReplicatedStorage:FindFirstChild("Resources")
-
-    if not Resources then
-        return nil
-    end
-
-    return Resources:FindFirstChild(
-        "FiveSeasonsFX",
-        true
-    )
-end
-
---============================================================
--- VFX TEST
---============================================================
-
-local function testVFX()
-
-    local Character = Player.Character
-
-    if not Character then
-        Output.Text = "Character not loaded."
-        return
-    end
-
-    local Root =
-        Character:FindFirstChild("HumanoidRootPart")
-
-    if not Root then
-        Output.Text = "HumanoidRootPart not found."
-        return
-    end
-
-    local FX = findFiveSeasonsFX()
-
-    if not FX then
-
-        Output.Text =
-            "FiveSeasonsFX NOT FOUND."
-
-        return
-    end
-
-    Output.Text =
-        "FOUND:\n" ..
-        FX:GetFullName() ..
-        "\n\nClass: " ..
-        FX.ClassName
-
-    local Clone
-
-    local success, err = pcall(function()
-
-        Clone = FX:Clone()
-        Clone.Parent = workspace
-
-        if Clone:IsA("Model") then
-
-            Clone:PivotTo(
-                Root.CFrame
-            )
-
-        elseif Clone:IsA("BasePart") then
-
-            Clone.CFrame =
-                Root.CFrame
-
-        end
-
-    end)
-
-    if not success then
-
-        Output.Text =
-            "VFX CLONE FAILED:\n\n" ..
-            tostring(err)
-
-        return
-    end
-
-    -- Enable actual emitters.
-    for _, object in ipairs(Clone:GetDescendants()) do
-
-        if object:IsA("ParticleEmitter") then
-
-            object.Enabled = true
-
-            local emitCount =
-                object:GetAttribute("EmitCount")
-
-            if typeof(emitCount) == "number" then
-
-                pcall(function()
-                    object:Emit(emitCount)
-                end)
-
-            else
-
-                pcall(function()
-                    object:Emit(
-                        math.max(
-                            10,
-                            math.floor(object.Rate * 0.3)
-                        )
-                    )
-                end)
-
-            end
-
-        elseif object:IsA("Beam")
-            or object:IsA("Trail") then
-
-            object.Enabled = true
-
-        elseif object:IsA("PointLight")
-            or object:IsA("SpotLight")
-            or object:IsA("SurfaceLight") then
-
-            object.Enabled = true
-
-        end
-
-    end
-
-    print(
-        "[KJ FIVE SEASONS TEST] VFX CLONED:",
-        FX:GetFullName()
-    )
-
-    task.delay(8, function()
-
-        if Clone and Clone.Parent then
-            Clone:Destroy()
-        end
-
-    end)
-
-end
-
-VFXButton.Activated:Connect(testVFX)
-
---============================================================
--- CLOSE
---============================================================
-
-CloseButton.Activated:Connect(function()
-    Gui:Destroy()
+local attack
+local kj
+
+local ok1, err1 = pcall(function()
+    attack = require(attackModule)
 end)
 
+local ok2, err2 = pcall(function()
+    kj = require(kjModule)
+end)
+
+if not ok1 then
+    result.Text = "Five Season Attack ERROR:\n"..tostring(err1)
+    return
+end
+
+if not ok2 then
+    result.Text = "KJ ERROR:\n"..tostring(err2)
+    return
+end
+
 --============================================================
--- INITIAL INSPECTION
+-- INSPECT EXPORTS
 --============================================================
 
-if ModuleLoaded then
-    inspectModule()
+local function getExports(module)
+    local output = {}
+
+    if typeof(module) == "table" then
+
+        for name, value in pairs(module) do
+            table.insert(
+                output,
+                tostring(name).." = "..typeof(value)
+            )
+        end
+
+    else
+        table.insert(
+            output,
+            "RETURN TYPE = "..typeof(module)
+        )
+    end
+
+    table.sort(output)
+
+    return output
 end
+
+local attackExports = getExports(attack)
+local kjExports = getExports(kj)
+
+local text =
+    "ATTACK MODULE: LOADED\n" ..
+    "KJ MODULE: LOADED\n\n" ..
+    "Five Season Attack:\n"
+
+for _, v in ipairs(attackExports) do
+    text ..= v .. "\n"
+end
+
+text ..= "\nKJ:\n"
+
+for _, v in ipairs(kjExports) do
+    text ..= v .. "\n"
+end
+
+result.Text = text
+
+print("========== KJ CUTSCENE EXPORTS ==========")
+print(text)
+print("=========================================")
+
+--============================================================
+-- EXECUTION
+--============================================================
+
+local function executeModule(module, name)
+
+    if typeof(module) == "function" then
+
+        local ok, err = pcall(function()
+            module()
+        end)
+
+        return ok, err
+    end
+
+    if typeof(module) ~= "table" then
+        return false, "Module returns "..typeof(module)
+    end
+
+    -- Prefer common actual cutscene entry names.
+    local names = {
+        "Play",
+        "play",
+        "Start",
+        "start",
+        "Run",
+        "run",
+        "Execute",
+        "execute",
+        "PlayCutscene",
+        "StartCutscene",
+    }
+
+    for _, functionName in ipairs(names) do
+
+        local fn = module[functionName]
+
+        if typeof(fn) == "function" then
+
+            local ok, err = pcall(function()
+
+                fn({
+                    Player = player,
+                    Character = player.Character,
+                })
+
+            end)
+
+            if ok then
+                return true,
+                    name.."."..functionName.." EXECUTED"
+            end
+
+            return false,
+                name.."."..functionName.." ERROR:\n"..tostring(err)
+        end
+    end
+
+    return false,
+        "No executable cutscene function found."
+end
+
+button.Activated:Connect(function()
+
+    button.Text = "EXECUTING..."
+
+    local ok, message =
+        executeModule(attack, "Five Season Attack")
+
+    if ok then
+
+        result.Text =
+            "SUCCESS\n\n" ..
+            tostring(message)
+
+        button.Text = "EXECUTED"
+
+        return
+    end
+
+    result.Text =
+        "ATTACK RESULT:\n\n" ..
+        tostring(message) ..
+        "\n\nTrying KJ module..."
+
+    task.wait(.2)
+
+    local ok2, message2 =
+        executeModule(kj, "KJ")
+
+    if ok2 then
+
+        result.Text =
+            "SUCCESS\n\n" ..
+            tostring(message2)
+
+        button.Text = "EXECUTED"
+
+    else
+
+        result.Text =
+            "NO EXECUTION\n\n" ..
+            tostring(message) ..
+            "\n\nKJ:\n" ..
+            tostring(message2)
+
+        button.Text = "NO ENTRY FOUND"
+    end
+end)
+
+close.Activated:Connect(function()
+    screen:Destroy()
+end)
