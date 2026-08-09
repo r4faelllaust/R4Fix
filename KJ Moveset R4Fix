@@ -1,288 +1,138 @@
---============================================================
--- KJ REAL CUTSCENE TEST
---============================================================
-
 local Players = game:GetService("Players")
-local RS = game:GetService("ReplicatedStorage")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local player = Players.LocalPlayer
 local gui = player:WaitForChild("PlayerGui")
 
-local old = gui:FindFirstChild("KJ_REAL_TEST")
-if old then old:Destroy() end
+local old = gui:FindFirstChild("KJModuleInspector")
+if old then
+    old:Destroy()
+end
 
 local screen = Instance.new("ScreenGui")
-screen.Name = "KJ_REAL_TEST"
+screen.Name = "KJModuleInspector"
 screen.ResetOnSpawn = false
 screen.DisplayOrder = 999999
 screen.Parent = gui
 
-local frame = Instance.new("Frame")
-frame.Size = UDim2.fromOffset(330, 260)
-frame.Position = UDim2.new(.5, -165, .5, -130)
-frame.BackgroundColor3 = Color3.fromRGB(20,20,20)
-frame.BorderSizePixel = 0
-frame.Parent = screen
+local box = Instance.new("TextLabel")
+box.Size = UDim2.new(0, 360, 0, 260)
+box.Position = UDim2.new(0.5, -180, 0.5, -130)
+box.BackgroundTransparency = 0.1
+box.TextColor3 = Color3.new(1, 1, 1)
+box.TextSize = 15
+box.Font = Enum.Font.Code
+box.TextXAlignment = Enum.TextXAlignment.Left
+box.TextYAlignment = Enum.TextYAlignment.Top
+box.TextWrapped = true
+box.Parent = screen
 
-Instance.new("UICorner", frame).CornerRadius = UDim.new(0,10)
+local function inspect(name)
+    local cutscenes = ReplicatedStorage:FindFirstChild("Cutscenes")
 
-local title = Instance.new("TextLabel")
-title.Size = UDim2.new(1,-20,0,35)
-title.Position = UDim2.fromOffset(10,5)
-title.BackgroundTransparency = 1
-title.Text = "KJ REAL CUTSCENE TEST"
-title.TextColor3 = Color3.new(1,1,1)
-title.TextSize = 18
-title.Font = Enum.Font.GothamBold
-title.Parent = frame
-
-local result = Instance.new("TextLabel")
-result.Size = UDim2.new(1,-20,0,115)
-result.Position = UDim2.fromOffset(10,45)
-result.BackgroundColor3 = Color3.fromRGB(8,8,8)
-result.TextColor3 = Color3.fromRGB(150,255,150)
-result.TextSize = 12
-result.Font = Enum.Font.Code
-result.TextXAlignment = Enum.TextXAlignment.Left
-result.TextYAlignment = Enum.TextYAlignment.Top
-result.TextWrapped = true
-result.Parent = frame
-
-local button = Instance.new("TextButton")
-button.Size = UDim2.new(1,-20,0,45)
-button.Position = UDim2.fromOffset(10,170)
-button.BackgroundColor3 = Color3.fromRGB(45,45,45)
-button.Text = "EXECUTE REAL KJ CUTSCENE"
-button.TextColor3 = Color3.new(1,1,1)
-button.TextSize = 14
-button.Font = Enum.Font.GothamBold
-button.Parent = frame
-
-Instance.new("UICorner",button).CornerRadius = UDim.new(0,8)
-
-local close = Instance.new("TextButton")
-close.Size = UDim2.new(1,-20,0,30)
-close.Position = UDim2.fromOffset(10,220)
-close.BackgroundTransparency = 1
-close.Text = "CLOSE"
-close.TextColor3 = Color3.fromRGB(180,180,180)
-close.TextSize = 12
-close.Parent = frame
-
---============================================================
--- FIND MODULES
---============================================================
-
-local cutscenes = RS:FindFirstChild("Cutscenes")
-
-if not cutscenes then
-    result.Text = "Cutscenes folder NOT FOUND"
-    return
-end
-
-local attackModule =
-    cutscenes:FindFirstChild("Five Season Attack")
-
-local kjModule =
-    cutscenes:FindFirstChild("KJ")
-
-if not attackModule or not attackModule:IsA("ModuleScript") then
-    result.Text = "Five Season Attack NOT FOUND"
-    return
-end
-
-if not kjModule or not kjModule:IsA("ModuleScript") then
-    result.Text = "KJ module NOT FOUND"
-    return
-end
-
---============================================================
--- REQUIRE
---============================================================
-
-local attack
-local kj
-
-local ok1, err1 = pcall(function()
-    attack = require(attackModule)
-end)
-
-local ok2, err2 = pcall(function()
-    kj = require(kjModule)
-end)
-
-if not ok1 then
-    result.Text = "Five Season Attack ERROR:\n"..tostring(err1)
-    return
-end
-
-if not ok2 then
-    result.Text = "KJ ERROR:\n"..tostring(err2)
-    return
-end
-
---============================================================
--- INSPECT EXPORTS
---============================================================
-
-local function getExports(module)
-    local output = {}
-
-    if typeof(module) == "table" then
-
-        for name, value in pairs(module) do
-            table.insert(
-                output,
-                tostring(name).." = "..typeof(value)
-            )
-        end
-
-    else
-        table.insert(
-            output,
-            "RETURN TYPE = "..typeof(module)
-        )
+    if not cutscenes then
+        return name .. ": Cutscenes folder missing"
     end
 
-    table.sort(output)
+    local module = cutscenes:FindFirstChild(name)
 
-    return output
-end
-
-local attackExports = getExports(attack)
-local kjExports = getExports(kj)
-
-local text =
-    "ATTACK MODULE: LOADED\n" ..
-    "KJ MODULE: LOADED\n\n" ..
-    "Five Season Attack:\n"
-
-for _, v in ipairs(attackExports) do
-    text ..= v .. "\n"
-end
-
-text ..= "\nKJ:\n"
-
-for _, v in ipairs(kjExports) do
-    text ..= v .. "\n"
-end
-
-result.Text = text
-
-print("========== KJ CUTSCENE EXPORTS ==========")
-print(text)
-print("=========================================")
-
---============================================================
--- EXECUTION
---============================================================
-
-local function executeModule(module, name)
-
-    if typeof(module) == "function" then
-
-        local ok, err = pcall(function()
-            module()
-        end)
-
-        return ok, err
+    if not module then
+        return name .. ": MODULE NOT FOUND"
     end
 
-    if typeof(module) ~= "table" then
-        return false, "Module returns "..typeof(module)
+    if not module:IsA("ModuleScript") then
+        return name .. ": " .. module.ClassName
     end
 
-    -- Prefer common actual cutscene entry names.
-    local names = {
-        "Play",
-        "play",
-        "Start",
-        "start",
-        "Run",
-        "run",
-        "Execute",
-        "execute",
-        "PlayCutscene",
-        "StartCutscene",
-    }
+    local ok, result = pcall(require, module)
 
-    for _, functionName in ipairs(names) do
+    if not ok then
+        return name .. ": REQUIRE ERROR\n" .. tostring(result)
+    end
 
-        local fn = module[functionName]
+    local lines = {}
 
-        if typeof(fn) == "function" then
+    table.insert(lines, name .. ":")
+    table.insert(lines, "Return type: " .. typeof(result))
 
-            local ok, err = pcall(function()
+    if typeof(result) == "table" then
 
-                fn({
-                    Player = player,
-                    Character = player.Character,
-                })
+        local count = 0
 
-            end)
+        for key, value in pairs(result) do
+            count += 1
 
-            if ok then
-                return true,
-                    name.."."..functionName.." EXECUTED"
+            local valueType = typeof(value)
+
+            if type(value) == "function" then
+                valueType = "FUNCTION"
+            elseif typeof(value) == "Instance" then
+                valueType = "INSTANCE [" .. value.ClassName .. "]"
             end
 
-            return false,
-                name.."."..functionName.." ERROR:\n"..tostring(err)
+            table.insert(
+                lines,
+                tostring(key) .. " = " .. valueType
+            )
+
+            if count >= 20 then
+                table.insert(lines, "...more keys...")
+                break
+            end
         end
-    end
 
-    return false,
-        "No executable cutscene function found."
-end
+        if count == 0 then
+            table.insert(lines, "(EMPTY TABLE)")
+        end
 
-button.Activated:Connect(function()
+    elseif typeof(result) == "Instance" then
 
-    button.Text = "EXECUTING..."
-
-    local ok, message =
-        executeModule(attack, "Five Season Attack")
-
-    if ok then
-
-        result.Text =
-            "SUCCESS\n\n" ..
-            tostring(message)
-
-        button.Text = "EXECUTED"
-
-        return
-    end
-
-    result.Text =
-        "ATTACK RESULT:\n\n" ..
-        tostring(message) ..
-        "\n\nTrying KJ module..."
-
-    task.wait(.2)
-
-    local ok2, message2 =
-        executeModule(kj, "KJ")
-
-    if ok2 then
-
-        result.Text =
-            "SUCCESS\n\n" ..
-            tostring(message2)
-
-        button.Text = "EXECUTED"
+        table.insert(
+            lines,
+            "Instance: " .. result:GetFullName()
+        )
 
     else
 
-        result.Text =
-            "NO EXECUTION\n\n" ..
-            tostring(message) ..
-            "\n\nKJ:\n" ..
-            tostring(message2)
+        table.insert(
+            lines,
+            "Value: " .. tostring(result)
+        )
 
-        button.Text = "NO ENTRY FOUND"
     end
-end)
 
-close.Activated:Connect(function()
-    screen:Destroy()
-end)
+    return table.concat(lines, "\n")
+end
+
+local output = {}
+
+table.insert(
+    output,
+    inspect("Five Season Attack")
+)
+
+table.insert(
+    output,
+    "\n--------------------\n"
+)
+
+table.insert(
+    output,
+    inspect("Five Season Startup")
+)
+
+table.insert(
+    output,
+    "\n--------------------\n"
+)
+
+table.insert(
+    output,
+    inspect("KJ")
+)
+
+box.Text = table.concat(output, "\n")
+
+print("========== KJ CUTSCENE INSPECTOR ==========")
+print(box.Text)
+print("============================================")
