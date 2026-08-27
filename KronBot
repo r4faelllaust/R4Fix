@@ -1,0 +1,1142 @@
+import discord
+from discord import app_commands
+from discord.ext import commands
+import json
+import os
+from datetime import datetime, timezone
+
+
+# ============================================================
+# AUSTROKRON 🇦🇹👑
+# MPÖ / AUSTRO-CROWNIST DISCORD BOT
+# ============================================================
+
+BOT_NAME = "AustroKron"
+BOT_VERSION = "1.0.0"
+
+TOKEN = os.getenv("DISCORD_TOKEN")
+
+# Optional:
+# Put your Discord server ID into REPLIT as GUILD_ID
+# for instant slash-command registration while developing.
+GUILD_ID = os.getenv("GUILD_ID")
+
+
+# ============================================================
+# DATABASE
+# ============================================================
+
+DATA_FILE = "austrokron_data.json"
+
+
+def load_data():
+    if not os.path.exists(DATA_FILE):
+        return {
+            "warnings": {},
+            "petitions": [],
+            "proposals": [],
+            "votes": []
+        }
+
+    try:
+        with open(DATA_FILE, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return {
+            "warnings": {},
+            "petitions": [],
+            "proposals": [],
+            "votes": []
+        }
+
+
+data = load_data()
+
+
+def save_data():
+    with open(DATA_FILE, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=4)
+
+
+# ============================================================
+# BOT SETUP
+# ============================================================
+
+intents = discord.Intents.default()
+intents.members = True
+intents.message_content = True
+
+bot = commands.Bot(
+    command_prefix="!",
+    intents=intents
+)
+
+
+# ============================================================
+# EMBED HELPER
+# ============================================================
+
+def austro_embed(title, description):
+    embed = discord.Embed(
+        title=title,
+        description=description,
+        timestamp=datetime.now(timezone.utc)
+    )
+
+    embed.set_footer(
+        text=f"{BOT_NAME} • MPÖ • Austro-Kronismus"
+    )
+
+    return embed
+
+
+# ============================================================
+# READY
+# ============================================================
+
+@bot.event
+async def on_ready():
+
+    print(f"===================================")
+    print(f"{BOT_NAME} is online.")
+    print(f"Bot ID: {bot.user.id}")
+    print(f"Servers: {len(bot.guilds)}")
+    print(f"===================================")
+
+    try:
+
+        if GUILD_ID:
+
+            guild = discord.Object(id=int(GUILD_ID))
+
+            bot.tree.copy_global_to(guild=guild)
+
+            synced = await bot.tree.sync(guild=guild)
+
+            print(f"Synced {len(synced)} commands to development server.")
+
+        else:
+
+            synced = await bot.tree.sync()
+
+            print(f"Synced {len(synced)} global commands.")
+
+    except Exception as error:
+
+        print("Command sync error:")
+        print(error)
+
+
+# ============================================================
+# HELP
+# ============================================================
+
+@bot.tree.command(
+    name="help",
+    description="Zeigt alle AustroKron-Befehle."
+)
+async def help_command(interaction: discord.Interaction):
+
+    text = """
+## 🇦🇹👑 AUSTROKRON
+
+### 📚 Informationen
+`/mpö`
+Informationen über die Monarchistische Partei Österreichs.
+
+`/austrocrownism`
+Erklärung des Austro-Kronismus.
+
+`/testament`
+Das Austro-Kronistische Testament.
+
+`/werte`
+Die Grundwerte des Austro-Kronismus.
+
+`/monarchismus`
+Erklärung des Monarchismus.
+
+### 🏛️ Regierung
+`/regierung`
+Zeigt die Regierungsstruktur.
+
+`/krönherr`
+Informationen über den Krönherrn.
+
+`/krönrat`
+Informationen über den Krönrat.
+
+`/landeshüter`
+Informationen über die Landeshüter.
+
+`/kronwacht`
+Informationen über die Kronwacht.
+
+`/landwehr`
+Informationen über die Landwehr.
+
+`/kronendienst`
+Informationen über den Kronendienst.
+
+### 🚀 Programme
+`/austrowerk`
+Strategische Wirtschaft und Technologie.
+
+`/familienkrone`
+Familien- und Demografieprogramm.
+
+### 🗳️ Bürgerbeteiligung
+`/vote`
+Erstellt eine Abstimmung.
+
+`/petition`
+Erstellt eine Petition.
+
+`/vorschlag`
+Reicht einen politischen Vorschlag ein.
+
+### 🛡️ Moderation
+`/warn`
+Verwarnt einen Nutzer.
+
+`/clear`
+Löscht Nachrichten.
+
+`/userinfo`
+Zeigt Informationen über einen Nutzer.
+
+`/serverinfo`
+Zeigt Informationen über den Server.
+
+`/announce`
+Sendet eine offizielle Ankündigung.
+"""
+
+    await interaction.response.send_message(
+        embed=austro_embed("🇦🇹👑 AustroKron Befehle", text),
+        ephemeral=True
+    )
+
+
+# ============================================================
+# MPÖ
+# ============================================================
+
+@bot.tree.command(
+    name="mpö",
+    description="Informationen über die Monarchistische Partei Österreichs."
+)
+async def mpo(interaction: discord.Interaction):
+
+    text = """
+🇦🇹 **Monarchistische Partei Österreichs**
+
+Die MPÖ ist eine politische Bewegung, die sich für den
+**Austro-Kronismus** und eine starke österreichische Zukunft einsetzt.
+
+Unsere politischen Grundprinzipien umfassen:
+
+👑 Monarchie
+🇦🇹 Österreichischen Nationalstolz
+🗳️ Volksbeteiligung
+📚 Österreichische Geschichte und Geographie
+🛡️ Sicherheit und Landesverteidigung
+🚀 Technologischen Fortschritt
+🏭 Strategische österreichische Wirtschaft
+👨‍👩‍👧‍👦 Familienförderung
+🏛️ Stabile staatliche Institutionen
+
+**Leitsatz:**
+„Die Krone, das Volk und Österreich.“
+"""
+
+    await interaction.response.send_message(
+        embed=austro_embed("🇦🇹 MPÖ", text)
+    )
+
+
+# ============================================================
+# AUSTRO-CROWNISM
+# ============================================================
+
+@bot.tree.command(
+    name="austrocrownism",
+    description="Erklärt den Austro-Kronismus."
+)
+async def austrocrownism(interaction: discord.Interaction):
+
+    text = """
+## 👑🇦🇹 AUSTRO-KRONISMUS
+
+Der Austro-Kronismus ist die politische Ideologie der MPÖ.
+
+Er verbindet:
+
+👑 Eine starke österreichische Monarchie
+🗳️ Direkte Volksbeteiligung
+🇦🇹 Österreichischen Nationalstolz
+🏛️ Stabile staatliche Institutionen
+🛡️ Starke Landesverteidigung
+🚀 Technologischen Fortschritt
+🏭 Strategische staatliche Wirtschaftspolitik
+👨‍👩‍👧‍👦 Familien- und Demografiepolitik
+📚 Bewahrung österreichischer Geschichte und Kultur
+
+Der Krönherr besitzt die höchste politische Autorität,
+während die österreichischen Bürger durch Volksentscheide,
+Petitionen und andere Formen der politischen Beteiligung
+direkt am politischen Leben teilnehmen.
+
+**Grundsatz:**
+„Die Krone, das Volk und Österreich.“
+"""
+
+    await interaction.response.send_message(
+        embed=austro_embed("👑 Austro-Kronismus", text)
+    )
+
+
+# ============================================================
+# TESTAMENT
+# ============================================================
+
+@bot.tree.command(
+    name="testament",
+    description="Zeigt eine Zusammenfassung des Austro-Kronistischen Testaments."
+)
+async def testament(interaction: discord.Interaction):
+
+    text = """
+## 📜 DAS AUSTRO-KRONISTISCHE TESTAMENT
+
+Der Austro-Kronismus strebt nach einem starken,
+stabilen und selbstbewussten Österreich.
+
+Die wichtigsten Säulen sind:
+
+👑 **Die Krone**
+Der Krönherr besitzt die höchste staatliche Autorität.
+
+🗳️ **Das Volk**
+Bürger können durch Volksentscheide direkt teilnehmen.
+
+🇦🇹 **Österreich**
+Geschichte, Kultur, Geographie und nationale Identität werden bewahrt.
+
+🛡️ **Verteidigung**
+Österreich soll über moderne und leistungsfähige Streitkräfte verfügen.
+
+🚀 **Fortschritt**
+Technologie, Forschung und Innovation sollen gefördert werden.
+
+🏭 **Wirtschaft**
+Kapitalismus wird mit strategischer staatlicher Unterstützung verbunden.
+
+👨‍👩‍👧‍👦 **Familie**
+Familien und Kinder sollen stärker unterstützt werden.
+
+🏛️ **Stabilität**
+Der Staat soll langfristig, organisiert und handlungsfähig bleiben.
+"""
+
+    await interaction.response.send_message(
+        embed=austro_embed("📜 Austro-Kronistisches Testament", text)
+    )
+
+
+# ============================================================
+# VALUES
+# ============================================================
+
+@bot.tree.command(
+    name="werte",
+    description="Zeigt die Grundwerte des Austro-Kronismus."
+)
+async def werte(interaction: discord.Interaction):
+
+    text = """
+⚜️ **Die Krone**
+Einheit, Kontinuität und langfristige Führung.
+
+⚜️ **Österreichischer Stolz**
+Stolz auf Österreich, seine Geschichte und seine Kultur.
+
+⚜️ **Volksbeteiligung**
+Direkte Beteiligung durch Volksentscheide und Petitionen.
+
+⚜️ **Stabilität**
+Starke Institutionen und langfristiges Denken.
+
+⚜️ **Verantwortung**
+Verantwortung gegenüber Österreich und zukünftigen Generationen.
+
+⚜️ **Sicherheit**
+Schutz der Bevölkerung und des österreichischen Staates.
+
+⚜️ **Fortschritt**
+Technologie, Forschung und Innovation.
+
+⚜️ **Familie & Zukunft**
+Unterstützung von Familien und langfristige demografische Stabilität.
+
+⚜️ **Kultur & Geschichte**
+Bewahrung des österreichischen historischen Erbes.
+"""
+
+    await interaction.response.send_message(
+        embed=austro_embed("⚜️ Grundwerte", text)
+    )
+
+
+# ============================================================
+# MONARCHISM
+# ============================================================
+
+@bot.tree.command(
+    name="monarchismus",
+    description="Erklärt den Monarchismus."
+)
+async def monarchismus(interaction: discord.Interaction):
+
+    text = """
+👑 **Monarchismus**
+
+Monarchismus ist die politische Überzeugung,
+dass ein Staat durch einen Monarchen, beispielsweise
+einen König oder Kaiser, geführt oder repräsentiert
+werden sollte.
+
+### Formen der Monarchie
+
+🏰 **Absolute Monarchie**
+Der Monarch besitzt einen sehr großen Teil der politischen Macht.
+
+📜 **Konstitutionelle Monarchie**
+Die Macht des Monarchen wird durch eine Verfassung geregelt.
+
+👑 **Parlamentarische Monarchie**
+Der Monarch besitzt hauptsächlich eine repräsentative Funktion.
+
+🇦🇹 **Austro-Kronismus**
+Eine starke österreichische Monarchie kombiniert mit
+direkter Volksbeteiligung, österreichischem Nationalstolz,
+Sicherheit, Fortschritt und kultureller Bewahrung.
+"""
+
+    await interaction.response.send_message(
+        embed=austro_embed("👑 Monarchismus", text)
+    )
+
+
+# ============================================================
+# GOVERNMENT
+# ============================================================
+
+@bot.tree.command(
+    name="regierung",
+    description="Zeigt die Struktur der Austro-Crownistischen Regierung."
+)
+async def regierung(interaction: discord.Interaction):
+
+    text = """
+## 👑 AUSTRO-CROWNISTISCHE STAATSSTRUKTUR
+
+**👑 KRÖNHERR**
+Supreme Autorität des Staates.
+
+⬇️
+
+**🏛️ KRÖNRAT**
+Oberster beratender und koordinierender Regierungsrat.
+
+⬇️
+
+**⚜️ LANDESHÜTER**
+Höchste Crown-Vertreter der neun österreichischen Bundesländer.
+
+⬇️
+
+**🏛️ REGIONALE VERWALTUNGEN**
+Verwaltung der einzelnen Regionen.
+
+⬇️
+
+**🏘️ LOKALE VERWALTUNGEN**
+Kommunale Verwaltung.
+
+### 🇦🇹 Bürger
+
+Die Bürger stehen nicht unterhalb einer sozialen Klasse.
+Sie bilden die Bevölkerung Österreichs und nehmen durch
+Volksentscheide, Petitionen und friedliche politische
+Beteiligung am Staat teil.
+"""
+
+    await interaction.response.send_message(
+        embed=austro_embed("🏛️ Regierungsstruktur", text)
+    )
+
+
+# ============================================================
+# KRÖNHERR
+# ============================================================
+
+@bot.tree.command(
+    name="krönherr",
+    description="Informationen über das Amt des Krönherrn."
+)
+async def kroenherr(interaction: discord.Interaction):
+
+    text = """
+👑 **DER KRÖNHERR**
+
+Der Krönherr ist das Staatsoberhaupt und die höchste
+exekutive Autorität der Austro-Crownistischen Monarchie.
+
+Zu seinen wichtigsten Aufgaben gehören:
+
+• Ernennung hochrangiger Beamter
+• Entlassung hochrangiger Beamter
+• Leitung der nationalen Regierung
+• Gesetzgebung
+• Einberufung von Volksentscheiden
+• Ernennung diplomatischer Vertreter
+• Leitung der Verteidigungspolitik
+• Ernennung der Landeshüter
+• Einberufung des Krönrats
+• Schutz der österreichischen Verfassung
+• Vertretung Österreichs nach außen
+
+Der Krönherr soll langfristig im Interesse Österreichs handeln.
+"""
+
+
+    await interaction.response.send_message(
+        embed=austro_embed("👑 Krönherr", text)
+    )
+
+
+# ============================================================
+# KRÖNRAT
+# ============================================================
+
+@bot.tree.command(
+    name="krönrat",
+    description="Informationen über den Krönrat."
+)
+async def kroenrat(interaction: discord.Interaction):
+
+    text = """
+🏛️ **DER KRÖNRAT**
+
+Der Krönrat ist der höchste beratende Regierungsrat
+unterhalb des Krönherrn.
+
+Er beschäftigt sich unter anderem mit:
+
+🛡️ Sicherheit
+🪖 Verteidigung
+🏭 Wirtschaft
+🚀 Technologie
+📚 Bildung
+🏗️ Infrastruktur
+👨‍👩‍👧‍👦 Demografie
+🌍 Außenpolitik
+
+Der Krönrat berät den Krönherrn und koordiniert die
+nationale Verwaltung.
+"""
+
+    await interaction.response.send_message(
+        embed=austro_embed("🏛️ Krönrat", text)
+    )
+
+
+# ============================================================
+# LANDESHÜTER
+# ============================================================
+
+@bot.tree.command(
+    name="landeshüter",
+    description="Informationen über die Landeshüter."
+)
+async def landeshueter(interaction: discord.Interaction):
+
+    text = """
+⚜️ **LANDESHÜTER**
+
+Landeshüter sind die höchsten Vertreter der Krone
+in den österreichischen Bundesländern.
+
+Es gibt grundsätzlich einen Landeshüter für jedes Bundesland:
+
+🇦🇹 Wien
+🇦🇹 Niederösterreich
+🇦🇹 Oberösterreich
+🇦🇹 Steiermark
+🇦🇹 Kärnten
+🇦🇹 Salzburg
+🇦🇹 Tirol
+🇦🇹 Vorarlberg
+🇦🇹 Burgenland
+
+Sie verwalten ihre Gebiete, setzen nationale Programme
+um und berichten an die zentrale Regierung.
+
+Der Krönherr kann Landeshüter ernennen oder entlassen.
+"""
+
+    await interaction.response.send_message(
+        embed=austro_embed("⚜️ Landeshüter", text)
+    )
+
+
+# ============================================================
+# KRONWACHT
+# ============================================================
+
+@bot.tree.command(
+    name="kronwacht",
+    description="Informationen über die Kronwacht."
+)
+async def kronwacht(interaction: discord.Interaction):
+
+    text = """
+🛡️ **KRONWACHT**
+
+Die Kronwacht ist eine spezialisierte nationale
+Sicherheits- und Notfallorganisation.
+
+Mögliche Aufgaben:
+
+• Schutz kritischer Infrastruktur
+• Unterstützung bei Großnotfällen
+• Katastrophenschutz
+• Schutz wichtiger staatlicher Einrichtungen
+• Unterstützung ziviler Behörden
+• Unterstützung beim Grenzschutz
+• Koordination nationaler Notfallmaßnahmen
+
+Die Kronwacht ersetzt nicht die normale Polizei.
+"""
+
+    await interaction.response.send_message(
+        embed=austro_embed("🛡️ Kronwacht", text)
+    )
+
+
+# ============================================================
+# LANDWEHR
+# ============================================================
+
+@bot.tree.command(
+    name="landwehr",
+    description="Informationen über die Landwehr."
+)
+async def landwehr(interaction: discord.Interaction):
+
+    text = """
+🛡️ **LANDWEHR**
+
+Die Landwehr bildet einen Teil der territorialen
+Reserve und nationalen Verteidigungsstruktur.
+
+Aufgaben können sein:
+
+• Territorialverteidigung
+• Katastrophenschutz
+• Logistik
+• Infrastrukturhilfe
+• Kommunikation
+• Technische Unterstützung
+• Unterstützung bei nationalen Notfällen
+"""
+
+    await interaction.response.send_message(
+        embed=austro_embed("🛡️ Landwehr", text)
+    )
+
+
+# ============================================================
+# KRONENDIENST
+# ============================================================
+
+@bot.tree.command(
+    name="kronendienst",
+    description="Informationen über den Kronendienst."
+)
+async def kronendienst(interaction: discord.Interaction):
+
+    text = """
+🎖️ **KRONENDIENST**
+
+Der Kronendienst ist das nationale Dienst- und
+Vorbereitungssystem.
+
+Mit etwa 16 Jahren soll eine kurze Einführung
+in nationale Sicherheit, Erste Hilfe, Katastrophenschutz
+und den Dienst am Staat erfolgen.
+
+Ab 18 Jahren soll ein längerer nationaler Dienst folgen.
+
+Mögliche Bereiche:
+
+🪖 Militär
+🛡️ Zivilschutz
+🚑 Medizinische Unterstützung
+🔧 Technik
+📡 Kommunikation
+🏗️ Katastrophenschutz
+"""
+
+    await interaction.response.send_message(
+        embed=austro_embed("🎖️ Kronendienst", text)
+    )
+
+
+# ============================================================
+# AUSTROWERK
+# ============================================================
+
+@bot.tree.command(
+    name="austrowerk",
+    description="Informationen über das AustroWerk-Programm."
+)
+async def austrowerk(interaction: discord.Interaction):
+
+    text = """
+🏭 **AUSTROWERK**
+
+AustroWerk steht für die strategische Förderung
+österreichischer Industrie und Technologie.
+
+Schwerpunkte:
+
+🤖 Robotik
+🚀 Luft- und Raumfahrt
+🛡️ Verteidigungstechnologie
+⚡ Energie
+💻 Cybertechnologie
+🏗️ Infrastruktur
+🔬 Forschung
+🚆 Verkehr
+🏭 Hochtechnologische Produktion
+
+Private Unternehmen bleiben Bestandteil der Wirtschaft.
+Der Staat unterstützt jedoch strategische Bereiche,
+die für Österreich besonders wichtig sind.
+"""
+
+    await interaction.response.send_message(
+        embed=austro_embed("🏭 AustroWerk", text)
+    )
+
+
+# ============================================================
+# FAMILIENKRONE
+# ============================================================
+
+@bot.tree.command(
+    name="familienkrone",
+    description="Informationen über die Familienkrone."
+)
+async def familienkrone(interaction: discord.Interaction):
+
+    text = """
+👨‍👩‍👧‍👦 **FAMILIENKRONE**
+
+Die Familienkrone ist das familien- und
+demografiepolitische Programm des Austro-Kronismus.
+
+Ziele:
+
+👶 Unterstützung von Eltern
+🏠 Familienfreundlicher Wohnraum
+💶 Finanzielle Unterstützung
+🍼 Unterstützung bei Kinderbetreuung
+📚 Unterstützung für Familienbildung
+🇦🇹 Langfristige Stabilisierung der österreichischen Bevölkerung
+
+Besondere zusätzliche Unterstützung soll für größere
+Familien vorgesehen werden, insbesondere ab dem dritten Kind.
+"""
+
+    await interaction.response.send_message(
+        embed=austro_embed("👨‍👩‍👧‍👦 Familienkrone", text)
+    )
+
+
+# ============================================================
+# VOTE
+# ============================================================
+
+@bot.tree.command(
+    name="vote",
+    description="Erstellt eine einfache Abstimmung."
+)
+@app_commands.describe(
+    frage="Die Frage der Abstimmung."
+)
+async def vote(
+    interaction: discord.Interaction,
+    frage: str
+):
+
+    embed = austro_embed(
+        "🗳️ VOLKSENTSCHEID",
+        f"**Frage:**\n{frage}\n\n"
+        "🇦🇹 Ja\n"
+        "❌ Nein\n\n"
+        "Stimmt mit den Reaktionen ab."
+    )
+
+    message = await interaction.channel.send(embed=embed)
+
+    await message.add_reaction("🇦🇹")
+    await message.add_reaction("❌")
+
+    await interaction.response.send_message(
+        "🗳️ Abstimmung erstellt.",
+        ephemeral=True
+    )
+
+
+# ============================================================
+# PETITION
+# ============================================================
+
+@bot.tree.command(
+    name="petition",
+    description="Erstellt eine politische Petition."
+)
+@app_commands.describe(
+    titel="Titel der Petition.",
+    begruendung="Begründung der Petition."
+)
+async def petition(
+    interaction: discord.Interaction,
+    titel: str,
+    begruendung: str
+):
+
+    petition_id = len(data["petitions"]) + 1
+
+    petition_data = {
+        "id": petition_id,
+        "author": interaction.user.id,
+        "title": titel,
+        "reason": begruendung,
+        "created": datetime.now(timezone.utc).isoformat(),
+        "signatures": []
+    }
+
+    data["petitions"].append(petition_data)
+    save_data()
+
+    embed = austro_embed(
+        f"📜 PETITION #{petition_id}",
+        f"## {titel}\n\n"
+        f"{begruendung}\n\n"
+        f"👤 Eingereicht von: {interaction.user.mention}\n\n"
+        f"✍️ Unterstützer: **0**"
+    )
+
+    message = await interaction.channel.send(embed=embed)
+
+    await message.add_reaction("✍️")
+
+    await interaction.response.send_message(
+        f"📜 Petition #{petition_id} wurde erstellt.",
+        ephemeral=True
+    )
+
+
+# ============================================================
+# VORSCHLAG
+# ============================================================
+
+@bot.tree.command(
+    name="vorschlag",
+    description="Reicht einen politischen Vorschlag ein."
+)
+@app_commands.describe(
+    titel="Titel des Vorschlags.",
+    text="Beschreibung des Vorschlags."
+)
+async def vorschlag(
+    interaction: discord.Interaction,
+    titel: str,
+    text: str
+):
+
+    proposal_id = len(data["proposals"]) + 1
+
+    proposal = {
+        "id": proposal_id,
+        "author": interaction.user.id,
+        "title": titel,
+        "text": text,
+        "created": datetime.now(timezone.utc).isoformat()
+    }
+
+    data["proposals"].append(proposal)
+    save_data()
+
+    embed = austro_embed(
+        f"💡 POLITISCHER VORSCHLAG #{proposal_id}",
+        f"## {titel}\n\n"
+        f"{text}\n\n"
+        f"👤 Eingereicht von: {interaction.user.mention}"
+    )
+
+    await interaction.channel.send(embed=embed)
+
+    await interaction.response.send_message(
+        f"💡 Vorschlag #{proposal_id} wurde eingereicht.",
+        ephemeral=True
+    )
+
+
+# ============================================================
+# ANNOUNCEMENT
+# ============================================================
+
+@bot.tree.command(
+    name="announce",
+    description="Sendet eine offizielle Ankündigung."
+)
+@app_commands.checks.has_permissions(manage_guild=True)
+@app_commands.describe(
+    titel="Titel der Ankündigung.",
+    text="Inhalt der Ankündigung."
+)
+async def announce(
+    interaction: discord.Interaction,
+    titel: str,
+    text: str
+):
+
+    embed = austro_embed(
+        f"📰 {titel}",
+        text
+    )
+
+    embed.set_author(
+        name="🇦🇹 MPÖ • OFFIZIELLE MITTEILUNG"
+    )
+
+    await interaction.channel.send(embed=embed)
+
+    await interaction.response.send_message(
+        "📰 Ankündigung veröffentlicht.",
+        ephemeral=True
+    )
+
+
+# ============================================================
+# WARN
+# ============================================================
+
+@bot.tree.command(
+    name="warn",
+    description="Verwarnt einen Benutzer."
+)
+@app_commands.checks.has_permissions(moderate_members=True)
+@app_commands.describe(
+    user="Der zu verwarnende Benutzer.",
+    grund="Grund der Verwarnung."
+)
+async def warn(
+    interaction: discord.Interaction,
+    user: discord.Member,
+    grund: str
+):
+
+    user_id = str(user.id)
+
+    if user_id not in data["warnings"]:
+        data["warnings"][user_id] = []
+
+    warning = {
+        "reason": grund,
+        "moderator": interaction.user.id,
+        "time": datetime.now(timezone.utc).isoformat()
+    }
+
+    data["warnings"][user_id].append(warning)
+
+    save_data()
+
+    count = len(data["warnings"][user_id])
+
+    await interaction.response.send_message(
+        embed=austro_embed(
+            "⚠️ Verwarnung",
+            f"{user.mention} wurde verwarnt.\n\n"
+            f"**Grund:** {grund}\n"
+            f"**Verwarnungen:** {count}"
+        )
+    )
+
+
+# ============================================================
+# CLEAR
+# ============================================================
+
+@bot.tree.command(
+    name="clear",
+    description="Löscht Nachrichten."
+)
+@app_commands.checks.has_permissions(manage_messages=True)
+@app_commands.describe(
+    anzahl="Anzahl der zu löschenden Nachrichten."
+)
+async def clear(
+    interaction: discord.Interaction,
+    anzahl: app_commands.Range[int, 1, 100]
+):
+
+    await interaction.response.defer(ephemeral=True)
+
+    deleted = await interaction.channel.purge(limit=anzahl)
+
+    await interaction.followup.send(
+        f"🧹 {len(deleted)} Nachrichten gelöscht.",
+        ephemeral=True
+    )
+
+
+# ============================================================
+# USERINFO
+# ============================================================
+
+@bot.tree.command(
+    name="userinfo",
+    description="Zeigt Informationen über einen Benutzer."
+)
+async def userinfo(
+    interaction: discord.Interaction,
+    user: discord.Member
+):
+
+    roles = [
+        role.mention
+        for role in user.roles
+        if role != interaction.guild.default_role
+    ]
+
+    if roles:
+        role_text = ", ".join(roles)
+    else:
+        role_text = "Keine"
+
+    text = f"""
+👤 **Benutzer:** {user.mention}
+
+🆔 **ID:** `{user.id}`
+
+📅 **Account erstellt:**
+{discord.utils.format_dt(user.created_at, style="F")}
+
+📥 **Server beigetreten:**
+{discord.utils.format_dt(user.joined_at, style="F")}
+
+🎭 **Rollen:**
+{role_text}
+"""
+
+    await interaction.response.send_message(
+        embed=austro_embed("👤 Benutzerinformationen", text)
+    )
+
+
+# ============================================================
+# SERVERINFO
+# ============================================================
+
+@bot.tree.command(
+    name="serverinfo",
+    description="Zeigt Informationen über den Server."
+)
+async def serverinfo(interaction: discord.Interaction):
+
+    guild = interaction.guild
+
+    text = f"""
+🇦🇹 **Server:** {guild.name}
+
+👥 **Mitglieder:** {guild.member_count}
+
+🆔 **Server-ID:** `{guild.id}`
+
+📅 **Erstellt:**
+{discord.utils.format_dt(guild.created_at, style="F")}
+
+💬 **Textkanäle:** {len(guild.text_channels)}
+
+🔊 **Sprachkanäle:** {len(guild.voice_channels)}
+
+🎭 **Rollen:** {len(guild.roles)}
+"""
+
+    await interaction.response.send_message(
+        embed=austro_embed("🇦🇹 Serverinformationen", text)
+    )
+
+
+# ============================================================
+# ERROR HANDLER
+# ============================================================
+
+@bot.tree.error
+async def on_app_command_error(
+    interaction: discord.Interaction,
+    error
+):
+
+    if isinstance(
+        error,
+        app_commands.errors.MissingPermissions
+    ):
+
+        message = (
+            "❌ Du hast nicht die erforderlichen "
+            "Berechtigungen für diesen Befehl."
+        )
+
+    else:
+
+        print("Command error:", error)
+
+        message = (
+            "❌ Bei der Ausführung des Befehls ist "
+            "ein Fehler aufgetreten."
+        )
+
+    if interaction.response.is_done():
+
+        await interaction.followup.send(
+            message,
+            ephemeral=True
+        )
+
+    else:
+
+        await interaction.response.send_message(
+            message,
+            ephemeral=True
+        )
+
+
+# ============================================================
+# START
+# ============================================================
+
+if not TOKEN:
+
+    raise RuntimeError(
+        "DISCORD_TOKEN wurde nicht gefunden. "
+        "Füge deinen Bot-Token als Secret/Environment Variable hinzu."
+    )
+
+bot.run(TOKEN)
