@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>NEXUS CLIENT — Absolute Domination</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=JetBrains+Mono:wght@400;600;700&family=Rajdhani:wght@500;600;700&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <canvas id="bg-canvas" aria-hidden="true"></canvas>
+
+    <div id="boot" class="boot">
+      <div class="boot-inner">
+        <div class="boot-logo">NEXUS</div>
+        <div class="boot-sub">CLIENT // PROTOCOL Ω</div>
+        <div class="boot-bar"><span id="boot-fill"></span></div>
+        <div class="boot-log" id="boot-log"></div>
+      </div>
+    </div>
+
+    <div id="app" class="app hidden">
+      <header class="topbar">
+        <div class="brand">
+          <span class="brand-mark">◆</span>
+          <div>
+            <h1>NEXUS</h1>
+            <p>v9.9.9-OMEGA · FABRIC 1.21+</p>
+          </div>
+        </div>
+        <div class="top-stats">
+          <div class="stat"><span>ENABLED</span><b id="stat-enabled">0</b></div>
+          <div class="stat"><span>MODULES</span><b id="stat-total">0</b></div>
+          <div class="stat"><span>PROFILE</span><b id="stat-profile">RAGE</b></div>
+          <div class="stat pulse"><span>STATUS</span><b id="stat-status">ARMED</b></div>
+        </div>
+        <div class="top-actions">
+          <input id="search" type="search" placeholder="Search modules…" autocomplete="off" />
+          <button id="btn-panic" class="btn ghost" title="Disable everything">PANIC</button>
+          <button id="btn-launch" class="btn launch">INJECT & LAUNCH</button>
+        </div>
+      </header>
+
+      <aside class="sidebar">
+        <nav id="cat-nav"></nav>
+        <div class="sidebar-foot">
+          <label class="profile-label">CONFIG PROFILE</label>
+          <select id="profile-select">
+            <option value="RAGE">RAGE — Full Send</option>
+            <option value="LEGIT">LEGIT — Undetectable Vibes</option>
+            <option value="HVH">HVH — Pure Chaos</option>
+            <option value="GHOST">GHOST — Silent Mode</option>
+            <option value="GOD">GOD — Everything On</option>
+          </select>
+        </div>
+      </aside>
+
+      <main class="main">
+        <div class="main-head">
+          <h2 id="cat-title">Combat</h2>
+          <p id="cat-desc">Erase anyone who looks at you wrong.</p>
+        </div>
+        <div id="module-grid" class="module-grid"></div>
+      </main>
+
+      <aside class="inspector" id="inspector">
+        <div class="inspector-empty" id="inspector-empty">
+          <span>◆</span>
+          <p>Select a module to tune its OP settings</p>
+        </div>
+        <div class="inspector-body hidden" id="inspector-body">
+          <div class="insp-head">
+            <h3 id="insp-name">KillAura</h3>
+            <button id="insp-toggle" class="toggle" aria-pressed="false"><i></i></button>
+          </div>
+          <p id="insp-desc" class="insp-desc"></p>
+          <div class="insp-meta">
+            <span>BIND <b id="insp-bind">R</b></span>
+            <span>CAT <b id="insp-cat">Combat</b></span>
+          </div>
+          <div id="insp-settings" class="insp-settings"></div>
+        </div>
+      </aside>
+
+      <footer class="ticker">
+        <div class="ticker-track" id="ticker-track"></div>
+      </footer>
+    </div>
+
+    <div id="launch-overlay" class="launch-overlay hidden">
+      <div class="launch-panel">
+        <div class="launch-ring"></div>
+        <h2 id="launch-title">INJECTING NEXUS CORE</h2>
+        <pre id="launch-log"></pre>
+        <button id="launch-close" class="btn ghost hidden">RETURN TO LAUNCHER</button>
+      </div>
+    </div>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
