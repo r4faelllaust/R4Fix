@@ -1,0 +1,11 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Craft Animator
+Comment=Open-source Adobe Animate–style 2D animation
+Exec=REPLACE_ROOT/scripts/start-desktop.sh
+Icon=REPLACE_ROOT/build/icon.png
+Path=REPLACE_ROOT
+Terminal=false
+Categories=Graphics;2DGraphics;
+StartupWMClass=craft-animator

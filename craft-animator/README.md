@@ -6,7 +6,7 @@ Inspired by the ArtCraft “vibe-coded” open-source suite ([LightCraft](https:
 
 Not affiliated with Adobe or ArtCraft.
 
-## Quick start
+## Quick start (browser)
 
 ```bash
 cd craft-animator
@@ -15,6 +15,26 @@ npm run dev
 ```
 
 Open the URL Vite prints (usually `http://localhost:5173`).
+
+## Desktop app (double-click)
+
+```bash
+cd craft-animator
+npm install
+npm run dist:linux    # Linux AppImage
+# npm run dist:win    # Windows portable .exe (build on Windows)
+npm run desktop:install
+```
+
+That copies **Craft Animator.AppImage** to your Desktop — double-click to open.
+
+Or run without packaging:
+
+```bash
+npm run desktop
+```
+
+Windows: double-click `scripts/Start Craft Animator.bat`, or build `npm run dist:win` and use `release/Craft-Animator-Portable.exe`.
 
 ## What you get
 
