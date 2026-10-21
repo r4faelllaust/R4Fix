@@ -53,6 +53,7 @@ jobs:
 
   mac:
     runs-on: macos-latest
+    timeout-minutes: 30
     defaults:
       run:
         working-directory: craft-animator
@@ -65,8 +66,15 @@ jobs:
           cache-dependency-path: craft-animator/package-lock.json
       - run: npm ci
       - run: npm run dist:mac
+      - name: Zip Mac app for download
+        run: |
+          cd release
+          if [ -d mac-arm64 ]; then ditto -c -k --sequesterRsrc --keepParent mac-arm64 Craft-Animator-Mac.zip
+          elif [ -d mac ]; then ditto -c -k --sequesterRsrc --keepParent mac Craft-Animator-Mac.zip
+          else ls -la; exit 1
+          fi
       - uses: actions/upload-artifact@v4
         with:
           name: Craft-Animator-Mac
-          path: craft-animator/release/mac*/**/*
+          path: craft-animator/release/Craft-Animator-Mac.zip
           if-no-files-found: warn
