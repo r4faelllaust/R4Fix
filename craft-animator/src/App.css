@@ -1,0 +1,714 @@
+.app-shell {
+  display: grid;
+  grid-template-rows: 40px 1fr 28px;
+  height: 100%;
+  background:
+    radial-gradient(1200px 600px at 10% -10%, #243044 0%, transparent 55%),
+    radial-gradient(900px 500px at 90% 0%, #2a2218 0%, transparent 50%),
+    var(--bg-0);
+}
+
+/* —— Menubar —— */
+.menubar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 0 12px;
+  border-bottom: 1px solid var(--line);
+  background: color-mix(in oklab, var(--bg-1) 88%, transparent);
+  backdrop-filter: blur(10px);
+}
+
+.menubar-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.brand-mark,
+.welcome-mark {
+  width: 18px;
+  height: 18px;
+  border-radius: 5px;
+  background:
+    linear-gradient(135deg, var(--accent), #d9783a 55%, var(--accent-2));
+  box-shadow: 0 0 0 1px color-mix(in oklab, var(--accent) 40%, transparent);
+}
+
+.menubar-brand strong {
+  font-family: var(--font-brand);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.doc-name {
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.menubar-actions {
+  display: flex;
+  gap: 4px;
+  margin-left: auto;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.menubar-actions button {
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text);
+  padding: 5px 10px;
+  border-radius: 6px;
+}
+
+.menubar-actions button:hover,
+.menubar-actions button.on {
+  background: var(--bg-3);
+  border-color: var(--line);
+}
+
+/* —— Workspace —— */
+.workspace {
+  display: grid;
+  grid-template-columns: 56px 1fr 280px;
+  min-height: 0;
+  gap: 0;
+}
+
+.center-column {
+  display: grid;
+  grid-template-rows: 1fr 210px;
+  min-width: 0;
+  min-height: 0;
+  border-left: 1px solid var(--line);
+  border-right: 1px solid var(--line);
+}
+
+.stage-stack {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  min-height: 0;
+}
+
+.face-pose-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 20px;
+  align-items: center;
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--line);
+  background: color-mix(in oklab, var(--bg-1) 90%, #000);
+}
+
+.fp-group {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.fp-group > span {
+  color: var(--muted);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-right: 4px;
+}
+
+.face-pose-bar .chip {
+  width: auto;
+  padding: 0 10px;
+  border-radius: 8px;
+}
+
+.right-dock {
+  display: grid;
+  grid-template-rows: 1fr 1fr;
+  min-height: 0;
+  background: var(--bg-1);
+}
+
+/* —— Toolbar —— */
+.toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px 4px;
+  overflow: auto;
+  background: var(--bg-1);
+}
+
+.tool-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  border: 1px solid transparent;
+  background: transparent;
+  border-radius: 8px;
+  padding: 6px 2px;
+  color: var(--muted);
+}
+
+.tool-btn:hover {
+  background: var(--bg-3);
+  color: var(--text);
+}
+
+.tool-btn.active {
+  background: color-mix(in oklab, var(--accent) 18%, var(--bg-3));
+  border-color: color-mix(in oklab, var(--accent) 45%, transparent);
+  color: var(--accent);
+}
+
+.tool-key {
+  font-weight: 700;
+  font-size: 12px;
+}
+
+.tool-name {
+  font-size: 8px;
+  letter-spacing: 0.02em;
+  max-width: 48px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* —— Stage —— */
+.stage-wrap {
+  position: relative;
+  min-height: 0;
+  background: var(--stage-vignette);
+}
+
+.stage-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  cursor: crosshair;
+  touch-action: none;
+}
+
+.stage-hint {
+  position: absolute;
+  left: 12px;
+  bottom: 10px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: color-mix(in oklab, var(--bg-0) 75%, transparent);
+  border: 1px solid var(--line);
+  color: var(--muted);
+  pointer-events: none;
+}
+
+/* —— Timeline —— */
+.timeline {
+  display: grid;
+  grid-template-rows: 36px 1fr 22px;
+  border-top: 1px solid var(--line);
+  background: var(--bg-1);
+  min-height: 0;
+}
+
+.timeline-transport {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 10px;
+  border-bottom: 1px solid var(--line);
+}
+
+.timeline-transport button {
+  border: 1px solid var(--line);
+  background: var(--bg-2);
+  border-radius: 6px;
+  padding: 4px 10px;
+}
+
+.timeline-transport button.play {
+  background: color-mix(in oklab, var(--accent) 22%, var(--bg-2));
+  border-color: color-mix(in oklab, var(--accent) 40%, var(--line));
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.frame-readout {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+}
+
+.frame-readout input {
+  width: 56px;
+  background: var(--bg-0);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 3px 6px;
+}
+
+.fps {
+  margin-left: auto;
+  color: var(--muted);
+}
+
+.timeline-body {
+  display: grid;
+  grid-template-columns: 160px 1fr;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.layer-list {
+  overflow: auto;
+  border-right: 1px solid var(--line);
+}
+
+.layer-row {
+  display: grid;
+  grid-template-columns: 10px 1fr auto;
+  gap: 8px;
+  align-items: center;
+  width: 100%;
+  text-align: left;
+  border: 0;
+  border-bottom: 1px solid color-mix(in oklab, var(--line) 70%, transparent);
+  background: transparent;
+  padding: 7px 8px;
+  height: 28px;
+}
+
+.layer-row.active {
+  background: color-mix(in oklab, var(--accent-2) 12%, transparent);
+}
+
+.layer-swatch {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+}
+
+.layer-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.layer-flags {
+  font-size: 10px;
+  opacity: 0.7;
+}
+
+.frames-scroll {
+  position: relative;
+  overflow: auto;
+}
+
+.frame-header,
+.frame-row {
+  display: flex;
+  height: 28px;
+}
+
+.frame-tick {
+  border: 0;
+  border-right: 1px solid color-mix(in oklab, var(--line) 60%, transparent);
+  background: var(--bg-2);
+  color: var(--muted);
+  font-size: 9px;
+  padding: 0;
+  height: 22px;
+}
+
+.frame-tick.playhead,
+.cell.playhead {
+  background: color-mix(in oklab, var(--accent) 25%, var(--bg-2));
+}
+
+.cell {
+  border: 0;
+  border-right: 1px solid color-mix(in oklab, var(--line) 50%, transparent);
+  border-bottom: 1px solid color-mix(in oklab, var(--line) 50%, transparent);
+  background: #141920;
+  padding: 0;
+  height: 28px;
+}
+
+.cell.span {
+  background: #1a222c;
+}
+
+.cell.key.filled {
+  background:
+    linear-gradient(180deg, transparent 60%, var(--accent) 60% 75%, transparent 75%),
+    #1e2834;
+}
+
+.cell.key.filled::after {
+  content: '';
+}
+
+.playhead-line {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--accent);
+  pointer-events: none;
+  z-index: 2;
+}
+
+.timeline-meta {
+  display: flex;
+  align-items: center;
+  padding: 0 10px;
+  color: var(--muted);
+  border-top: 1px solid var(--line);
+  font-size: 11px;
+}
+
+/* —— Panels —— */
+.panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--line);
+}
+
+.panel-head h2 {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.panel-head .count {
+  color: var(--accent-2);
+  font-variant-numeric: tabular-nums;
+}
+
+.panel-filter {
+  margin: 8px 10px;
+  background: var(--bg-0);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 6px 8px;
+}
+
+.library-list,
+.props-body,
+.props-empty,
+.rig-hints {
+  overflow: auto;
+  padding: 0 10px 12px;
+}
+
+.lib-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  text-align: left;
+  border: 0;
+  background: transparent;
+  padding: 6px 4px;
+  border-radius: 6px;
+}
+
+.lib-item:hover {
+  background: var(--bg-3);
+}
+
+.sym-type {
+  flex: 0 0 auto;
+  font-size: 9px;
+  font-weight: 700;
+  padding: 2px 5px;
+  border-radius: 4px;
+  background: var(--bg-3);
+  color: var(--accent-2);
+}
+
+.sym-type.graphic {
+  color: var(--ok);
+}
+
+.sym-type.bmp {
+  color: var(--accent);
+}
+
+.sym-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.prop-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 0;
+  border-bottom: 1px solid color-mix(in oklab, var(--line) 70%, transparent);
+}
+
+.prop-row .mono,
+.mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+}
+
+.prop-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.prop-grid label,
+.first-frame {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.prop-grid input,
+.first-frame input {
+  background: var(--bg-0);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 6px 8px;
+  color: var(--text);
+}
+
+.face-tools {
+  margin-top: 14px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+}
+
+.face-tools h3,
+.rig-hints h3 {
+  margin: 0 0 6px;
+  font-size: 12px;
+}
+
+.pose-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.chip {
+  border: 1px solid var(--line);
+  background: var(--bg-2);
+  border-radius: 999px;
+  width: 32px;
+  height: 28px;
+}
+
+.chip.active {
+  background: color-mix(in oklab, var(--accent) 30%, var(--bg-2));
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.rig-hints {
+  margin-top: auto;
+  border-top: 1px solid var(--line);
+  padding-top: 10px;
+}
+
+.rig-hints ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.rig-hints li {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 4px 0;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.rig-hints code {
+  color: var(--text);
+  font-size: 10px;
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.muted.tiny {
+  font-size: 10px;
+}
+
+.empty-hint,
+.props-empty p {
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+/* —— Status —— */
+.statusbar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 0 12px;
+  border-top: 1px solid var(--line);
+  background: var(--bg-1);
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.status-main {
+  color: var(--text);
+}
+
+.status-meta {
+  margin-left: auto;
+}
+
+.status-warn {
+  max-width: 40%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--accent);
+}
+
+/* —— Welcome —— */
+.welcome-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background:
+    radial-gradient(ellipse at 30% 20%, rgba(240, 160, 90, 0.18), transparent 45%),
+    radial-gradient(ellipse at 80% 70%, rgba(110, 200, 255, 0.12), transparent 40%),
+    rgba(8, 10, 14, 0.72);
+  backdrop-filter: blur(8px);
+}
+
+.welcome-card {
+  width: min(560px, 100%);
+  padding: 36px 36px 28px;
+  border-radius: 18px;
+  border: 1px solid color-mix(in oklab, var(--line) 80%, #fff 10%);
+  background:
+    linear-gradient(160deg, rgba(36, 45, 58, 0.95), rgba(18, 22, 28, 0.98)),
+    var(--bg-2);
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.45);
+}
+
+.welcome-brand {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.welcome-brand h1 {
+  margin: 0;
+  font-family: var(--font-brand);
+  font-size: clamp(28px, 5vw, 40px);
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  line-height: 1;
+}
+
+.welcome-mark {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+}
+
+.welcome-tag {
+  margin: 16px 0 22px;
+  color: var(--muted);
+  font-size: 15px;
+  line-height: 1.5;
+  max-width: 42ch;
+}
+
+.welcome-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.btn {
+  border: 1px solid var(--line);
+  background: var(--bg-3);
+  border-radius: 10px;
+  padding: 12px 14px;
+  text-align: left;
+  font-weight: 560;
+}
+
+.btn.primary {
+  background: linear-gradient(135deg, #f0a05a, #d9783a);
+  border-color: transparent;
+  color: #1a120c;
+  font-weight: 700;
+}
+
+.btn.ghost {
+  background: transparent;
+}
+
+.btn:hover {
+  filter: brightness(1.06);
+}
+
+.welcome-foot {
+  margin: 18px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+/* —— Mobile —— */
+@media (max-width: 900px) {
+  .workspace {
+    grid-template-columns: 48px 1fr;
+  }
+
+  .right-dock {
+    display: none;
+  }
+
+  .center-column {
+    grid-template-rows: 1fr 180px;
+  }
+
+  .tool-name {
+    display: none;
+  }
+
+  .welcome-card {
+    padding: 24px;
+  }
+}
