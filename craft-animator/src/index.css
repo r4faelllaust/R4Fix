@@ -1,18 +1,18 @@
 :root {
   color-scheme: dark;
-  --bg-0: #0e1116;
-  --bg-1: #161b22;
-  --bg-2: #1c232d;
-  --bg-3: #242d3a;
-  --line: #2f3a4a;
-  --text: #e8eef6;
-  --muted: #8b9bb0;
+  --bg-0: #2d2d2d;
+  --bg-1: #3a3a3a;
+  --bg-2: #404040;
+  --bg-3: #4a4a4a;
+  --line: #222;
+  --text: #e8e8e8;
+  --muted: #999;
   --accent: #f0a05a;
-  --accent-2: #6ec8ff;
+  --accent-2: #2d6ca8;
   --danger: #e86b6b;
-  --ok: #6bcf8e;
-  --stage-vignette: #12151b;
-  --font-ui: 'Outfit', system-ui, sans-serif;
+  --ok: #8fdf8f;
+  --stage-vignette: #535353;
+  --font-ui: 'Outfit', 'Segoe UI', Tahoma, sans-serif;
   --font-brand: 'Syne', 'Outfit', sans-serif;
 }
 

@@ -1,70 +1,55 @@
 ========================================
-  CRAFT ANIMATOR — HOW TO OPEN THE APP
+  GET CRAFT ANIMATOR ON YOUR DESKTOP
 ========================================
 
-You do NOT need to know "cd" or "npm".
-Those are computer commands for programmers.
-This note is for normal double-click use.
+Ignore "cd" and "npm" — you do not need them.
 
 
-WHAT HAPPENED
--------------
-The app was built on a cloud computer (Cursor),
-not on your home PC yet. So it will not appear
-on YOUR Desktop until you download it.
+STEP 1 — Wait for the build (GitHub)
+------------------------------------
+After this update is on GitHub, open:
+
+  https://github.com/r4faelllaust/R4Fix/actions
+
+1. Click the latest "Build Craft Animator Desktop" run
+2. Wait until it is green / finished
+3. Scroll to Artifacts at the bottom
+4. Download the one for your computer:
+
+   • Windows → Craft-Animator-Windows
+   • Mac     → Craft-Animator-Mac
+   • Linux   → Craft-Animator-Linux
 
 
-EASIEST WAY (ask Cursor / download the file)
---------------------------------------------
-1. In this Cursor chat, look for the file:
-      Craft-Animator.AppImage
-   (or "Craft Animator.AppImage")
+STEP 2 — Put it on YOUR Desktop
+-------------------------------
+1. Unzip the download
+2. Drag the app to your Desktop:
 
-2. Download that file to your computer.
+   Windows:  Craft-Animator-Portable.exe
+             (or the Setup .exe)
 
-3. Put it on your Desktop (drag it there).
+   Linux:    Craft-Animator-….AppImage
+             (right-click → Allow running, then double-click)
 
-4. Double-click it.
-
-   • Linux: it should open Craft Animator.
-   • If your PC says "allow running": choose Allow / Run.
-   • Windows/Mac: this AppImage is for Linux.
-     Tell the assistant "I use Windows" or "I use Mac"
-     and they can build the right file for you.
+   Mac:      open the folder and run Craft Animator
 
 
-IF YOU USE WINDOWS
-------------------
-Tell the assistant:
-   "I use Windows — make me an exe I can double-click"
-
-They will make a file like:
-   Craft-Animator-Portable.exe
-
-Then:
-1. Download that .exe
-2. Put it on your Desktop
-3. Double-click it
+STEP 3 — Double-click
+---------------------
+A launcher opens (like a game client).
+Press the big blue PLAY button.
 
 
-IF YOU USE A MAC
-----------------
-Tell the assistant:
-   "I use Mac — make me an app I can double-click"
+IF YOU CANNOT FIND ACTIONS
+--------------------------
+Reply in chat: "I use Windows" or "I use Mac" or "I use Linux"
+and ask: "send me the download link when the build finishes"
 
 
-WHAT "cd" AND "npm" MEAN (only if curious)
-------------------------------------------
-cd   = "change folder" in a terminal (black text window)
-npm  = a tool programmers use to install/run code
-
-You can ignore both. Just download and double-click.
-
-
-NEED HELP?
-----------
-Reply in the chat with:
-  1) Windows, Mac, or Linux?
-  2) "I can't find the download"
-
-And we will walk you through it step by step.
+INSIDE THE APP
+--------------
+• Play on launcher = Maple puppet demo
+• Eyes / Mouth buttons = face poses (like Animate rigs)
+• Space = play / pause timeline
+• File → Open = import .fla / .xfl puppets

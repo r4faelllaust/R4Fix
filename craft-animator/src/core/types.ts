@@ -156,6 +156,7 @@ export type ToolId =
   | 'rect'
   | 'ellipse'
   | 'line'
+  | 'polyStar'
   | 'text'
   | 'hand'
   | 'zoom'

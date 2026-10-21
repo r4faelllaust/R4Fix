@@ -83,8 +83,8 @@ export function EditorProvider({ children }: { children: ReactNode }) {
   })
   const [view, setView] = useState<ViewState>({ zoom: 0.85, panX: 80, panY: 40 })
   const [warnings, setWarnings] = useState<string[]>([])
-  const [showWelcome, setShowWelcome] = useState(false)
-  const [status, setStatus] = useState('Maple demo ready — Space to play')
+  const [showWelcome, setShowWelcome] = useState(true)
+  const [status, setStatus] = useState('Ready — press Play on the launcher')
   const [selectedLayerId, setSelectedLayerId] = useState<string | null>(null)
 
   const frameRef = useRef(0)

@@ -10,8 +10,9 @@ function createWindow() {
     minWidth: 960,
     minHeight: 640,
     title: 'Craft Animator',
-    backgroundColor: '#0e1116',
+    backgroundColor: '#2d2d2d',
     autoHideMenuBar: true,
+    titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
     webPreferences: {
       preload: path.join(__dirname, 'preload.cjs'),
       contextIsolation: true,
@@ -20,6 +21,7 @@ function createWindow() {
     },
     show: false,
   })
+  win.setMenuBarVisibility(false)
 
   win.once('ready-to-show', () => win.show())
 

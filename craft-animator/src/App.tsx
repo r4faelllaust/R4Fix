@@ -1,4 +1,6 @@
+import { ColorPanel } from './components/ColorPanel'
 import { FacePoseBar } from './components/FacePoseBar'
+import { Launcher } from './components/Launcher'
 import { LibraryPanel } from './components/Library'
 import { Menubar } from './components/Menubar'
 import { PropertiesPanel } from './components/Properties'
@@ -6,15 +8,15 @@ import { Stage } from './components/Stage'
 import { StatusBar } from './components/StatusBar'
 import { Timeline } from './components/Timeline'
 import { Toolbar } from './components/Toolbar'
-import { Welcome } from './components/Welcome'
-import { EditorProvider } from './store/EditorContext'
+import { EditorProvider, useEditor } from './store/EditorContext'
 import './App.css'
 
 function Workspace() {
+  const { showWelcome } = useEditor()
   return (
     <div className="app-shell">
       <Menubar />
-      <div className="workspace">
+      <div className={`workspace ${showWelcome ? 'dimmed' : ''}`}>
         <Toolbar />
         <div className="center-column">
           <div className="stage-stack">
@@ -25,11 +27,12 @@ function Workspace() {
         </div>
         <aside className="right-dock">
           <PropertiesPanel />
+          <ColorPanel />
           <LibraryPanel />
         </aside>
       </div>
       <StatusBar />
-      <Welcome />
+      <Launcher />
     </div>
   )
 }
