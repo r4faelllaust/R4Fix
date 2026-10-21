@@ -1,0 +1,70 @@
+========================================
+  CRAFT ANIMATOR — HOW TO OPEN THE APP
+========================================
+
+You do NOT need to know "cd" or "npm".
+Those are computer commands for programmers.
+This note is for normal double-click use.
+
+
+WHAT HAPPENED
+-------------
+The app was built on a cloud computer (Cursor),
+not on your home PC yet. So it will not appear
+on YOUR Desktop until you download it.
+
+
+EASIEST WAY (ask Cursor / download the file)
+--------------------------------------------
+1. In this Cursor chat, look for the file:
+      Craft-Animator.AppImage
+   (or "Craft Animator.AppImage")
+
+2. Download that file to your computer.
+
+3. Put it on your Desktop (drag it there).
+
+4. Double-click it.
+
+   • Linux: it should open Craft Animator.
+   • If your PC says "allow running": choose Allow / Run.
+   • Windows/Mac: this AppImage is for Linux.
+     Tell the assistant "I use Windows" or "I use Mac"
+     and they can build the right file for you.
+
+
+IF YOU USE WINDOWS
+------------------
+Tell the assistant:
+   "I use Windows — make me an exe I can double-click"
+
+They will make a file like:
+   Craft-Animator-Portable.exe
+
+Then:
+1. Download that .exe
+2. Put it on your Desktop
+3. Double-click it
+
+
+IF YOU USE A MAC
+----------------
+Tell the assistant:
+   "I use Mac — make me an app I can double-click"
+
+
+WHAT "cd" AND "npm" MEAN (only if curious)
+------------------------------------------
+cd   = "change folder" in a terminal (black text window)
+npm  = a tool programmers use to install/run code
+
+You can ignore both. Just download and double-click.
+
+
+NEED HELP?
+----------
+Reply in the chat with:
+  1) Windows, Mac, or Linux?
+  2) "I can't find the download"
+
+And we will walk you through it step by step.
