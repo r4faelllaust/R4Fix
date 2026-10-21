@@ -6,6 +6,7 @@ import {
   useMemo,
   useRef,
   useState,
+  type MutableRefObject,
   type ReactNode,
 } from 'react'
 import {
@@ -21,7 +22,6 @@ import type {
   ToolId,
 } from '../core/types'
 import { createMaplePuppetDocument } from '../rigs/maplePuppet'
-import { importFile } from '../xfl/importXfl'
 
 type ViewState = { zoom: number; panX: number; panY: number }
 
@@ -52,19 +52,30 @@ type EditorContextValue = {
   updateSelectedSymbolFirstFrame: (frame: number) => void
   nudgeSelection: (dx: number, dy: number) => void
   rotateSelection: (deg: number) => void
+  frameRef: MutableRefObject<number>
+  playingRef: MutableRefObject<boolean>
+  drawGenRef: MutableRefObject<number>
+  bumpDraw: () => void
 }
 
 const EditorContext = createContext<EditorContextValue | null>(null)
 
+// Cache Maple so "Demo Puppet" is instant
+let mapleCache: Document | null = null
+function getMaple(): Document {
+  if (!mapleCache) mapleCache = createMaplePuppetDocument()
+  return structuredClone(mapleCache)
+}
+
 export function EditorProvider({ children }: { children: ReactNode }) {
-  const [doc, setDoc] = useState<Document>(() => createMaplePuppetDocument())
+  const [doc, setDocState] = useState<Document>(() => getMaple())
   const [tool, setTool] = useState<ToolId>('select')
   const [selection, setSelection] = useState<EditorSelection>({
     layerId: null,
     elementIds: [],
     symbolEditPath: [],
   })
-  const [playback, setPlayback] = useState<PlaybackState>({
+  const [playback, setPlaybackState] = useState<PlaybackState>({
     playing: false,
     currentFrame: 0,
     loop: true,
@@ -72,72 +83,145 @@ export function EditorProvider({ children }: { children: ReactNode }) {
   })
   const [view, setView] = useState<ViewState>({ zoom: 0.85, panX: 80, panY: 40 })
   const [warnings, setWarnings] = useState<string[]>([])
-  const [showWelcome, setShowWelcome] = useState(true)
-  const [status, setStatus] = useState('Maple demo puppet loaded')
+  const [showWelcome, setShowWelcome] = useState(false)
+  const [status, setStatus] = useState('Maple demo ready — Space to play')
   const [selectedLayerId, setSelectedLayerId] = useState<string | null>(null)
-  const raf = useRef<number | null>(null)
-  const lastTick = useRef(0)
+
+  const frameRef = useRef(0)
+  const playingRef = useRef(false)
+  const drawGenRef = useRef(0)
+  const loopRef = useRef(true)
+  const totalRef = useRef(1)
+  const fpsRef = useRef(24)
+  const timerRef = useRef<number | null>(null)
+  const uiSyncRef = useRef<number | null>(null)
+
+  const bumpDraw = useCallback(() => {
+    drawGenRef.current += 1
+  }, [drawGenRef])
+
+  const setDoc = useCallback(
+    (next: Document | ((d: Document) => Document)) => {
+      setDocState((d) => {
+        const v = typeof next === 'function' ? next(d) : next
+        drawGenRef.current += 1
+        return v
+      })
+    },
+    [],
+  )
+
+  const setPlayback = useCallback(
+    (next: PlaybackState | ((p: PlaybackState) => PlaybackState)) => {
+      setPlaybackState((p) => {
+        const v = typeof next === 'function' ? next(p) : next
+        frameRef.current = v.currentFrame
+        playingRef.current = v.playing
+        loopRef.current = v.loop
+        drawGenRef.current += 1
+        return v
+      })
+    },
+    [],
+  )
 
   const totalFrames = useMemo(() => timelineLength(doc.timeline), [doc])
+  totalRef.current = totalFrames
+  fpsRef.current = doc.frameRate || 24
 
+  // Interval-driven playback — canvas reads frameRef; React UI syncs ~15fps
   useEffect(() => {
     if (!playback.playing) {
-      if (raf.current) cancelAnimationFrame(raf.current)
+      if (timerRef.current) {
+        window.clearInterval(timerRef.current)
+        timerRef.current = null
+      }
+      if (uiSyncRef.current) {
+        window.clearInterval(uiSyncRef.current)
+        uiSyncRef.current = null
+      }
       return
     }
-    const fps = doc.frameRate || 24
-    const step = 1000 / fps
-    const loop = (t: number) => {
-      if (t - lastTick.current >= step) {
-        lastTick.current = t
-        setPlayback((p) => {
-          let next = p.currentFrame + 1
-          if (next >= totalFrames) next = p.loop ? 0 : totalFrames - 1
-          return {
-            ...p,
-            currentFrame: next,
-            playing: p.loop || next < totalFrames - 1,
-          }
-        })
+
+    const stepMs = 1000 / Math.max(1, fpsRef.current)
+    timerRef.current = window.setInterval(() => {
+      let next = frameRef.current + 1
+      const total = totalRef.current
+      if (next >= total) {
+        if (loopRef.current) next = 0
+        else {
+          next = total - 1
+          playingRef.current = false
+          setPlaybackState((p) => ({ ...p, currentFrame: next, playing: false }))
+          return
+        }
       }
-      raf.current = requestAnimationFrame(loop)
-    }
-    raf.current = requestAnimationFrame(loop)
+      frameRef.current = next
+      drawGenRef.current += 1
+    }, stepMs)
+
+    uiSyncRef.current = window.setInterval(() => {
+      setPlaybackState((p) => {
+        if (p.currentFrame === frameRef.current && p.playing === playingRef.current)
+          return p
+        return {
+          ...p,
+          currentFrame: frameRef.current,
+          playing: playingRef.current,
+        }
+      })
+    }, 66)
+
     return () => {
-      if (raf.current) cancelAnimationFrame(raf.current)
+      if (timerRef.current) window.clearInterval(timerRef.current)
+      if (uiSyncRef.current) window.clearInterval(uiSyncRef.current)
+      timerRef.current = null
+      uiSyncRef.current = null
     }
-  }, [playback.playing, doc.frameRate, totalFrames])
+  }, [playback.playing])
+
+  useEffect(() => {
+    const onToggle = () => {
+      setPlayback((p) => ({ ...p, playing: !p.playing }))
+    }
+    window.addEventListener('craft-toggle-play', onToggle)
+    return () => window.removeEventListener('craft-toggle-play', onToggle)
+  }, [setPlayback])
 
   const newBlank = useCallback(() => {
     setDoc(createBlankDocument('Untitled'))
     setShowWelcome(false)
     setStatus('New blank document')
     setPlayback((p) => ({ ...p, currentFrame: 0, playing: false }))
-  }, [])
+  }, [setDoc, setPlayback])
 
   const loadMaple = useCallback(() => {
-    setDoc(createMaplePuppetDocument())
+    setDoc(getMaple())
     setShowWelcome(false)
-    setStatus('Loaded Maple puppet demo')
+    setStatus('Maple loaded')
     setPlayback((p) => ({ ...p, currentFrame: 0, playing: false }))
     setWarnings([])
-  }, [])
+  }, [setDoc, setPlayback])
 
-  const importFromFile = useCallback(async (file: File) => {
-    setStatus(`Importing ${file.name}…`)
-    try {
-      const result = await importFile(file)
-      setDoc(result.document)
-      setWarnings(result.warnings)
-      setShowWelcome(false)
-      setStatus(`Imported ${file.name}`)
-      setPlayback((p) => ({ ...p, currentFrame: 0, playing: false }))
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e)
-      setWarnings([msg])
-      setStatus(`Import failed: ${msg}`)
-    }
-  }, [])
+  const importFromFile = useCallback(
+    async (file: File) => {
+      setStatus(`Importing ${file.name}…`)
+      try {
+        const { importFile } = await import('../xfl/importXfl')
+        const result = await importFile(file)
+        setDoc(result.document)
+        setWarnings(result.warnings)
+        setShowWelcome(false)
+        setStatus(`Imported ${file.name}`)
+        setPlayback((p) => ({ ...p, currentFrame: 0, playing: false }))
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e)
+        setWarnings([msg])
+        setStatus(`Import failed: ${msg}`)
+      }
+    },
+    [setDoc, setPlayback],
+  )
 
   const saveProject = useCallback(() => {
     downloadJson(doc)
@@ -163,7 +247,7 @@ export function EditorProvider({ children }: { children: ReactNode }) {
       })
       setStatus(`Face/pose frame → ${frame}`)
     },
-    [selection],
+    [selection, setDoc],
   )
 
   const nudgeSelection = useCallback(
@@ -184,7 +268,7 @@ export function EditorProvider({ children }: { children: ReactNode }) {
         return next
       })
     },
-    [selection],
+    [selection, setDoc],
   )
 
   const rotateSelection = useCallback(
@@ -214,7 +298,7 @@ export function EditorProvider({ children }: { children: ReactNode }) {
         return next
       })
     },
-    [selection],
+    [selection, setDoc],
   )
 
   const value: EditorContextValue = {
@@ -244,6 +328,10 @@ export function EditorProvider({ children }: { children: ReactNode }) {
     updateSelectedSymbolFirstFrame,
     nudgeSelection,
     rotateSelection,
+    frameRef,
+    playingRef,
+    drawGenRef,
+    bumpDraw,
   }
 
   return (

@@ -1,4 +1,4 @@
-import { cloneDocument, frameAt } from '../core/document'
+import { frameAt } from '../core/document'
 import { useEditor } from '../store/EditorContext'
 
 const EYE_LABELS = ['Open', 'Happy', 'Wink', 'Surprised']
@@ -18,24 +18,26 @@ export function FacePoseBar() {
   const eyesEl = eyesFr?.elements.find((e) => e.kind === 'symbol')
   const mouthEl = mouthFr?.elements.find((e) => e.kind === 'symbol')
 
-  const setPose = (
-    which: 'eyes' | 'mouth',
-    frame: number,
-  ) => {
+  const setPose = (which: 'eyes' | 'mouth', frame: number) => {
     setDoc((d) => {
-      const next = cloneDocument(d)
-      const h = next.library.symbols['Maple/HeadAssembled']
+      const h = d.library.symbols['Maple/HeadAssembled']
       if (!h) return d
       const layer = h.timeline.layers.find((l) =>
         which === 'eyes' ? /eye/i.test(l.name) : /mouth/i.test(l.name),
       )
       const fr = layer ? frameAt(layer, 0) : null
       const el = fr?.elements.find((e) => e.kind === 'symbol')
-      if (el && el.kind === 'symbol') {
-        el.firstFrame = frame
-        el.loop = 'single frame'
+      if (!el || el.kind !== 'symbol') return d
+      // In-place mutate + shallow doc copy so React sees a new ref without deep clone
+      el.firstFrame = frame
+      el.loop = 'single frame'
+      return {
+        ...d,
+        library: {
+          ...d.library,
+          symbols: { ...d.library.symbols },
+        },
       }
-      return next
     })
     setStatus(
       which === 'eyes'

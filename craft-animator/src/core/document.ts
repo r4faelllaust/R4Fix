@@ -186,34 +186,50 @@ export function elementsAtFrame(
   layer: Layer,
   frameIndex: number,
 ): StageElement[] {
-  const sorted = [...layer.frames].sort((a, b) => a.index - b.index)
   const current = frameAt(layer, frameIndex)
   if (!current) return []
-
-  if (current.tweenType !== 'motion') {
+  if (current.tweenType !== 'motion' || !current.elements.length) {
     return current.elements
   }
 
-  const next = sorted.find((f) => f.index > current.index)
-  if (!next || !current.elements.length) return current.elements
+  // Frames are authored in index order — avoid per-draw sort
+  const frames = layer.frames
+  let next: Frame | undefined
+  for (let i = 0; i < frames.length; i++) {
+    const f = frames[i]!
+    if (f.index > current.index) {
+      next = f
+      break
+    }
+  }
+  if (!next) return current.elements
 
   const span = next.index - current.index
   if (span <= 0) return current.elements
-  const t = Math.min(1, Math.max(0, (frameIndex - current.index) / span))
-
-  return current.elements.map((el, i) => {
+  const t = (frameIndex - current.index) / span
+  const out: StageElement[] = new Array(current.elements.length)
+  for (let i = 0; i < current.elements.length; i++) {
+    const el = current.elements[i]!
     const target = next.elements[i] ?? next.elements[0]
-    if (!target) return el
-    const m = {
-      a: lerp(el.matrix.a, target.matrix.a, t),
-      b: lerp(el.matrix.b, target.matrix.b, t),
-      c: lerp(el.matrix.c, target.matrix.c, t),
-      d: lerp(el.matrix.d, target.matrix.d, t),
-      tx: lerp(el.matrix.tx, target.matrix.tx, t),
-      ty: lerp(el.matrix.ty, target.matrix.ty, t),
+    if (!target) {
+      out[i] = el
+      continue
     }
-    return { ...el, matrix: m, id: el.id }
-  })
+    const a = el.matrix
+    const b = target.matrix
+    out[i] = {
+      ...el,
+      matrix: {
+        a: lerp(a.a, b.a, t),
+        b: lerp(a.b, b.b, t),
+        c: lerp(a.c, b.c, t),
+        d: lerp(a.d, b.d, t),
+        tx: lerp(a.tx, b.tx, t),
+        ty: lerp(a.ty, b.ty, t),
+      },
+    }
+  }
+  return out
 }
 
 export function cloneDocument(doc: Document): Document {

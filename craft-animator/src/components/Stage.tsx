@@ -17,7 +17,17 @@ export function Stage() {
     setSelectedLayerId,
     nudgeSelection,
     rotateSelection,
+    frameRef,
+    playingRef,
+    drawGenRef,
   } = useEditor()
+
+  const docRef = useRef(doc)
+  const viewRef = useRef(view)
+  const onionRef = useRef(playback.onionSkin)
+  docRef.current = doc
+  viewRef.current = view
+  onionRef.current = playback.onionSkin
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -25,31 +35,78 @@ export function Stage() {
     const parent = canvas.parentElement
     if (!parent) return
 
-    const resize = () => {
-      const dpr = window.devicePixelRatio || 1
+    let raf = 0
+    let lastFrame = -1
+    let lastGen = -1
+    let lastZoom = -1
+    let lastPanX = NaN
+    let lastPanY = NaN
+    let dprCached = 0
+    let wCached = 0
+    let hCached = 0
+
+    const ensureSize = (ctx: CanvasRenderingContext2D) => {
+      const dpr = Math.min(window.devicePixelRatio || 1, 1.5)
       const w = parent.clientWidth
       const h = parent.clientHeight
-      canvas.width = Math.floor(w * dpr)
-      canvas.height = Math.floor(h * dpr)
-      canvas.style.width = `${w}px`
-      canvas.style.height = `${h}px`
-      const ctx = canvas.getContext('2d')
-      if (!ctx) return
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
-      drawDocument(ctx, doc, playback.currentFrame, view, {
-        onionSkin: playback.onionSkin,
-      })
+      if (dpr !== dprCached || w !== wCached || h !== hCached) {
+        dprCached = dpr
+        wCached = w
+        hCached = h
+        canvas.width = Math.floor(w * dpr)
+        canvas.height = Math.floor(h * dpr)
+        canvas.style.width = `${w}px`
+        canvas.style.height = `${h}px`
+        ;(ctx as CanvasRenderingContext2D & { __dpr?: number }).__dpr = dpr
+        lastFrame = -1
+      }
     }
 
-    resize()
-    const ro = new ResizeObserver(resize)
+    const tick = () => {
+      const ctx = canvas.getContext('2d', { alpha: false })
+      if (ctx) {
+        ensureSize(ctx)
+        const frame = frameRef.current
+        const gen = drawGenRef.current
+        const v = viewRef.current
+        const dirty =
+          frame !== lastFrame ||
+          gen !== lastGen ||
+          v.zoom !== lastZoom ||
+          v.panX !== lastPanX ||
+          v.panY !== lastPanY
+        if (dirty) {
+          drawDocument(ctx, docRef.current, frame, v, {
+            onionSkin: onionRef.current,
+            fast: playingRef.current,
+          })
+          lastFrame = frame
+          lastGen = gen
+          lastZoom = v.zoom
+          lastPanX = v.panX
+          lastPanY = v.panY
+        }
+      }
+      raf = requestAnimationFrame(tick)
+    }
+
+    raf = requestAnimationFrame(tick)
+    const ro = new ResizeObserver(() => {
+      lastFrame = -1
+    })
     ro.observe(parent)
-    return () => ro.disconnect()
-  }, [doc, playback.currentFrame, playback.onionSkin, view])
+    return () => {
+      cancelAnimationFrame(raf)
+      ro.disconnect()
+    }
+  }, [frameRef, playingRef, drawGenRef])
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement)
+      if (
+        e.target instanceof HTMLInputElement ||
+        e.target instanceof HTMLTextAreaElement
+      )
         return
       const step = e.shiftKey ? 10 : 1
       if (e.key === 'ArrowLeft') {
@@ -68,6 +125,9 @@ export function Stage() {
         rotateSelection(-5)
       } else if (e.key === ']') {
         rotateSelection(5)
+      } else if (e.key === ' ') {
+        e.preventDefault()
+        window.dispatchEvent(new CustomEvent('craft-toggle-play'))
       }
     }
     window.addEventListener('keydown', onKey)
@@ -80,10 +140,11 @@ export function Stage() {
     const rect = canvas.getBoundingClientRect()
     const x = (clientX - rect.left - view.panX) / view.zoom
     const y = (clientY - rect.top - view.panY) / view.zoom
+    const frame = frameRef.current
 
     for (const layer of doc.timeline.layers) {
       if (!layer.visible || layer.locked) continue
-      const fr = frameAt(layer, playback.currentFrame)
+      const fr = frameAt(layer, frame)
       if (!fr) continue
       for (let i = fr.elements.length - 1; i >= 0; i--) {
         const el = fr.elements[i]
@@ -101,7 +162,11 @@ export function Stage() {
         }
       }
     }
-    setSelection({ layerId: selectedLayerId, elementIds: [], symbolEditPath: [] })
+    setSelection({
+      layerId: selectedLayerId,
+      elementIds: [],
+      symbolEditPath: [],
+    })
   }
 
   return (
@@ -114,7 +179,10 @@ export function Stage() {
           if (tool === 'zoom') {
             setView((v) => ({
               ...v,
-              zoom: Math.min(4, Math.max(0.2, v.zoom * (e.altKey ? 0.8 : 1.25))),
+              zoom: Math.min(
+                4,
+                Math.max(0.2, v.zoom * (e.altKey ? 0.8 : 1.25)),
+              ),
             }))
             return
           }
@@ -139,7 +207,7 @@ export function Stage() {
       />
       {selection.elementIds.length > 0 && (
         <div className="stage-hint">
-          Selected · arrows nudge · [ ] rotate · use Properties for face frames
+          Selected · arrows nudge · [ ] rotate · Space play/pause
         </div>
       )}
     </div>
