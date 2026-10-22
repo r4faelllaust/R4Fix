@@ -1,0 +1,80 @@
+name: Build Craft Animator Desktop
+
+on:
+  push:
+    branches: [main, 'cursor/**']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: craft-animator
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: craft-animator/package-lock.json
+      - run: npm ci
+      - run: npm run dist:win
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Craft-Animator-Windows
+          path: |
+            craft-animator/release/*.exe
+            craft-animator/release/Craft-Animator-Portable.exe
+          if-no-files-found: warn
+
+  linux:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: craft-animator
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: craft-animator/package-lock.json
+      - run: npm ci
+      - run: npm run dist:linux
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Craft-Animator-Linux
+          path: craft-animator/release/*.AppImage
+          if-no-files-found: warn
+
+  mac:
+    runs-on: macos-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: craft-animator
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: craft-animator/package-lock.json
+      - run: npm ci
+      - run: npm run dist:mac
+      - name: Zip Mac app for download
+        run: |
+          cd release
+          if [ -d mac-arm64 ]; then ditto -c -k --sequesterRsrc --keepParent mac-arm64 Craft-Animator-Mac.zip
+          elif [ -d mac ]; then ditto -c -k --sequesterRsrc --keepParent mac Craft-Animator-Mac.zip
+          else ls -la; exit 1
+          fi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Craft-Animator-Mac
+          path: craft-animator/release/Craft-Animator-Mac.zip
+          if-no-files-found: warn

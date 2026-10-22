@@ -1,0 +1,37 @@
+========================================
+  CRAFT ANIMATOR — OPEN ERIC-STYLE RIGS
+========================================
+
+OPEN A RIG (easiest)
+--------------------
+1. Launch Craft Animator
+2. Click the big blue "Open Rig" button
+   (or drag your .fla onto the window)
+3. Pick your cartman1235 / DeviantArt .fla file
+4. Use the "Rig / Poses" panel on the right to
+   scrub Eyes / Mouth frames (same idea as Animate)
+
+
+WHERE TO GET THE APP ON YOUR DESKTOP
+------------------------------------
+https://github.com/r4faelllaust/R4Fix/actions
+
+Download the artifact for your OS, unzip,
+put the .exe / .AppImage / .app on your Desktop,
+double-click.
+
+
+TIPS FOR RIG AUTHORS
+--------------------
+• Prefer the .fla download (not only the tiny .xfl marker)
+• If you saved Uncompressed XFL: zip the whole folder
+  that contains DOMDocument.xml + LIBRARY/
+• After import, click Library items to place extras on stage
+
+
+KEYBOARD
+--------
+Space     play / pause
+Arrows    nudge selection
+[ ]       rotate
+Ctrl+O    Open Rig

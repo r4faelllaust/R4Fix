@@ -1,0 +1,49 @@
+:root {
+  color-scheme: dark;
+  --bg-0: #2d2d2d;
+  --bg-1: #3a3a3a;
+  --bg-2: #404040;
+  --bg-3: #4a4a4a;
+  --line: #222;
+  --text: #e8e8e8;
+  --muted: #999;
+  --accent: #f0a05a;
+  --accent-2: #2d6ca8;
+  --danger: #e86b6b;
+  --ok: #8fdf8f;
+  --stage-vignette: #535353;
+  --font-ui: 'Outfit', 'Segoe UI', Tahoma, sans-serif;
+  --font-brand: 'Syne', 'Outfit', sans-serif;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: var(--bg-0);
+  color: var(--text);
+  font-family: var(--font-ui);
+  font-size: 13px;
+}
+
+button,
+input {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+::selection {
+  background: color-mix(in oklab, var(--accent) 45%, transparent);
+}
