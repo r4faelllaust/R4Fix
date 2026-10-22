@@ -1,7 +1,7 @@
 {
   "name": "craft-animator",
   "private": true,
-  "version": "0.2.0",
+  "version": "0.3.0",
   "type": "module",
   "description": "Craft Animator — open-source Adobe Animate–style 2D animation with FLA/XFL rig import",
   "main": "electron/main.cjs",
@@ -13,6 +13,7 @@
     "lint": "oxlint",
     "preview": "vite preview",
     "test:import": "node scripts/make-sample-fla.mjs && node scripts/smoke-import.mjs",
+    "fixture:eric": "node scripts/make-sample-fla.mjs",
     "electron:dev": "concurrently -k \"vite --port 5173 --strictPort\" \"wait-on http://127.0.0.1:5173 && cross-env VITE_DEV_SERVER_URL=http://127.0.0.1:5173 electron .\"",
     "electron:start": "npm run build && electron .",
     "desktop": "npm run build && electron .",

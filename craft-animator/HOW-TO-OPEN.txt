@@ -1,55 +1,37 @@
 ========================================
-  GET CRAFT ANIMATOR ON YOUR DESKTOP
+  CRAFT ANIMATOR — OPEN ERIC-STYLE RIGS
 ========================================
 
-Ignore "cd" and "npm" — you do not need them.
+OPEN A RIG (easiest)
+--------------------
+1. Launch Craft Animator
+2. Click the big blue "Open Rig" button
+   (or drag your .fla onto the window)
+3. Pick your cartman1235 / DeviantArt .fla file
+4. Use the "Rig / Poses" panel on the right to
+   scrub Eyes / Mouth frames (same idea as Animate)
 
 
-STEP 1 — Wait for the build (GitHub)
+WHERE TO GET THE APP ON YOUR DESKTOP
 ------------------------------------
-After this update is on GitHub, open:
+https://github.com/r4faelllaust/R4Fix/actions
 
-  https://github.com/r4faelllaust/R4Fix/actions
-
-1. Click the latest "Build Craft Animator Desktop" run
-2. Wait until it is green / finished
-3. Scroll to Artifacts at the bottom
-4. Download the one for your computer:
-
-   • Windows → Craft-Animator-Windows
-   • Mac     → Craft-Animator-Mac
-   • Linux   → Craft-Animator-Linux
+Download the artifact for your OS, unzip,
+put the .exe / .AppImage / .app on your Desktop,
+double-click.
 
 
-STEP 2 — Put it on YOUR Desktop
--------------------------------
-1. Unzip the download
-2. Drag the app to your Desktop:
-
-   Windows:  Craft-Animator-Portable.exe
-             (or the Setup .exe)
-
-   Linux:    Craft-Animator-….AppImage
-             (right-click → Allow running, then double-click)
-
-   Mac:      open the folder and run Craft Animator
+TIPS FOR RIG AUTHORS
+--------------------
+• Prefer the .fla download (not only the tiny .xfl marker)
+• If you saved Uncompressed XFL: zip the whole folder
+  that contains DOMDocument.xml + LIBRARY/
+• After import, click Library items to place extras on stage
 
 
-STEP 3 — Double-click
----------------------
-A launcher opens (like a game client).
-Press the big blue PLAY button.
-
-
-IF YOU CANNOT FIND ACTIONS
---------------------------
-Reply in chat: "I use Windows" or "I use Mac" or "I use Linux"
-and ask: "send me the download link when the build finishes"
-
-
-INSIDE THE APP
---------------
-• Play on launcher = Maple puppet demo
-• Eyes / Mouth buttons = face poses (like Animate rigs)
-• Space = play / pause timeline
-• File → Open = import .fla / .xfl puppets
+KEYBOARD
+--------
+Space     play / pause
+Arrows    nudge selection
+[ ]       rotate
+Ctrl+O    Open Rig

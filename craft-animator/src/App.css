@@ -41,10 +41,11 @@
 
 .right-dock {
   display: grid;
-  grid-template-rows: 1.1fr 0.7fr 1.2fr;
+  grid-template-rows: 0.9fr 1fr 0.55fr 1fr;
   min-height: 0;
   background: #3a3a3a;
   border-left: 1px solid #222;
+  overflow: hidden;
 }
 
 /* —— Menubar (Animate) —— */
@@ -146,8 +147,23 @@
   font-family: inherit;
 }
 
-.doc-tab {
+.open-rig-btn {
   margin-left: auto;
+  border: 1px solid #1a4f80;
+  background: linear-gradient(180deg, #3d7ab8, #2d6ca8);
+  color: #fff;
+  font-weight: 700;
+  padding: 2px 12px;
+  height: 22px;
+  border-radius: 2px;
+}
+
+.open-rig-btn:hover {
+  filter: brightness(1.08);
+}
+
+.doc-tab {
+  margin-left: 8px;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -843,6 +859,89 @@
   border-top: 1px solid #222;
   color: #777;
   font-size: 10px;
+}
+
+.rig-panel-body {
+  overflow: auto;
+  padding: 6px 8px 10px;
+}
+
+.rig-pose-block {
+  margin-bottom: 10px;
+  padding: 6px;
+  border: 1px solid #2a2a2a;
+  border-radius: 3px;
+  background: #343434;
+}
+
+.rig-pose-block.on {
+  border-color: #2d6ca8;
+}
+
+.rig-pose-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.rig-pose-title strong {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
+}
+
+.kind-tag {
+  font-size: 9px;
+  text-transform: uppercase;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: 2px;
+  background: #2a2a2a;
+  color: #aaa;
+}
+
+.kind-tag.eyes {
+  color: #7ec0ee;
+}
+
+.kind-tag.mouth {
+  color: #f0a05a;
+}
+
+.kind-tag.hand {
+  color: #8fdf8f;
+}
+
+.drop-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  display: grid;
+  place-items: center;
+  background: rgba(10, 12, 16, 0.72);
+  pointer-events: none;
+}
+
+.drop-card {
+  border: 2px dashed #2d6ca8;
+  background: #2a2a2a;
+  padding: 28px 36px;
+  border-radius: 6px;
+  text-align: center;
+}
+
+.drop-card strong {
+  display: block;
+  font-size: 18px;
+  margin-bottom: 6px;
+}
+
+.drop-card p {
+  margin: 0;
+  color: #aaa;
 }
 
 @media (max-width: 900px) {

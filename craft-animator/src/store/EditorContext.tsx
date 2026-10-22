@@ -45,6 +45,7 @@ type EditorContextValue = {
   newBlank: () => void
   loadMaple: () => void
   importFromFile: (file: File) => Promise<void>
+  openRigPicker: () => Promise<void>
   saveProject: () => void
   totalFrames: number
   selectedLayerId: string | null
@@ -203,6 +204,19 @@ export function EditorProvider({ children }: { children: ReactNode }) {
     setWarnings([])
   }, [setDoc, setPlayback])
 
+  const fitImported = useCallback(
+    (width: number, height: number) => {
+      // Fit stage into typical workspace (~1100x500 stage area)
+      const zoom = Math.min(1.1, Math.max(0.35, Math.min(1050 / width, 480 / height)))
+      setView({
+        zoom,
+        panX: Math.max(24, (1100 - width * zoom) / 2),
+        panY: Math.max(16, (500 - height * zoom) / 2),
+      })
+    },
+    [],
+  )
+
   const importFromFile = useCallback(
     async (file: File) => {
       setStatus(`Importing ${file.name}…`)
@@ -212,7 +226,8 @@ export function EditorProvider({ children }: { children: ReactNode }) {
         setDoc(result.document)
         setWarnings(result.warnings)
         setShowWelcome(false)
-        setStatus(`Imported ${file.name}`)
+        fitImported(result.document.width, result.document.height)
+        setStatus(`Rig loaded: ${file.name}`)
         setPlayback((p) => ({ ...p, currentFrame: 0, playing: false }))
       } catch (e) {
         const msg = e instanceof Error ? e.message : String(e)
@@ -220,8 +235,32 @@ export function EditorProvider({ children }: { children: ReactNode }) {
         setStatus(`Import failed: ${msg}`)
       }
     },
-    [setDoc, setPlayback],
+    [setDoc, setPlayback, fitImported],
   )
+
+  const openRigPicker = useCallback(async () => {
+    const api = window.craftAnimator
+    if (api?.openRigDialog) {
+      const picked = await api.openRigDialog()
+      if (!picked) return
+      const file = new File([picked.data], picked.name)
+      await importFromFile(file)
+      return
+    }
+    // Browser / always-works file picker
+    await new Promise<void>((resolve) => {
+      const input = document.createElement('input')
+      input.type = 'file'
+      input.accept = '.fla,.xfl,.zip,.json,.caproj,.caproj.json'
+      input.onchange = () => {
+        const f = input.files?.[0]
+        if (f) void importFromFile(f).finally(resolve)
+        else resolve()
+      }
+      input.addEventListener('cancel', () => resolve())
+      input.click()
+    })
+  }, [importFromFile])
 
   const saveProject = useCallback(() => {
     downloadJson(doc)
@@ -321,6 +360,7 @@ export function EditorProvider({ children }: { children: ReactNode }) {
     newBlank,
     loadMaple,
     importFromFile,
+    openRigPicker,
     saveProject,
     totalFrames,
     selectedLayerId: selectedLayerId ?? doc.timeline.layers[0]?.id ?? null,

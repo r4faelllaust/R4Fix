@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { createBounceLogoDocument } from '../rigs/extraScenes'
 import { useEditor } from '../store/EditorContext'
 
@@ -9,6 +9,7 @@ export function Launcher() {
     loadMaple,
     newBlank,
     importFromFile,
+    openRigPicker,
     setShowWelcome,
     setDoc,
     setPlayback,
@@ -16,6 +17,15 @@ export function Launcher() {
   } = useEditor()
   const inputRef = useRef<HTMLInputElement>(null)
   const [busy, setBusy] = useState(false)
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setShowWelcome(false)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [setShowWelcome])
+
   if (!showWelcome) return null
 
   return (
@@ -36,14 +46,26 @@ export function Launcher() {
           disabled={busy}
           onClick={() => {
             setBusy(true)
-            loadMaple()
+            void openRigPicker().finally(() => setBusy(false))
           }}
         >
-          {busy ? 'Starting…' : 'Play'}
+          {busy ? 'Opening…' : 'Open Rig'}
         </button>
-        <p className="launcher-hint">Opens the Maple puppet demo — ready to animate</p>
+        <p className="launcher-hint">
+          Open a .fla puppet (Eric-style DeviantArt rigs) — or drag the file onto the window
+        </p>
 
         <div className="launcher-secondary">
+          <button
+            type="button"
+            className="launcher-btn"
+            onClick={() => {
+              setBusy(true)
+              loadMaple()
+            }}
+          >
+            Demo: Maple puppet
+          </button>
           <button
             type="button"
             className="launcher-btn"
@@ -65,13 +87,6 @@ export function Launcher() {
             }}
           >
             New blank file
-          </button>
-          <button
-            type="button"
-            className="launcher-btn"
-            onClick={() => inputRef.current?.click()}
-          >
-            Open FLA / XFL / project…
           </button>
         </div>
 

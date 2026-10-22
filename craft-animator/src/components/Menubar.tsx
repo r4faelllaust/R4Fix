@@ -9,6 +9,7 @@ export function Menubar() {
     newBlank,
     loadMaple,
     importFromFile,
+    openRigPicker,
     saveProject,
     setShowWelcome,
     playback,
@@ -25,7 +26,7 @@ export function Menubar() {
       label: 'File',
       items: [
         { label: 'New', shortcut: 'Ctrl+N', action: newBlank },
-        { label: 'Open…', shortcut: 'Ctrl+O', action: () => inputRef.current?.click() },
+        { label: 'Open Rig…', shortcut: 'Ctrl+O', action: () => void openRigPicker() },
         { label: 'Open Maple Demo', action: loadMaple },
         { label: 'Close', sep: true, action: () => setShowWelcome(true) },
         { label: 'Save As…', shortcut: 'Ctrl+S', action: saveProject },
@@ -163,8 +164,11 @@ export function Menubar() {
           </div>
         ))}
       </nav>
+      <button type="button" className="open-rig-btn" onClick={() => void openRigPicker()}>
+        Open Rig
+      </button>
       <div className="doc-tab">
-        <span className="doc-tab-label">{doc.name}.caproj</span>
+        <span className="doc-tab-label">{doc.name}</span>
         <span className="doc-tab-meta">
           {doc.width}×{doc.height} · {doc.frameRate} fps
         </span>

@@ -1,5 +1,6 @@
-const { app, BrowserWindow, shell, Menu } = require('electron')
+const { app, BrowserWindow, shell, Menu, dialog, ipcMain } = require('electron')
 const path = require('path')
+const fs = require('fs')
 
 const isDev = !app.isPackaged
 
@@ -35,7 +36,33 @@ function createWindow() {
     shell.openExternal(url)
     return { action: 'deny' }
   })
+
+  // Open .fla dropped onto the app icon / argv
+  const openPath = process.argv.find((a) => /\.(fla|zip|xfl|json|caproj)$/i.test(a))
+  if (openPath) {
+    win.webContents.on('did-finish-load', () => {
+      win.webContents.send('open-path', openPath)
+    })
+  }
 }
+
+ipcMain.handle('dialog:openRig', async () => {
+  const result = await dialog.showOpenDialog({
+    title: 'Open Animate Rig',
+    filters: [
+      { name: 'Animate / Craft', extensions: ['fla', 'zip', 'xfl', 'json', 'caproj'] },
+      { name: 'All Files', extensions: ['*'] },
+    ],
+    properties: ['openFile'],
+  })
+  if (result.canceled || !result.filePaths[0]) return null
+  const filePath = result.filePaths[0]
+  const buf = fs.readFileSync(filePath)
+  return {
+    name: path.basename(filePath),
+    data: buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength),
+  }
+})
 
 app.whenReady().then(() => {
   Menu.setApplicationMenu(null)

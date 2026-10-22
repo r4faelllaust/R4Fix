@@ -1,9 +1,11 @@
 import { ColorPanel } from './components/ColorPanel'
+import { DropOverlay } from './components/DropOverlay'
 import { FacePoseBar } from './components/FacePoseBar'
 import { Launcher } from './components/Launcher'
 import { LibraryPanel } from './components/Library'
 import { Menubar } from './components/Menubar'
 import { PropertiesPanel } from './components/Properties'
+import { RigPanel } from './components/RigPanel'
 import { Stage } from './components/Stage'
 import { StatusBar } from './components/StatusBar'
 import { Timeline } from './components/Timeline'
@@ -12,7 +14,8 @@ import { EditorProvider, useEditor } from './store/EditorContext'
 import './App.css'
 
 function Workspace() {
-  const { showWelcome } = useEditor()
+  const { showWelcome, doc } = useEditor()
+  const isMaple = !!doc.library.symbols['Maple/HeadAssembled']
   return (
     <div className="app-shell">
       <Menubar />
@@ -20,19 +23,21 @@ function Workspace() {
         <Toolbar />
         <div className="center-column">
           <div className="stage-stack">
-            <FacePoseBar />
+            {isMaple && <FacePoseBar />}
             <Stage />
           </div>
           <Timeline />
         </div>
         <aside className="right-dock">
           <PropertiesPanel />
+          <RigPanel />
           <ColorPanel />
           <LibraryPanel />
         </aside>
       </div>
       <StatusBar />
       <Launcher />
+      <DropOverlay />
     </div>
   )
 }

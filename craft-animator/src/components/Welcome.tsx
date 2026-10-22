@@ -9,11 +9,7 @@ export function Welcome() {
   useEffect(() => {
     if (!showWelcome) return
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        setShowWelcome(false)
-      } else if (e.key === 'Enter') {
-        loadMaple()
-      }
+      if (e.key === 'Escape') setShowWelcome(false)
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
