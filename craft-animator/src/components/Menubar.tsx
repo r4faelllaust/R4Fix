@@ -1,7 +1,19 @@
 import { useRef, useState } from 'react'
 import { useEditor } from '../store/EditorContext'
 
-type MenuId = 'file' | 'edit' | 'view' | 'insert' | 'modify' | 'control' | 'window' | 'help' | null
+type MenuId =
+  | 'file'
+  | 'edit'
+  | 'view'
+  | 'insert'
+  | 'modify'
+  | 'text'
+  | 'commands'
+  | 'control'
+  | 'debug'
+  | 'window'
+  | 'help'
+  | null
 
 export function Menubar() {
   const {
@@ -80,8 +92,35 @@ export function Menubar() {
       id: 'modify',
       label: 'Modify',
       items: [
-        { label: 'Transform ▸ Free Transform', action: () => setTool('freeTransform') },
         { label: 'Document…', action: () => {} },
+        { label: 'Convert to Symbol…', shortcut: 'F8', action: () => {} },
+        {
+          label: 'Transform ▸ Free Transform',
+          sep: true,
+          action: () => setTool('freeTransform'),
+        },
+        { label: 'Transform ▸ Scale and Rotate…', action: () => {} },
+        { label: 'Arrange ▸ Bring to Front', action: () => {} },
+        { label: 'Align ▸ Left', action: () => {} },
+      ],
+    },
+    {
+      id: 'text',
+      label: 'Text',
+      items: [
+        { label: 'Font', action: () => setTool('text') },
+        { label: 'Size', action: () => {} },
+        { label: 'Style ▸ Bold', action: () => {} },
+        { label: 'Align ▸ Left', action: () => {} },
+      ],
+    },
+    {
+      id: 'commands',
+      label: 'Commands',
+      items: [
+        { label: 'Manage Saved Commands…', action: () => {} },
+        { label: 'Get More Commands…', action: () => {} },
+        { label: 'Run Command…', action: () => {} },
       ],
     },
     {
@@ -95,31 +134,58 @@ export function Menubar() {
         },
         {
           label: 'Rewind',
-          action: () => setPlayback((p) => ({ ...p, currentFrame: 0, playing: false })),
+          action: () =>
+            setPlayback((p) => ({ ...p, currentFrame: 0, playing: false })),
+        },
+        {
+          label: 'Go To End',
+          action: () => {},
         },
         {
           label: 'Loop Playback',
+          sep: true,
           action: () => setPlayback((p) => ({ ...p, loop: !p.loop })),
         },
+        {
+          label: 'Test Movie',
+          shortcut: 'Ctrl+Enter',
+          action: () => setPlayback((p) => ({ ...p, playing: true, currentFrame: 0 })),
+        },
+      ],
+    },
+    {
+      id: 'debug',
+      label: 'Debug',
+      items: [
+        { label: 'Debug Movie', action: () => {} },
+        { label: 'Continue', action: () => {} },
+        { label: 'End Debug Session', action: () => {} },
       ],
     },
     {
       id: 'window',
       label: 'Window',
       items: [
-        { label: 'Timeline', action: () => {} },
+        { label: 'Timeline', shortcut: 'Ctrl+Alt+T', action: () => {} },
+        { label: 'Toolbars ▸ Controller', action: () => {} },
         { label: 'Tools', action: () => {} },
-        { label: 'Properties', action: () => {} },
-        { label: 'Library', action: () => {} },
+        { label: 'Properties', shortcut: 'Ctrl+F3', action: () => {} },
+        { label: 'Library', shortcut: 'Ctrl+L', action: () => {} },
+        { label: 'Color', action: () => {} },
+        { label: 'Align', action: () => {} },
+        { label: 'Transform', action: () => {} },
+        { label: 'Actions', shortcut: 'F9', action: () => {} },
       ],
     },
     {
       id: 'help',
       label: 'Help',
       items: [
+        { label: 'Animate Help…', action: () => setShowWelcome(true) },
         { label: 'About Craft Animator', action: () => setShowWelcome(true) },
         {
-          label: 'Keyboard: Space = Play · Arrows = Nudge',
+          label: 'Keyboard Shortcuts',
+          sep: true,
           action: () => {},
         },
       ],
@@ -167,12 +233,9 @@ export function Menubar() {
       <button type="button" className="open-rig-btn" onClick={() => void openRigPicker()}>
         Open Rig
       </button>
-      <div className="doc-tab">
-        <span className="doc-tab-label">{doc.name}</span>
-        <span className="doc-tab-meta">
-          {doc.width}×{doc.height} · {doc.frameRate} fps
-        </span>
-      </div>
+      <span className="menubar-spacer" />
+      {/* doc used for future multi-doc tabs */}
+      <span className="sr-only">{doc.name}</span>
       <input
         ref={inputRef}
         type="file"

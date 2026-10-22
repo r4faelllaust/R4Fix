@@ -1,7 +1,7 @@
 {
   "name": "craft-animator",
   "private": true,
-  "version": "0.3.0",
+  "version": "0.4.0",
   "type": "module",
   "description": "Craft Animator — open-source Adobe Animate–style 2D animation with FLA/XFL rig import",
   "main": "electron/main.cjs",

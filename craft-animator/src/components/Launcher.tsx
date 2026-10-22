@@ -105,7 +105,7 @@ export function Launcher() {
         />
 
         <div className="launcher-footer">
-          <span>v0.2 · Adobe Animate–style timeline &amp; symbols</span>
+          <span>v0.3 · Open .fla rigs · pose panel</span>
           <span>Works offline · no account</span>
         </div>
       </div>
