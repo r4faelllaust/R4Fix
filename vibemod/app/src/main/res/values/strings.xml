@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">VibeMod</string>
+    <string name="nav_feed">Feed</string>
+    <string name="nav_discover">Discover</string>
+    <string name="nav_library">Library</string>
+    <string name="nav_mod">Mod</string>
+    <string name="nav_profile">Profile</string>
+    <string name="demo_label">Demo / local only</string>
+    <string name="badge_decoration_disclaimer">Custom decoration only — not official verification</string>
+    <string name="privacy_summary">VibeMod stores preferences and video metadata on this device only. No accounts, cloud sync, or third-party tracking.</string>
+</resources>
