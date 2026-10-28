@@ -1,0 +1,61 @@
+name: Build VibeMod Desktop
+
+on:
+  push:
+    paths:
+      - "vibemod-desktop/**"
+      - ".github/workflows/build-desktop-windows.yml"
+  pull_request:
+    paths:
+      - "vibemod-desktop/**"
+  workflow_dispatch:
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: vibemod-desktop
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - name: Unit tests
+        run: .\gradlew.bat test --stacktrace
+      - name: Package Windows EXE
+        run: .\gradlew.bat packageExe --stacktrace
+        continue-on-error: true
+      - name: Package Windows MSI
+        run: .\gradlew.bat packageMsi --stacktrace
+        continue-on-error: true
+      - name: Create portable zip (always)
+        shell: pwsh
+        run: |
+          .\gradlew.bat createDistributable --stacktrace
+          Compress-Archive -Path "build\compose\binaries\main\app\*" -DestinationPath "VibeMod-windows-portable.zip" -Force
+      - name: Upload Windows installers
+        uses: actions/upload-artifact@v4
+        with:
+          name: VibeMod-windows
+          path: |
+            vibemod-desktop/VibeMod-windows-portable.zip
+            vibemod-desktop/build/compose/binaries/main/exe/**
+            vibemod-desktop/build/compose/binaries/main/msi/**
+
+  linux-smoke:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: vibemod-desktop
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - name: Unit tests + compile
+        run: |
+          chmod +x gradlew
+          ./gradlew test compileKotlin --stacktrace
