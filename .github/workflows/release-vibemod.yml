@@ -1,0 +1,121 @@
+name: Release VibeMod downloads
+
+# Builds Android APK + Windows portable zip and publishes a GitHub Release
+# with direct download links (easiest for phones/laptops).
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag (e.g. vibemod-v1.0.0)"
+        required: true
+        default: "vibemod-v1.0.0"
+  push:
+    branches: [main, "cursor/vibemod-android-app-cec7"]
+    paths:
+      - "vibemod/**"
+      - "vibemod-desktop/**"
+      - ".github/workflows/release-vibemod.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  android-apk:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: vibemod
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: ""
+      - name: Install SDK packages
+        run: |
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+      - run: chmod +x gradlew
+      - run: ./gradlew :app:assembleDebug --stacktrace
+      - name: Rename APK for download
+        run: |
+          mkdir -p ../dist
+          cp app/build/outputs/apk/debug/app-debug.apk ../dist/VibeMod-android-debug.apk
+          ls -lh ../dist/VibeMod-android-debug.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: VibeMod-android-debug
+          path: dist/VibeMod-android-debug.apk
+          if-no-files-found: error
+
+  windows-desktop:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: vibemod-desktop
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - name: Build portable Windows app
+        shell: pwsh
+        run: |
+          .\gradlew.bat createDistributable --stacktrace
+          New-Item -ItemType Directory -Force -Path ..\dist | Out-Null
+          Compress-Archive -Path "build\compose\binaries\main\app\*" -DestinationPath "..\dist\VibeMod-windows-portable.zip" -Force
+      - uses: actions/upload-artifact@v4
+        with:
+          name: VibeMod-windows-portable
+          path: dist/VibeMod-windows-portable.zip
+          if-no-files-found: error
+
+  publish-release:
+    needs: [android-apk, windows-desktop]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: release-assets
+      - name: Stage assets
+        run: |
+          mkdir -p out
+          find release-assets -type f -print
+          cp release-assets/VibeMod-android-debug/VibeMod-android-debug.apk out/
+          cp release-assets/VibeMod-windows-portable/VibeMod-windows-portable.zip out/
+          ls -lh out/
+      - name: Resolve tag
+        id: tag
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "tag=${{ github.event.inputs.tag }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "tag=vibemod-latest" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.tag.outputs.tag }}
+          name: VibeMod ${{ steps.tag.outputs.tag }}
+          body: |
+            ## Downloads
+            - **Android APK (debug):** `VibeMod-android-debug.apk` — install on emulator or phone (allow unknown apps)
+            - **Windows portable:** `VibeMod-windows-portable.zip` — unzip and run
+
+            Application id (debug): `com.example.vibemod.debug`
+
+            Not affiliated with TikTok.
+          files: |
+            out/VibeMod-android-debug.apk
+            out/VibeMod-windows-portable.zip
+          draft: false
+          prerelease: true
+          make_latest: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

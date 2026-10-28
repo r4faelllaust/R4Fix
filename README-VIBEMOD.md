@@ -2,11 +2,14 @@
 
 Original local-first short-video apps — **not** a TikTok mod.
 
+## Easy downloads
+→ **[DOWNLOAD.md](DOWNLOAD.md)** (Android APK + Windows zip)
+
 | Platform | Path | Download |
 |----------|------|----------|
-| Android | [`vibemod/`](vibemod/) | Debug APK via Actions / `vibemod/app/build/outputs/apk/debug/app-debug.apk` |
-| Windows / Desktop | [`vibemod-desktop/`](vibemod-desktop/) | Actions workflow **Build VibeMod Desktop** (EXE/MSI on `windows-latest`) |
+| Android | [`vibemod/`](vibemod/) | [Releases](https://github.com/r4faelllaust/R4Fix/releases) → `VibeMod-android-debug.apk` |
+| Windows | [`vibemod-desktop/`](vibemod-desktop/) | [Releases](https://github.com/r4faelllaust/R4Fix/releases) → `VibeMod-windows-portable.zip` |
 
-- Android emulator guide (Windows PC, S24-like AVD): [`vibemod/EMULATOR_WINDOWS.md`](vibemod/EMULATOR_WINDOWS.md)
+- Emulator guide: [`vibemod/EMULATOR_WINDOWS.md`](vibemod/EMULATOR_WINDOWS.md)
 - Android README: [`vibemod/README.md`](vibemod/README.md)
 - Desktop README: [`vibemod-desktop/README.md`](vibemod-desktop/README.md)

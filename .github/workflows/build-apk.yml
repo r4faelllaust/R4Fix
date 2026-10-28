@@ -36,8 +36,14 @@ jobs:
         run: ./gradlew :app:testDebugUnitTest --stacktrace
       - name: Assemble debug APK
         run: ./gradlew :app:assembleDebug --stacktrace
+      - name: Prepare downloadable APK name
+        run: |
+          mkdir -p ../dist
+          cp app/build/outputs/apk/debug/app-debug.apk ../dist/VibeMod-android-debug.apk
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: VibeMod-debug
-          path: vibemod/app/build/outputs/apk/debug/app-debug.apk
+          name: VibeMod-android-debug
+          path: dist/VibeMod-android-debug.apk
+          if-no-files-found: error
+          retention-days: 90
