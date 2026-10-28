@@ -11,7 +11,7 @@ group = "com.example.vibemod"
 version = "1.0.0"
 
 kotlin {
-    jvmToolchain(21)
+    jvmToolchain(17)
 }
 
 javafx {

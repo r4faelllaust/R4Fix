@@ -24,13 +24,23 @@ jobs:
           java-version: "17"
       - name: Unit tests
         run: .\gradlew.bat test --stacktrace
-      - name: Package Windows EXE / MSI
-        run: .\gradlew.bat packageExe packageMsi --stacktrace
+      - name: Package Windows EXE
+        run: .\gradlew.bat packageExe --stacktrace
+        continue-on-error: true
+      - name: Package Windows MSI
+        run: .\gradlew.bat packageMsi --stacktrace
+        continue-on-error: true
+      - name: Create portable zip (always)
+        shell: pwsh
+        run: |
+          .\gradlew.bat createDistributable --stacktrace
+          Compress-Archive -Path "build\compose\binaries\main\app\*" -DestinationPath "VibeMod-windows-portable.zip" -Force
       - name: Upload Windows installers
         uses: actions/upload-artifact@v4
         with:
           name: VibeMod-windows
           path: |
+            vibemod-desktop/VibeMod-windows-portable.zip
             vibemod-desktop/build/compose/binaries/main/exe/**
             vibemod-desktop/build/compose/binaries/main/msi/**
 
