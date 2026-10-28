@@ -1,3 +1,5 @@
 @echo off
-REM Requires Java 17+ on PATH
-java --module-path . -jar VibeMod-Desktop-1.0.0.jar
+REM Build & run VibeMod Desktop on Windows (Java 17+ required).
+cd /d "%~dp0\.."
+call gradlew.bat run
+if errorlevel 1 pause
