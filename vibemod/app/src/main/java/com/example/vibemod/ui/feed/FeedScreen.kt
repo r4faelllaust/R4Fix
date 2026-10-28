@@ -31,8 +31,9 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Loop
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Speed
-import androidx.compose.material.icons.filled.VolumeOff
-import androidx.compose.material.icons.filled.VolumeUp
+import androidx.compose.material.icons.automirrored.filled.VolumeOff
+import androidx.compose.material.icons.automirrored.filled.VolumeUp
+import androidx.compose.ui.platform.testTag
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -91,10 +92,10 @@ fun FeedScreen(vm: FeedViewModel = hiltViewModel()) {
         return
     }
 
-    Box(Modifier.fillMaxSize()) {
+    Box(Modifier.fillMaxSize().testTag("feed_screen")) {
         VerticalPager(
             state = pagerState,
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier.fillMaxSize().testTag("feed_pager"),
             key = { state.videos[it].id },
         ) { page ->
             val video = state.videos[page]
@@ -186,7 +187,11 @@ fun FeedScreen(vm: FeedViewModel = hiltViewModel()) {
                             tint = if (video.isFavorite) Color(0xFFFF2D55) else Color.White,
                         ) { vm.toggleFavorite(video.id, video.isFavorite) }
                         FeedAction(
-                            icon = if (state.muted) Icons.Filled.VolumeOff else Icons.Filled.VolumeUp,
+                            icon = if (state.muted) {
+                                Icons.AutoMirrored.Filled.VolumeOff
+                            } else {
+                                Icons.AutoMirrored.Filled.VolumeUp
+                            },
                             label = "Mute",
                         ) { vm.toggleMute() }
                         FeedAction(icon = Icons.Filled.Speed, label = "${state.speed}x") {

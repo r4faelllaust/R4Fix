@@ -35,6 +35,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -61,7 +62,8 @@ fun ModCenterScreen(
         Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(16.dp),
+            .padding(16.dp)
+            .testTag("mod_center_screen"),
     ) {
         Row(
             Modifier.fillMaxWidth(),
@@ -76,7 +78,10 @@ fun ModCenterScreen(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-            TextButton(onClick = onOpenSettings) { Text("Settings") }
+            TextButton(
+                onClick = onOpenSettings,
+                modifier = Modifier.testTag("mod_open_settings"),
+            ) { Text("Settings") }
         }
 
         // Live preview

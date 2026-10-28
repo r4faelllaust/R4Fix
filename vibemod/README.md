@@ -39,6 +39,20 @@ Release (unsigned unless you configure signing):
 ./gradlew :app:assembleRelease
 ```
 
+## Emulator testing (Windows PC)
+
+See **[EMULATOR_WINDOWS.md](EMULATOR_WINDOWS.md)** for Galaxy S24–like AVD setup, `adb install`, instrumented tests, and importing demo videos. Prefer testing on the emulator before installing on a physical phone.
+
+Scripts (Linux/macOS agents / WSL):
+
+- `scripts/emulator-s24.sh` — boot AVD, install APK, launch
+- `scripts/push-demo-videos.sh` — push MP4s into the emulator
+- `scripts/capture-emulator-evidence.sh` — screencap + logcat
+
+## Windows desktop app
+
+A Compose Desktop companion lives in `../vibemod-desktop/` (feed, library import, Mod Center, badges). Download Windows EXE/MSI from GitHub Actions workflow **Build VibeMod Desktop**.
+
 ## Install on a Samsung Galaxy S24 (or any Android phone)
 
 1. On the phone: **Settings → Security** (or **Biometrics and security**) → enable **Install unknown apps** for the app you will use (Files, Chrome, etc.).

@@ -23,6 +23,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.NavHost
@@ -99,6 +102,9 @@ fun VibeModRoot(
                                     restoreState = true
                                 }
                             },
+                            modifier = Modifier
+                                .testTag("nav_${item.route.path}")
+                                .semantics { contentDescription = "Navigate ${item.label}" },
                             icon = {
                                 Icon(item.icon, contentDescription = item.label)
                             },
