@@ -2,6 +2,10 @@
 
 Original short-video Android app for **your own** media. Local-first player with Mod Center customization — **not** a patched or repackaged TikTok APK, and not affiliated with TikTok/ByteDance.
 
+## Download the APK
+→ **https://github.com/r4faelllaust/R4Fix/releases** → `VibeMod-android-debug.apk`  
+(or Actions artifact **VibeMod-android-debug** — see [DOWNLOAD.md](../DOWNLOAD.md))
+
 ## Features
 
 - Vertical swipe feed (Media3 / ExoPlayer)
